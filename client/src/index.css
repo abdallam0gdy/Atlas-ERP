@@ -1,0 +1,549 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+/* ============================================================
+   Atlas Design System — Custom Theme Configuration
+   ============================================================ */
+
+@theme {
+  /* Primary Palette */
+  --color-atlas-primary: #0C3C82;
+  --color-atlas-primary-light: #1a5ab8;
+  --color-atlas-primary-dark: #082a5c;
+  --color-atlas-secondary: #D8232A;
+  --color-atlas-secondary-light: #e84850;
+  --color-atlas-secondary-dark: #b01d22;
+  --color-atlas-accent: #0EA5E9;
+  --color-atlas-accent-light: #38bdf8;
+  --color-atlas-accent-dark: #0284c7;
+
+  /* Surface & Background */
+  --color-atlas-bg: #F8FAFC;
+  --color-atlas-surface: #FFFFFF;
+  --color-atlas-border: #CBD5E1;
+  --color-atlas-border-light: #E2E8F0;
+  --color-atlas-muted: #64748B;
+  --color-atlas-muted-light: #94A3B8;
+
+  /* Status Colors */
+  --color-atlas-success: #10B981;
+  --color-atlas-warning: #F59E0B;
+  --color-atlas-error: #EF4444;
+  --color-atlas-info: #3B82F6;
+
+  /* Border Radii */
+  --radius-atlas: 0.5rem;
+  --radius-atlas-lg: 1rem;
+  --radius-atlas-pill: 9999px;
+
+  /* Shadows */
+  --shadow-atlas-sm: 0 1px 3px rgba(12, 60, 130, 0.06), 0 1px 2px rgba(12, 60, 130, 0.04);
+  --shadow-atlas: 0 4px 12px rgba(12, 60, 130, 0.08), 0 2px 4px rgba(12, 60, 130, 0.04);
+  --shadow-atlas-lg: 0 10px 30px rgba(12, 60, 130, 0.12), 0 4px 8px rgba(12, 60, 130, 0.06);
+  --shadow-atlas-glow: 0 0 20px rgba(14, 165, 233, 0.3);
+
+  /* Font Families */
+  --font-sans: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-arabic: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+
+@layer base {
+  *, ::after, ::before {
+    box-sizing: border-box;
+  }
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-atlas-bg);
+  color: #1E293B;
+  direction: rtl;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Scrollbar Styling
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-atlas-border);
+  border-radius: var(--radius-atlas-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-atlas-muted);
+}
+
+/* ============================================================
+   Component Classes
+   ============================================================ */
+
+@layer components {
+  .atlas-card {
+    background: var(--color-atlas-surface);
+    border: 1px solid var(--color-atlas-border-light);
+    border-radius: var(--radius-atlas-lg);
+    box-shadow: var(--shadow-atlas-sm);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .atlas-card:hover {
+    box-shadow: var(--shadow-atlas);
+  }
+
+  .atlas-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-atlas);
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    line-height: 1.25;
+  }
+
+  .atlas-btn:active {
+    transform: scale(0.97);
+  }
+
+  .atlas-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-atlas);
+    border: none;
+    cursor: pointer;
+    background: var(--color-atlas-secondary);
+    color: white;
+    transition: all 0.15s ease;
+    line-height: 1.25;
+  }
+
+  .atlas-btn-primary:hover {
+    background: var(--color-atlas-secondary-dark);
+    box-shadow: 0 4px 12px rgba(216, 35, 42, 0.3);
+  }
+
+  .atlas-btn-primary:active {
+    transform: scale(0.97);
+  }
+
+  .atlas-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-atlas);
+    border: 1px solid var(--color-atlas-border);
+    background: var(--color-atlas-surface);
+    color: #1E293B;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1.25;
+  }
+
+  .atlas-btn-secondary:hover {
+    background: #F8FAFC;
+    border-color: #94A3B8;
+  }
+
+  .atlas-btn-secondary:active {
+    transform: scale(0.97);
+  }
+
+  .atlas-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-atlas);
+    background: transparent;
+    color: var(--color-atlas-primary);
+    border: 1.5px solid var(--color-atlas-border);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1.25;
+  }
+
+  .atlas-btn-outline:hover {
+    background: var(--color-atlas-primary);
+    color: white;
+    border-color: var(--color-atlas-primary);
+  }
+
+  .atlas-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-atlas);
+    border: none;
+    background: transparent;
+    color: var(--color-atlas-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1.25;
+  }
+
+  .atlas-btn-ghost:hover {
+    background: #F1F5F9;
+    color: var(--color-atlas-primary);
+  }
+
+  .atlas-input {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    border: 1.5px solid var(--color-atlas-border);
+    border-radius: var(--radius-atlas);
+    background: var(--color-atlas-surface);
+    color: #1E293B;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+  }
+
+  .atlas-input:focus {
+    border-color: var(--color-atlas-accent);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+  }
+
+  .atlas-input::placeholder {
+    color: var(--color-atlas-muted-light);
+  }
+
+  .atlas-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-atlas-pill);
+    white-space: nowrap;
+  }
+
+  .atlas-badge-success {
+    background: #ECFDF5;
+    color: #065F46;
+  }
+
+  .atlas-badge-warning {
+    background: #FFFBEB;
+    color: #92400E;
+  }
+
+  .atlas-badge-error {
+    background: #FEF2F2;
+    color: #991B1B;
+  }
+
+  .atlas-badge-info {
+    background: #EFF6FF;
+    color: #1E40AF;
+  }
+
+  /* ============================================================
+     Table Component Styles
+     ============================================================ */
+  .atlas-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: right;
+    font-size: 0.875rem;
+  }
+
+  .atlas-table thead {
+    background: #0C3C82;
+  }
+
+  .atlas-table thead th {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    text-align: right;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+    border: none;
+  }
+
+  .atlas-table tbody tr {
+    border-bottom: 1px solid #E2E8F0;
+    transition: background-color 0.15s ease;
+  }
+
+  .atlas-table tbody tr:hover {
+    background-color: #F8FAFC;
+  }
+
+  .atlas-table tbody td {
+    padding: 0.875rem 1rem;
+    color: #1E293B;
+    vertical-align: middle;
+    text-align: right;
+  }
+
+  .atlas-table tfoot tr {
+    background-color: #F8FAFC;
+    border-top: 2px solid #CBD5E1;
+  }
+
+  .atlas-table tfoot td {
+    padding: 0.875rem 1rem;
+    font-weight: 800;
+    color: #0F172A;
+    text-align: right;
+  }
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(14, 165, 233, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.6);
+  }
+}
+
+@keyframes scan-success {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes scan-error {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-scan-success {
+  animation: scan-success 0.4s ease-out;
+}
+
+.animate-scan-error {
+  animation: scan-error 0.3s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ============================================================
+   Gate Terminal Specific Styles
+   ============================================================ */
+
+.gate-terminal {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0C3C82 0%, #082a5c 50%, #0a1628 100%);
+}
+
+.gate-scan-ready {
+  border: 3px solid var(--color-atlas-accent);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.gate-scan-success {
+  border: 3px solid var(--color-atlas-success);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.02));
+}
+
+.gate-scan-error {
+  border: 3px solid var(--color-atlas-error);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02));
+}
+
+/* ============================================================
+   Global Print Styles & Thermal Sticker Support
+   ============================================================ */
+
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 7mm 8mm 7mm 8mm; /* Optimized compact margin: maximizes students on single A4 sheet */
+  }
+
+  /* When printing an isolated report modal, hide everything else completely */
+  body:has(.print-only-report) aside,
+  body:has(.print-only-report) header,
+  body:has(.print-only-report) footer,
+  body:has(.print-only-report) .atlas-card:not(.print-card-visible) {
+    display: none !important;
+  }
+
+  .print-only-report {
+    position: static !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .print-card-visible {
+    width: 100% !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #printable-report-area {
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Watermark centered vertically and horizontally on every printed page */
+  .print-watermark-overlay {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 480px !important;
+    height: 480px !important;
+    max-width: 75vw !important;
+    max-height: 75vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+  }
+
+  .print-watermark-overlay img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    opacity: 0.4 !important;
+    filter: saturate(130%) contrast(110%) !important;
+    transform: rotate(-8deg) !important;
+  }
+
+  /* High-density table styling for A4 maximum capacity */
+  #printable-report-area table {
+    width: 100% !important;
+    background-color: transparent !important;
+    border-collapse: collapse !important;
+  }
+
+  #printable-report-area table thead {
+    display: table-header-group !important;
+  }
+
+  #printable-report-area table tbody tr {
+    background-color: rgba(255, 255, 255, 0.45) !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #printable-report-area table tbody tr:nth-child(even) {
+    background-color: rgba(241, 245, 249, 0.65) !important;
+  }
+
+  .print-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
