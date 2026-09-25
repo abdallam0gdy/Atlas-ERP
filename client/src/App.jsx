@@ -20,6 +20,7 @@ import BookletsPage from './pages/BookletsPage';
 import ProfilePage from './pages/ProfilePage';
 import StudentSubscriptionsPage from './pages/StudentSubscriptionsPage';
 import PackagesPage from './pages/PackagesPage';
+import UsersManagementPage from './pages/UsersManagementPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ function App() {
             <Route path="/booklets" element={<BookletsPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/pos" element={<PosPage />} />
+            <Route path="/users" element={<UsersManagementPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
 

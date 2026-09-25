@@ -74,6 +74,7 @@ app.use('/api/pos', require('./routes/pos.routes'));
 app.use('/api/booklets', require('./routes/booklets.routes'));
 app.use('/api/subscriptions', require('./routes/subscriptions.routes'));
 app.use('/api/packages', require('./routes/packages.routes'));
+app.use('/api/users', require('./routes/users.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

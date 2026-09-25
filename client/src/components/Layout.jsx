@@ -10,16 +10,26 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 
 // Protected route wrapper
-export function ProtectedRoute({ allowedRoles }) {
-  const { isAuthenticated, user } = useAuthStore();
+export function ProtectedRoute({ allowedRoles, pageId }) {
+  const { isAuthenticated, user, hasPageAccess } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  // Super admin always has access
+  if (user?.role?.name === 'SUPER_ADMIN_OWNER') {
+    return <Outlet />;
+  }
+
+  // Check pageId permission if specified
+  if (pageId && !hasPageAccess(pageId)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Check role whitelist if specified
   if (allowedRoles && allowedRoles.length > 0) {
-    const hasAccess = user?.role?.name === 'SUPER_ADMIN_OWNER' ||
-      allowedRoles.includes(user?.role?.name);
+    const hasAccess = allowedRoles.includes(user?.role?.name);
     if (!hasAccess) {
       return <Navigate to="/dashboard" replace />;
     }
@@ -42,6 +52,7 @@ const PAGE_TITLES = {
   '/pos': 'كاشير نقاط البيع السريعة',
   '/qrcode': 'إصدار وطباعة كروت الـ QR',
   '/barcodes': 'إصدار وطباعة كروت الـ QR',
+  '/users': 'إدارة الحسابات والصلاحيات',
   '/profile': 'الملف الشخصي والحساب',
 };
 
@@ -61,25 +72,27 @@ export function MainLayout() {
   }
 
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'لوحة التحكم', roles: [] },
-    { path: '/students', icon: Users, label: 'الطلاب', roles: [] },
-    { path: '/teachers', icon: GraduationCap, label: 'المدرسين', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER'] },
-    { path: '/groups', icon: BookOpen, label: 'المجموعات', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER'] },
-    { path: '/subjects', icon: BookMarked, label: 'المواد الدراسية', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER'] },
-    { path: '/subscriptions', icon: CreditCard, label: 'اشتراكات الطلاب والحصص', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'] },
-    { path: '/packages', icon: Package, label: 'نظام الباكدجات', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER'] },
-    { path: '/finance', icon: Wallet, label: 'الخزينة والمالية العامة', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'] },
-    { path: '/booklets', icon: Library, label: 'مكتب الملازم والكتب', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'BOOKLET_MANAGER'] },
-    // { path: '/inventory', icon: Package, label: 'المخزن العام', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER'] }, // مخفية مؤقتاً
-    // { path: '/pos', icon: ShoppingCart, label: 'كاشير المبيعات', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTIONIST'] }, // مخفية مؤقتاً
-    { path: '/qrcode', icon: QrCode, label: 'كروت الـ QR', roles: ['SUPER_ADMIN_OWNER', 'CENTER_MANAGER'] },
-    { path: '/profile', icon: User, label: 'الملف الشخصي', roles: [] },
-    { path: '/gate', icon: DoorOpen, label: 'بوابة الحضور', roles: [] },
+    { path: '/dashboard', pageId: 'dashboard', icon: LayoutDashboard, label: 'لوحة التحكم' },
+    { path: '/students', pageId: 'students', icon: Users, label: 'الطلاب' },
+    { path: '/teachers', pageId: 'teachers', icon: GraduationCap, label: 'المدرسين' },
+    { path: '/groups', pageId: 'groups', icon: BookOpen, label: 'المجموعات' },
+    { path: '/subjects', pageId: 'subjects', icon: BookMarked, label: 'المواد الدراسية' },
+    { path: '/subscriptions', pageId: 'subscriptions', icon: CreditCard, label: 'اشتراكات الطلاب والحصص' },
+    { path: '/packages', pageId: 'packages', icon: Package, label: 'نظام الباكدجات' },
+    { path: '/finance', pageId: 'finance', icon: Wallet, label: 'الخزينة والمالية العامة' },
+    { path: '/booklets', pageId: 'booklets', icon: Library, label: 'مكتب الملازم والكتب' },
+    { path: '/qrcode', pageId: 'qrcode', icon: QrCode, label: 'كروت الـ QR' },
+    { path: '/users', pageId: 'users', icon: ShieldCheck, label: 'إدارة الحسابات والصلاحيات', adminOnly: true },
+    { path: '/profile', icon: User, label: 'الملف الشخصي', isPublic: true },
+    { path: '/gate', pageId: 'gate', icon: DoorOpen, label: 'بوابة الحضور' },
   ];
 
-  const filteredNav = navItems.filter(item => {
-    if (item.roles.length === 0) return true;
-    return user?.role?.name === 'SUPER_ADMIN_OWNER' || item.roles.includes(user?.role?.name);
+  const filteredNav = navItems.filter((item) => {
+    if (item.isPublic) return true;
+    if (user?.role?.name === 'SUPER_ADMIN_OWNER') return true;
+    if (item.adminOnly) return false;
+    const allowed = user?.role?.allowedPages || [];
+    return item.pageId ? allowed.includes(item.pageId) : true;
   });
 
   const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));

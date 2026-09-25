@@ -14,7 +14,7 @@ const login = async (req, res, next) => {
     // Fetch user with role info and permissions
     const userResult = await db.query(
       `SELECT u.id, u.username, u.password_hash, u.full_name, u.full_name_ar, u.phone, u.email,
-              u.is_active, r.id as role_id, r.name as role_name, r.label_ar as role_label
+              u.is_active, r.id as role_id, r.name as role_name, r.label_ar as role_label, r.allowed_pages
        FROM users u
        JOIN roles r ON u.role_id = r.id
        WHERE u.username = $1`,
@@ -46,12 +46,17 @@ const login = async (req, res, next) => {
     );
     const permissions = permResult.rows.map((r) => r.code);
 
+    const allowedPages = Array.isArray(user.allowed_pages)
+      ? user.allowed_pages
+      : (typeof user.allowed_pages === 'string' ? JSON.parse(user.allowed_pages) : []);
+
     // Generate JWT
     const tokenPayload = {
       id: user.id,
       username: user.username,
       role: user.role_id,
       roleName: user.role_name,
+      allowedPages,
       permissions,
     };
 
@@ -84,6 +89,7 @@ const login = async (req, res, next) => {
             id: user.role_id,
             name: user.role_name,
             label: user.role_label,
+            allowedPages,
           },
           permissions,
         },
@@ -103,7 +109,7 @@ const getMe = async (req, res, next) => {
     const result = await db.query(
       `SELECT u.id, u.username, u.full_name, u.full_name_ar, u.phone, u.email,
               u.is_active, u.last_login_at,
-              r.id as role_id, r.name as role_name, r.label_ar as role_label
+              r.id as role_id, r.name as role_name, r.label_ar as role_label, r.allowed_pages
        FROM users u
        JOIN roles r ON u.role_id = r.id
        WHERE u.id = $1`,
@@ -115,6 +121,10 @@ const getMe = async (req, res, next) => {
     }
 
     const user = result.rows[0];
+    const allowedPages = Array.isArray(user.allowed_pages)
+      ? user.allowed_pages
+      : (typeof user.allowed_pages === 'string' ? JSON.parse(user.allowed_pages) : []);
+
     res.json({
       success: true,
       data: {
@@ -130,8 +140,9 @@ const getMe = async (req, res, next) => {
           id: user.role_id,
           name: user.role_name,
           label: user.role_label,
+          allowedPages,
         },
-        permissions: req.user.permissions,
+        permissions: req.user.permissions || [],
       },
     });
   } catch (err) {

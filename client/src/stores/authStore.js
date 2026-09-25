@@ -62,6 +62,14 @@ const useAuthStore = create((set, get) => ({
     return user?.permissions?.includes(permissionCode) || false;
   },
 
+  hasPageAccess: (pageId) => {
+    const user = get().user;
+    if (!user) return false;
+    if (user?.role?.name === 'SUPER_ADMIN_OWNER') return true;
+    const allowed = user?.role?.allowedPages || [];
+    return allowed.includes(pageId);
+  },
+
   clearError: () => set({ error: null }),
 }));
 
