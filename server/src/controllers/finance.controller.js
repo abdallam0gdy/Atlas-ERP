@@ -239,8 +239,7 @@ const getTreasuryStats = async (req, res, next) => {
       [currentMonth]
     );
 
-    // 5. Teachers Breakdown (تفاصيل مستحقات المدرسين وحصة السنتر)
-    // Query each teacher's active groups, attendance, collections, and financial config
+    // 5. Teachers Breakdown (تفاصيل مستحقات المدرسين وحصة السنتر اليومية والشهرية)
     const teachersRes = await db.query(`
       SELECT 
         t.id as teacher_id,
@@ -252,7 +251,8 @@ const getTreasuryStats = async (req, res, next) => {
         COALESCE(t.fixed_rate_per_student, 0.00) as fixed_rate_per_student,
         COUNT(DISTINCT g.id) as groups_count,
         COUNT(DISTINCT ge.student_id) as enrolled_students,
-        COALESCE(SUM(ss.amount_paid), 0) as total_collected
+        COALESCE(SUM(ss.amount_paid), 0) as total_collected,
+        COALESCE(SUM(CASE WHEN DATE(ss.created_at) = $2 THEN ss.amount_paid ELSE 0 END), 0) as today_collected
       FROM teachers t
       LEFT JOIN groups g ON g.teacher_id = t.id AND g.status = 'active'
       LEFT JOIN subjects sub ON sub.id = g.subject_id
@@ -261,30 +261,41 @@ const getTreasuryStats = async (req, res, next) => {
         ON ss.group_id = g.id AND ss.billing_month = $1
       WHERE t.is_active = true
       GROUP BY t.id, t.full_name, t.phone, sub.name_ar, t.revenue_split_type, t.revenue_split_percent, t.fixed_rate_per_student
-      ORDER BY total_collected DESC, t.full_name ASC
-    `, [currentMonth]);
+      ORDER BY today_collected DESC, total_collected DESC, t.full_name ASC
+    `, [currentMonth, today]);
 
     let totalTeacherDues = 0;
     let totalCenterFromSubscriptions = 0;
+    let totalTodayTeacherDues = 0;
+    let totalTodayCenterFromSubscriptions = 0;
 
     const teacherBreakdowns = teachersRes.rows.map(row => {
       const collected = parseFloat(row.total_collected || 0);
+      const todayColl = parseFloat(row.today_collected || 0);
       let teacherShare = 0;
       let centerShare = 0;
+      let todayTeacherShare = 0;
+      let todayCenterShare = 0;
 
       if (row.revenue_split_type === 'percentage' || !row.revenue_split_type) {
         const percent = parseFloat(row.revenue_split_percent || 80);
         teacherShare = (collected * percent) / 100;
         centerShare = collected - teacherShare;
+        todayTeacherShare = (todayColl * percent) / 100;
+        todayCenterShare = todayColl - todayTeacherShare;
       } else {
         // fixed rate per student
         const fixedRate = parseFloat(row.fixed_rate_per_student || 0);
         teacherShare = parseInt(row.enrolled_students || 0) * fixedRate;
         centerShare = Math.max(0, collected - teacherShare);
+        todayTeacherShare = todayColl > 0 ? (todayColl * (teacherShare / (collected || 1))) : 0;
+        todayCenterShare = Math.max(0, todayColl - todayTeacherShare);
       }
 
       totalTeacherDues += teacherShare;
       totalCenterFromSubscriptions += centerShare;
+      totalTodayTeacherDues += todayTeacherShare;
+      totalTodayCenterFromSubscriptions += todayCenterShare;
 
       return {
         teacherId: row.teacher_id,
@@ -297,6 +308,9 @@ const getTreasuryStats = async (req, res, next) => {
           : parseFloat(row.fixed_rate_per_student || 0),
         groupsCount: parseInt(row.groups_count, 10),
         enrolledStudents: parseInt(row.enrolled_students, 10),
+        todayCollected: todayColl,
+        todayTeacherShare,
+        todayCenterShare,
         totalCollected: collected,
         teacherShare,
         centerShare,
@@ -309,6 +323,8 @@ const getTreasuryStats = async (req, res, next) => {
 
     // Center Net Profit: Center's clean share from subscriptions (expenses paid separately as requested)
     const centerNetProfit = totalCenterFromSubscriptions;
+    const todayExpenses = parseFloat(todayRes.rows[0].today_expenses || 0);
+    const todayCenterNetProfit = Math.max(0, totalTodayCenterFromSubscriptions - todayExpenses);
 
     res.json({
       success: true,
@@ -322,8 +338,11 @@ const getTreasuryStats = async (req, res, next) => {
           deposits: parseFloat(todayRes.rows[0].today_deposits),
           cashIn: parseFloat(todayRes.rows[0].today_cash_in),
           cashOut: parseFloat(todayRes.rows[0].today_cash_out),
-          expenses: parseFloat(todayRes.rows[0].today_expenses),
+          expenses: todayExpenses,
           netToday: parseFloat(todayRes.rows[0].today_inflows) - parseFloat(todayRes.rows[0].today_outflows),
+          teacherDues: totalTodayTeacherDues,
+          centerShare: totalTodayCenterFromSubscriptions,
+          centerNetProfit: todayCenterNetProfit,
         },
         month: {
           inflows: parseFloat(monthRes.rows[0].month_inflows),

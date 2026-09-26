@@ -16,21 +16,29 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true);
 
   // Stats & Treasury Data
+  const [periodScope, setPeriodScope] = useState('today'); // 'today' | 'month'
   const [stats, setStats] = useState({
     currentCash: 0,
-    today: { inflows: 0, outflows: 0, subscriptions: 0, cashIn: 0, cashOut: 0, netToday: 0 },
+    today: { inflows: 0, outflows: 0, subscriptions: 0, cashIn: 0, cashOut: 0, netToday: 0, teacherDues: 0, centerShare: 0, centerNetProfit: 0 },
     month: { subscriptions: 0, totalTeacherDues: 0, centerNetProfit: 0 },
     teachers: [],
   });
+
+  // Teachers Tab Filter & View Mode
+  const [teacherSearch, setTeacherSearch] = useState('');
+  const [teacherViewMode, setTeacherViewMode] = useState('today'); // 'today' | 'month'
 
   // Debts Tab Data
   const [debts, setDebts] = useState([]);
   const [debtsLoading, setDebtsLoading] = useState(false);
   const [searchDebt, setSearchDebt] = useState('');
 
-  // Transactions Ledger Data
+  // Transactions Ledger Data & Filters
   const [transactions, setTransactions] = useState([]);
   const [settlements, setSettlements] = useState([]);
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerDateFilter, setLedgerDateFilter] = useState('today'); // 'today' | 'yesterday' | 'all'
+  const [ledgerTypeFilter, setLedgerTypeFilter] = useState('all'); // 'all' | 'inflow' | 'outflow' | 'subscription' | 'petty_cash'
 
   // Modals
   const [isPettyCashModalOpen, setIsPettyCashModalOpen] = useState(false);
@@ -302,72 +310,193 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Financial KPIs Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
-        {/* Card 1: Live Drawer Cash */}
-        <div className="atlas-card p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500">رصيد الخزينة الحي في الدرج</p>
-            <h3 className="text-2xl font-black text-[#0C3C82] mt-1">
-              {formatEGP(stats.currentCash || 0)}
-            </h3>
-            <span className="text-[11px] text-slate-400">
-              حركة اليوم: {stats.today?.netToday >= 0 ? '+' : ''}{formatEGP(stats.today?.netToday || 0)}
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0C3C82] flex items-center justify-center flex-shrink-0">
-            <Wallet size={24} />
-          </div>
+      {/* Scope Selector Bar (اليومية الافتراضية vs التراكمي للشهر) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setPeriodScope('today')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              periodScope === 'today'
+                ? 'bg-white text-[#0C3C82] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>☀️ حسابات اليوم والدرج (اليومية)</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-[#0C3C82] font-bold">تلقائي</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriodScope('month')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              periodScope === 'month'
+                ? 'bg-white text-[#0C3C82] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>📅 الحساب التراكمي للشهر</span>
+          </button>
         </div>
 
-        {/* Card 2: Center Clean Net Share */}
-        <div className="atlas-card p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500">حصة السنتر من الاشتراكات</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-1">
-              {formatEGP(stats.month?.centerNetProfit || 0)}
-            </h3>
-            <span className="text-[11px] text-slate-400">صافي ربح السنتر هذا الشهر</span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-            <TrendingUp size={24} />
-          </div>
-        </div>
-
-        {/* Card 3: Total Teacher Dues */}
-        <div className="atlas-card p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500">مستحقات المدرسين هذا الشهر</p>
-            <h3 className="text-2xl font-black text-indigo-700 mt-1">
-              {formatEGP(stats.month?.totalTeacherDues || 0)}
-            </h3>
-            <span className="text-[11px] text-slate-400">حسب نسب الحصص والاشتراكات</span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center flex-shrink-0">
-            <GraduationCap size={24} />
-          </div>
-        </div>
-
-        {/* Card 4: Quick Link to Student Subscriptions & Accounts */}
-        <div
-          onClick={() => navigate('/subscriptions')}
-          className="atlas-card p-5 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group bg-gradient-to-br from-white to-blue-50/50"
-        >
-          <div>
-            <p className="text-xs font-semibold text-slate-500">اشتراكات وحصص الطلاب</p>
-            <h3 className="text-base font-black text-[#0C3C82] mt-1 group-hover:text-blue-700 flex items-center gap-1.5">
-              <span>صفحة الحسابات المستقلة</span>
-              <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
-            </h3>
-            <span className="text-[11px] text-slate-400">
-              بحث بالكود، متابعة الحصص، والمديونيات
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-100/80 text-[#0C3C82] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-            <CreditCard size={24} />
-          </div>
+        <div className="text-xs text-slate-500 font-medium">
+          {periodScope === 'today' ? (
+            <span>عرض حي لحسابات اليومية والدرج ليوم: <strong className="text-slate-800">{new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong></span>
+          ) : (
+            <span>عرض تراكمي لإجمالي الحسابات والاشتراكات للشهر الجاري</span>
+          )}
         </div>
       </div>
+
+      {/* Financial KPIs Grid */}
+      {periodScope === 'today' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          {/* Card 1: Live Drawer Cash */}
+          <div className="atlas-card p-4.5 flex items-center justify-between border-blue-200 bg-gradient-to-br from-white to-blue-50/40">
+            <div>
+              <p className="text-xs font-bold text-slate-500">نقدية الدرج الحية (الفلوس)</p>
+              <h3 className="text-xl font-black text-[#0C3C82] mt-1">
+                {formatEGP(stats.currentCash || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                حركة اليوم: {stats.today?.netToday >= 0 ? '+' : ''}{formatEGP(stats.today?.netToday || 0)}
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-2xl bg-blue-100 text-[#0C3C82] flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <Wallet size={22} />
+            </div>
+          </div>
+
+          {/* Card 2: Today's Inflows */}
+          <div className="atlas-card p-4.5 flex items-center justify-between border-emerald-200 bg-gradient-to-br from-white to-emerald-50/40">
+            <div>
+              <p className="text-xs font-bold text-slate-500">تحصيلات ووارد اليوم</p>
+              <h3 className="text-xl font-black text-emerald-700 mt-1">
+                {formatEGP(stats.today?.inflows || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                اشتراكات: {formatEGP(stats.today?.subscriptions || 0)}
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <ArrowDownLeft size={22} />
+            </div>
+          </div>
+
+          {/* Card 3: Today's Outflows */}
+          <div className="atlas-card p-4.5 flex items-center justify-between border-rose-200 bg-gradient-to-br from-white to-rose-50/40">
+            <div>
+              <p className="text-xs font-bold text-slate-500">منصرفات ومسحوبات اليوم</p>
+              <h3 className="text-xl font-black text-rose-700 mt-1">
+                {formatEGP(stats.today?.outflows || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                مسحوبات نقدية واسترداد
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <ArrowUpRight size={22} />
+            </div>
+          </div>
+
+          {/* Card 4: Today's Teacher Dues */}
+          <div className="atlas-card p-4.5 flex items-center justify-between border-indigo-200 bg-gradient-to-br from-white to-indigo-50/40">
+            <div>
+              <p className="text-xs font-bold text-slate-500">مستحقات المدرسين اليوم</p>
+              <h3 className="text-xl font-black text-indigo-700 mt-1">
+                {formatEGP(stats.today?.teacherDues || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                حساب يومية المدرسين
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <GraduationCap size={22} />
+            </div>
+          </div>
+
+          {/* Card 5: Today's Center Net Profit */}
+          <div className="atlas-card p-4.5 flex items-center justify-between border-emerald-300 bg-gradient-to-br from-white to-emerald-50/70">
+            <div>
+              <p className="text-xs font-bold text-slate-500">صافي مكسب السنتر اليوم</p>
+              <h3 className="text-xl font-black text-emerald-800 mt-1">
+                {formatEGP(stats.today?.centerNetProfit || 0)}
+              </h3>
+              <span className="text-[11px] text-emerald-600 font-medium">
+                حصة اليوم بعد المصروفات
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <TrendingUp size={22} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          {/* Card 1: Live Drawer Cash */}
+          <div className="atlas-card p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">رصيد الخزينة الحي في الدرج</p>
+              <h3 className="text-2xl font-black text-[#0C3C82] mt-1">
+                {formatEGP(stats.currentCash || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                حركة اليوم: {stats.today?.netToday >= 0 ? '+' : ''}{formatEGP(stats.today?.netToday || 0)}
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0C3C82] flex items-center justify-center flex-shrink-0">
+              <Wallet size={24} />
+            </div>
+          </div>
+
+          {/* Card 2: Center Clean Net Share (Month) */}
+          <div className="atlas-card p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">حصة السنتر من الاشتراكات</p>
+              <h3 className="text-2xl font-black text-emerald-600 mt-1">
+                {formatEGP(stats.month?.centerNetProfit || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">صافي ربح السنتر هذا الشهر</span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+              <TrendingUp size={24} />
+            </div>
+          </div>
+
+          {/* Card 3: Total Teacher Dues (Month) */}
+          <div className="atlas-card p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">مستحقات المدرسين هذا الشهر</p>
+              <h3 className="text-2xl font-black text-indigo-700 mt-1">
+                {formatEGP(stats.month?.totalTeacherDues || 0)}
+              </h3>
+              <span className="text-[11px] text-slate-400">حسب نسب الحصص والاشتراكات</span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center flex-shrink-0">
+              <GraduationCap size={24} />
+            </div>
+          </div>
+
+          {/* Card 4: Quick Link to Student Subscriptions & Accounts */}
+          <div
+            onClick={() => navigate('/subscriptions')}
+            className="atlas-card p-5 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group bg-gradient-to-br from-white to-blue-50/50"
+          >
+            <div>
+              <p className="text-xs font-semibold text-slate-500">اشتراكات وحصص الطلاب</p>
+              <h3 className="text-base font-black text-[#0C3C82] mt-1 group-hover:text-blue-700 flex items-center gap-1.5">
+                <span>صفحة الحسابات المستقلة</span>
+                <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+              </h3>
+              <span className="text-[11px] text-slate-400">
+                بحث بالكود، متابعة الحصص، والمديونيات
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-blue-100/80 text-[#0C3C82] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <CreditCard size={24} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info Banner: Page Separation notice */}
       <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
@@ -413,179 +542,464 @@ export default function FinancePage() {
       </div>
 
       {/* TAB 2: TEACHERS BREAKDOWN */}
-      {activeTab === 'teachers' && (
-        <div className="space-y-4">
-          <div className="atlas-card p-6 space-y-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-800">
-                كشف حساب مستحقات المدرسين وتوزيع أرباح السنتر
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                حساب دقيق لنسب المدرسين وحصة إدارة السنتر من الاشتراكات الشهرية المحصلة
-              </p>
-            </div>
+      {activeTab === 'teachers' && (() => {
+        const displayedTeachers = (stats.teachers || []).filter((t) => {
+          if (!teacherSearch) return true;
+          const q = teacherSearch.toLowerCase();
+          return (
+            (t.teacherName || '').toLowerCase().includes(q) ||
+            (t.subjectName || '').toLowerCase().includes(q) ||
+            (t.phone || '').includes(q)
+          );
+        });
 
-            <div className="overflow-x-auto">
-              <table className="atlas-table w-full">
-                <thead>
-                  <tr>
-                    <th>اسم المدرس</th>
-                    <th>المادة</th>
-                    <th>نظام التوزيع</th>
-                    <th>المجموعات والطلاب</th>
-                    <th>إجمالي المحصل</th>
-                    <th>مستحقات المدرس</th>
-                    <th>حصة السنتر</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(stats.teachers || []).map((t) => (
-                    <tr key={t.teacherId}>
-                      <td>
-                        <p className="font-bold text-slate-800 text-sm">{t.teacherName}</p>
-                        <span className="text-[11px] text-slate-400 font-mono">{t.phone || ''}</span>
-                      </td>
-                      <td className="text-xs font-semibold text-slate-700">
-                        {t.subjectName}
-                      </td>
-                      <td>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#0C3C82]">
-                          {t.financialModel === 'PERCENTAGE' 
-                            ? `${t.financialValue}% مدرس / ${100 - t.financialValue}% سنتر` 
-                            : `${formatEGP(t.financialValue)} / طالب`}
-                        </span>
-                      </td>
-                      <td>
-                        <p className="text-xs text-slate-700">{formatCount(t.groupsCount)} مجموعات</p>
-                        <span className="text-[11px] text-slate-500">{formatCount(t.enrolledStudents)} طالب مسجل</span>
-                      </td>
-                      <td className="font-bold text-xs text-slate-900">
-                        {formatEGP(t.totalCollected || 0)}
-                      </td>
-                      <td className="font-bold text-xs text-indigo-700">
-                        {formatEGP(t.teacherShare || 0)}
-                      </td>
-                      <td className="font-bold text-xs text-emerald-700">
-                        {formatEGP(t.centerShare || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+        const totalCollectedSum = displayedTeachers.reduce(
+          (sum, t) => sum + (teacherViewMode === 'today' ? parseFloat(t.todayCollected || 0) : parseFloat(t.totalCollected || 0)),
+          0
+        );
+        const totalTeacherShareSum = displayedTeachers.reduce(
+          (sum, t) => sum + (teacherViewMode === 'today' ? parseFloat(t.todayTeacherShare || 0) : parseFloat(t.teacherShare || 0)),
+          0
+        );
+        const totalCenterShareSum = displayedTeachers.reduce(
+          (sum, t) => sum + (teacherViewMode === 'today' ? parseFloat(t.todayCenterShare || 0) : parseFloat(t.centerShare || 0)),
+          0
+        );
 
-      {/* TAB 3: TREASURY LEDGER & SHIFTS */}
-      {activeTab === 'ledger' && (
-        <div className="space-y-6">
-          {/* Today's Transactions */}
-          <div className="atlas-card p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">
-                  حركة الخزينة والدرج الحية (اليومية)
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">سجل بجميع العمليات المالية وحركات الدرج الواردة والصادرة</p>
+        return (
+          <div className="space-y-4">
+            <div className="atlas-card p-6 space-y-4">
+              {/* Header with Search & Mode Toggle */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">
+                    كشف حساب ومستحقات المدرسين وتوزيع أرباح السنتر
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    حساب دقيق لنسب المدرسين وحصة إدارة السنتر من الحصص والاشتراكات (يومية وتراكمي)
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setTeacherViewMode('today')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        teacherViewMode === 'today'
+                          ? 'bg-white text-[#0C3C82] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      ☀️ حساب اليومية (اليوم)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeacherViewMode('month')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        teacherViewMode === 'month'
+                          ? 'bg-white text-[#0C3C82] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      📅 إجمالي الشهر
+                    </button>
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative">
+                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={teacherSearch}
+                      onChange={(e) => setTeacherSearch(e.target.value)}
+                      placeholder="بحث بالمدرس أو المادة..."
+                      className="atlas-input pr-8 py-1.5 text-xs w-48"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="atlas-table w-full">
-                <thead>
-                  <tr>
-                    <th>الوقت والتاريخ</th>
-                    <th>نوع الحركة</th>
-                    <th>المبلغ</th>
-                    <th>البيان والملاحظات</th>
-                    <th>المسؤول</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.slice(0, 25).map((tx) => {
-                    const isPositive = parseFloat(tx.amount) > 0;
-                    return (
-                      <tr key={tx.id}>
-                        <td className="text-xs text-slate-500 font-mono">
-                          {tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG') : '—'}
-                        </td>
-                        <td>
-                          <span className={`atlas-badge ${isPositive ? 'atlas-badge-success' : 'atlas-badge-error'}`}>
-                            {tx.transaction_type === 'cash_in' && 'دخول نقدية للدرج'}
-                            {tx.transaction_type === 'cash_out' && 'خروج نقدية من الدرج'}
-                            {tx.transaction_type === 'subscription_fee' && 'اشتراك طالب'}
-                            {(tx.transaction_type === 'booklet_advance' || tx.transaction_type === 'booklet_reservation_deposit') && 'عربون حجز ملزمة'}
-                            {(tx.transaction_type === 'booklet_handover' || tx.transaction_type === 'booklet_delivery_payment') && 'تحصيل تسليم ملزمة'}
-                            {tx.transaction_type === 'pos_sale' && 'مبيعات كاشير'}
-                            {tx.transaction_type === 'expense' && 'مصروفات'}
-                            {tx.transaction_type === 'manual_deposit' && 'إيداع يدوي'}
-                            {!['cash_in', 'cash_out', 'subscription_fee', 'booklet_advance', 'booklet_handover', 'booklet_reservation_deposit', 'booklet_delivery_payment', 'pos_sale', 'expense', 'manual_deposit'].includes(tx.transaction_type) && tx.transaction_type}
-                          </span>
-                        </td>
-                        <td className={`font-mono font-bold text-xs ${isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {isPositive ? '+' : ''}{formatEGP(Math.abs(parseFloat(tx.amount)))}
-                        </td>
-                        <td className="text-xs text-slate-700 max-w-md truncate">
-                          {tx.notes || '—'}
-                        </td>
-                        <td className="text-xs text-slate-500">
-                          {tx.recorded_by_name || 'الاستقبال'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              {/* Summary KPIs Banner for Filtered Teachers */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-4 text-xs flex-wrap font-medium">
+                <span className="text-slate-700 font-bold">
+                  إجمالي كشف حساب المدرسين ({displayedTeachers.length} مدرس):
+                </span>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span>
+                    إجمالي المحصل ({teacherViewMode === 'today' ? 'اليوم' : 'الشهر'}): <strong className="text-slate-900 font-bold font-mono">{formatEGP(totalCollectedSum)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    مستحقات المدرسين: <strong className="text-indigo-700 font-bold font-mono">{formatEGP(totalTeacherShareSum)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    حصة إدارة السنتر: <strong className="text-emerald-700 font-bold font-mono">{formatEGP(totalCenterShareSum)}</strong>
+                  </span>
+                </div>
+              </div>
 
-          {/* Shift Closings History */}
-          <div className="atlas-card p-6 space-y-4">
-            <h3 className="text-sm font-bold text-slate-800">سجل تقفيل الورديات وإقفال اليومية السابق</h3>
-            {settlements.length === 0 ? (
-              <p className="text-xs text-slate-400">لم يتم تقفيل ورديات سابقة بعد.</p>
-            ) : (
               <div className="overflow-x-auto">
                 <table className="atlas-table w-full">
                   <thead>
                     <tr>
-                      <th>تاريخ وتوقيت التقفيل</th>
-                      <th>المسؤول</th>
-                      <th>النقدية المحسوبة</th>
-                      <th>النقدية الفعلية المسلمة</th>
-                      <th>العجز / الزيادة</th>
-                      <th>ملاحظات التقفيل</th>
+                      <th>اسم المدرس</th>
+                      <th>المادة</th>
+                      <th>نظام التوزيع</th>
+                      <th>المجموعات والطلاب</th>
+                      {teacherViewMode === 'today' ? (
+                        <>
+                          <th>تحصيلات اليوم</th>
+                          <th>مستحقات المدرس اليوم</th>
+                          <th>حصة السنتر اليوم</th>
+                          <th>إجمالي مستحقات الشهر</th>
+                        </>
+                      ) : (
+                        <>
+                          <th>إجمالي المحصل بالشهر</th>
+                          <th>مستحقات المدرس بالشهر</th>
+                          <th>حصة السنتر بالشهر</th>
+                          <th>مستحقات اليوم</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {settlements.map((s) => (
-                      <tr key={s.id}>
-                        <td className="text-xs font-mono text-slate-600">
-                          {new Date(s.closed_at).toLocaleString('ar-EG')}
+                    {displayedTeachers.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="text-center py-8 text-slate-400 text-xs">
+                          لا يوجد مدرسين يطابقون شروط البحث
                         </td>
-                        <td className="text-xs font-semibold text-slate-800">{s.user_name}</td>
-                        <td className="text-xs font-mono">{formatEGP(s.expected_cash)}</td>
-                        <td className="text-xs font-mono font-bold text-[#0C3C82]">{formatEGP(s.actual_cash)}</td>
-                        <td>
-                          {parseFloat(s.difference) === 0 ? (
-                            <span className="atlas-badge atlas-badge-success">مطابق 100%</span>
-                          ) : (
-                            <span className={`atlas-badge ${parseFloat(s.difference) > 0 ? 'atlas-badge-info' : 'atlas-badge-error'}`}>
-                              {parseFloat(s.difference) > 0 ? `+${formatEGP(s.difference)} زيادة` : `${formatEGP(s.difference)} عجز`}
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-xs text-slate-500">{s.notes || '—'}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      displayedTeachers.map((t) => (
+                        <tr key={t.teacherId}>
+                          <td>
+                            <p className="font-bold text-slate-800 text-sm">{t.teacherName}</p>
+                            <span className="text-[11px] text-slate-400 font-mono">{t.phone || ''}</span>
+                          </td>
+                          <td className="text-xs font-semibold text-slate-700">
+                            {t.subjectName}
+                          </td>
+                          <td>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#0C3C82]">
+                              {t.financialModel === 'PERCENTAGE' 
+                                ? `${t.financialValue}% مدرس / ${100 - t.financialValue}% سنتر` 
+                                : `${formatEGP(t.financialValue)} / طالب`}
+                            </span>
+                          </td>
+                          <td>
+                            <p className="text-xs text-slate-700">{formatCount(t.groupsCount)} مجموعات</p>
+                            <span className="text-[11px] text-slate-500">{formatCount(t.enrolledStudents)} طالب مسجل</span>
+                          </td>
+                          {teacherViewMode === 'today' ? (
+                            <>
+                              <td className="font-bold text-xs text-slate-900 font-mono">
+                                {formatEGP(t.todayCollected || 0)}
+                              </td>
+                              <td className="font-bold text-xs text-indigo-700 font-mono">
+                                {formatEGP(t.todayTeacherShare || 0)}
+                              </td>
+                              <td className="font-bold text-xs text-emerald-700 font-mono">
+                                {formatEGP(t.todayCenterShare || 0)}
+                              </td>
+                              <td className="text-xs text-slate-500 font-mono">
+                                {formatEGP(t.teacherShare || 0)}
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="font-bold text-xs text-slate-900 font-mono">
+                                {formatEGP(t.totalCollected || 0)}
+                              </td>
+                              <td className="font-bold text-xs text-indigo-700 font-mono">
+                                {formatEGP(t.teacherShare || 0)}
+                              </td>
+                              <td className="font-bold text-xs text-emerald-700 font-mono">
+                                {formatEGP(t.centerShare || 0)}
+                              </td>
+                              <td className="text-xs text-slate-500 font-mono">
+                                {formatEGP(t.todayTeacherShare || 0)}
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* TAB 3: TREASURY LEDGER & SHIFTS */}
+      {activeTab === 'ledger' && (() => {
+        const displayedTransactions = (transactions || []).filter((tx) => {
+          // Date Filter
+          if (ledgerDateFilter === 'today') {
+            const txDate = new Date(tx.created_at).toDateString();
+            const today = new Date().toDateString();
+            if (txDate !== today) return false;
+          } else if (ledgerDateFilter === 'yesterday') {
+            const txDate = new Date(tx.created_at).toDateString();
+            const yest = new Date(Date.now() - 86400000).toDateString();
+            if (txDate !== yest) return false;
+          }
+
+          // Type Filter
+          const isPos = parseFloat(tx.amount) > 0;
+          if (ledgerTypeFilter === 'inflow' && !isPos) return false;
+          if (ledgerTypeFilter === 'outflow' && isPos) return false;
+          if (ledgerTypeFilter === 'subscription' && tx.transaction_type !== 'subscription_fee') return false;
+          if (ledgerTypeFilter === 'petty_cash' && !['cash_in', 'cash_out'].includes(tx.transaction_type)) return false;
+
+          // Search Filter
+          if (ledgerSearch) {
+            const q = ledgerSearch.toLowerCase();
+            const matchesNotes = (tx.notes || '').toLowerCase().includes(q);
+            const matchesUser = (tx.recorded_by_name || '').toLowerCase().includes(q);
+            if (!matchesNotes && !matchesUser) return false;
+          }
+
+          return true;
+        });
+
+        const ledgerInflow = displayedTransactions.reduce(
+          (sum, tx) => sum + (parseFloat(tx.amount) > 0 ? parseFloat(tx.amount) : 0),
+          0
+        );
+        const ledgerOutflow = displayedTransactions.reduce(
+          (sum, tx) => sum + (parseFloat(tx.amount) < 0 ? Math.abs(parseFloat(tx.amount)) : 0),
+          0
+        );
+        const ledgerNet = ledgerInflow - ledgerOutflow;
+
+        return (
+          <div className="space-y-6">
+            {/* Live Drawer & Transactions */}
+            <div className="atlas-card p-6 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">
+                    حركة الخزينة والدرج الحية (دفتر اليومية)
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    سجل بجميع العمليات المالية وحركات الدرج الواردة والصادرة
+                  </p>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Date Filter Pills */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setLedgerDateFilter('today')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        ledgerDateFilter === 'today'
+                          ? 'bg-white text-[#0C3C82] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      ☀️ اليوم
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerDateFilter('yesterday')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        ledgerDateFilter === 'yesterday'
+                          ? 'bg-white text-[#0C3C82] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      📆 أمس
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerDateFilter('all')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        ledgerDateFilter === 'all'
+                          ? 'bg-white text-[#0C3C82] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      📋 الكل
+                    </button>
+                  </div>
+
+                  {/* Type Filter */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setLedgerTypeFilter('all')}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                        ledgerTypeFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                      }`}
+                    >
+                      الكل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerTypeFilter('inflow')}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                        ledgerTypeFilter === 'inflow' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500'
+                      }`}
+                    >
+                      وارد (+)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerTypeFilter('outflow')}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                        ledgerTypeFilter === 'outflow' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-500'
+                      }`}
+                    >
+                      منصرف (-)
+                    </button>
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative">
+                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={ledgerSearch}
+                      onChange={(e) => setLedgerSearch(e.target.value)}
+                      placeholder="بحث في البيان أو الموظف..."
+                      className="atlas-input pr-8 py-1.5 text-xs w-44"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Ledger Summary Bar */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs flex-wrap font-medium">
+                <span className="text-slate-700 font-bold">
+                  العمليات المعروضة: <strong>{displayedTransactions.length} حركة</strong>
+                </span>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="text-emerald-700 font-bold">
+                    إجمالي الوارد: +{formatEGP(ledgerInflow)}
+                  </span>
+                  <span>•</span>
+                  <span className="text-rose-700 font-bold">
+                    إجمالي المنصرف: -{formatEGP(ledgerOutflow)}
+                  </span>
+                  <span>•</span>
+                  <span className="text-[#0C3C82] font-black">
+                    الصافي: {ledgerNet >= 0 ? '+' : ''}{formatEGP(ledgerNet)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="atlas-table w-full">
+                  <thead>
+                    <tr>
+                      <th>الوقت والتاريخ</th>
+                      <th>نوع الحركة</th>
+                      <th>المبلغ</th>
+                      <th>البيان والملاحظات</th>
+                      <th>المسؤول</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-slate-400 text-xs">
+                          لا توجد حركات نقدية تطابق الفلاتر المحددة
+                        </td>
+                      </tr>
+                    ) : (
+                      displayedTransactions.slice(0, 50).map((tx) => {
+                        const isPositive = parseFloat(tx.amount) > 0;
+                        return (
+                          <tr key={tx.id}>
+                            <td className="text-xs text-slate-500 font-mono">
+                              {tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG') : '—'}
+                            </td>
+                            <td>
+                              <span className={`atlas-badge ${isPositive ? 'atlas-badge-success' : 'atlas-badge-error'}`}>
+                                {tx.transaction_type === 'cash_in' && 'دخول نقدية للدرج'}
+                                {tx.transaction_type === 'cash_out' && 'خروج نقدية من الدرج'}
+                                {tx.transaction_type === 'subscription_fee' && 'اشتراك طالب'}
+                                {(tx.transaction_type === 'booklet_advance' || tx.transaction_type === 'booklet_reservation_deposit') && 'عربون حجز ملزمة'}
+                                {(tx.transaction_type === 'booklet_handover' || tx.transaction_type === 'booklet_delivery_payment') && 'تحصيل تسليم ملزمة'}
+                                {tx.transaction_type === 'pos_sale' && 'مبيعات كاشير'}
+                                {tx.transaction_type === 'expense' && 'مصروفات'}
+                                {tx.transaction_type === 'manual_deposit' && 'إيداع يدوي'}
+                                {!['cash_in', 'cash_out', 'subscription_fee', 'booklet_advance', 'booklet_handover', 'booklet_reservation_deposit', 'booklet_delivery_payment', 'pos_sale', 'expense', 'manual_deposit'].includes(tx.transaction_type) && tx.transaction_type}
+                              </span>
+                            </td>
+                            <td className={`font-mono font-bold text-xs ${isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {isPositive ? '+' : ''}{formatEGP(Math.abs(parseFloat(tx.amount)))}
+                            </td>
+                            <td className="text-xs text-slate-700 max-w-md truncate">
+                              {tx.notes || '—'}
+                            </td>
+                            <td className="text-xs text-slate-500">
+                              {tx.recorded_by_name || 'الاستقبال'}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Shift Closings History */}
+            <div className="atlas-card p-6 space-y-4">
+              <h3 className="text-sm font-bold text-slate-800">سجل تقفيل الورديات وإقفال اليومية السابق</h3>
+              {settlements.length === 0 ? (
+                <p className="text-xs text-slate-400">لم يتم تقفيل ورديات سابقة بعد.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="atlas-table w-full">
+                    <thead>
+                      <tr>
+                        <th>تاريخ وتوقيت التقفيل</th>
+                        <th>المسؤول</th>
+                        <th>النقدية المحسوبة</th>
+                        <th>النقدية الفعلية المسلمة</th>
+                        <th>العجز / الزيادة</th>
+                        <th>ملاحظات التقفيل</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settlements.map((s) => (
+                        <tr key={s.id}>
+                          <td className="text-xs font-mono text-slate-600">
+                            {new Date(s.closed_at).toLocaleString('ar-EG')}
+                          </td>
+                          <td className="text-xs font-semibold text-slate-800">{s.user_name}</td>
+                          <td className="text-xs font-mono">{formatEGP(s.expected_cash)}</td>
+                          <td className="text-xs font-mono font-bold text-[#0C3C82]">{formatEGP(s.actual_cash)}</td>
+                          <td>
+                            {parseFloat(s.difference) === 0 ? (
+                              <span className="atlas-badge atlas-badge-success">مطابق 100%</span>
+                            ) : (
+                              <span className={`atlas-badge ${parseFloat(s.difference) > 0 ? 'atlas-badge-info' : 'atlas-badge-error'}`}>
+                                {parseFloat(s.difference) > 0 ? `+${formatEGP(s.difference)} زيادة` : `${formatEGP(s.difference)} عجز`}
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-xs text-slate-500">{s.notes || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL 1: Petty Cash Movement (فلوس داخلة / خارجة) */}
       {isPettyCashModalOpen && (

@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import useAuthStore from '../stores/authStore';
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, QrCode,
@@ -13,33 +14,35 @@ import { Link, useLocation } from 'react-router-dom';
 export function ProtectedRoute({ allowedRoles, pageId, adminOnly }) {
   const { isAuthenticated, user, hasPageAccess } = useAuthStore();
 
+  const isSuperAdmin = user?.role?.name === 'SUPER_ADMIN_OWNER';
+  const isDeniedAdmin = Boolean(adminOnly && !isSuperAdmin);
+  const isDeniedPage = Boolean(pageId && !hasPageAccess(pageId) && !isSuperAdmin);
+  const isDeniedRole = Boolean(allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user?.role?.name) && !isSuperAdmin);
+
+  const isDenied = isDeniedAdmin || isDeniedPage || isDeniedRole;
+
+  useEffect(() => {
+    if (isAuthenticated && isDenied) {
+      if (isDeniedAdmin) {
+        toast.error('هذه الصفحة مخصصة لمالك النظام فقط');
+      } else if (isDeniedPage) {
+        toast.error('عفواً، ليس لديك صلاحية الوصول إلى هذه الصفحة');
+      } else if (isDeniedRole) {
+        toast.error('عفواً، دورك الحالي لا يملك صلاحية الوصول إلى هذه الصفحة');
+      }
+    }
+  }, [isAuthenticated, isDenied, isDeniedAdmin, isDeniedPage, isDeniedRole]);
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Super admin always has access
-  if (user?.role?.name === 'SUPER_ADMIN_OWNER') {
+  if (isSuperAdmin) {
     return <Outlet />;
   }
 
-  if (adminOnly) {
-    toast.error('هذه الصفحة مخصصة لمالك النظام فقط');
+  if (isDenied) {
     return <Navigate to="/dashboard" replace />;
-  }
-
-  // Check pageId permission if specified
-  if (pageId && !hasPageAccess(pageId)) {
-    toast.error('عفواً، ليس لديك صلاحية الوصول إلى هذه الصفحة');
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Check role whitelist if specified
-  if (allowedRoles && allowedRoles.length > 0) {
-    const hasAccess = allowedRoles.includes(user?.role?.name);
-    if (!hasAccess) {
-      toast.error('عفواً، دورك الحالي لا يملك صلاحية الوصول إلى هذه الصفحة');
-      return <Navigate to="/dashboard" replace />;
-    }
   }
 
   return <Outlet />;

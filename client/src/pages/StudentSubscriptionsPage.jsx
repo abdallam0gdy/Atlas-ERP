@@ -6,8 +6,10 @@ import {
   AlertCircle, Plus, ChevronLeft, ArrowRight, Wallet, History,
   Sparkles, RefreshCw, X, ShieldAlert, Check, Coins, Layers,
   LogOut, AlertTriangle, ArrowUpRight, Filter, GraduationCap, Users,
-  Lock, Loader2
+  Lock, Loader2, Package, CheckSquare
 } from 'lucide-react';
+import EnrollPackageModal from '../components/EnrollPackageModal';
+import ClearPackageRefundModal from '../components/ClearPackageRefundModal';
 
 export default function StudentSubscriptionsPage() {
   // Navigation & view states
@@ -28,7 +30,13 @@ export default function StudentSubscriptionsPage() {
   const [selectedGroupForPayDebt, setSelectedGroupForPayDebt] = useState(null);
   const [clearanceModalOpen, setClearanceModalOpen] = useState(false);
   const [selectedGroupForClearance, setSelectedGroupForClearance] = useState(null);
-  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false); // Private group enrollment
+  const [enrollPackageModalOpen, setEnrollPackageModalOpen] = useState(false); // Package bundle enrollment
+  const [clearPackageModalOpen, setClearPackageModalOpen] = useState(false); // Whole package clearance
+  const [selectedPackageForClearance, setSelectedPackageForClearance] = useState(null);
+
+  // Group filter state
+  const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'package' | 'private' | 'debt' | 'zero'
 
   // Masters
   const [allGroups, setAllGroups] = useState([]);
@@ -143,6 +151,10 @@ export default function StudentSubscriptionsPage() {
 
   // Open clearance / refund modal
   const handleOpenClearance = (group) => {
+    if (group.enrollment_type === 'PACKAGE') {
+      toast.error('⚠️ لا يمكن تصفية مادة منفردة من الباكدج، يتم تصفية اشتراك الباكدج بالكامل من بطاقة الباكدج المجمعة بالأعلى.');
+      return;
+    }
     setSelectedGroupForClearance(group);
     setClearanceModalOpen(true);
   };
@@ -325,13 +337,20 @@ export default function StudentSubscriptionsPage() {
                   </div>
 
                   {/* Actions & Metrics */}
-                  <div className="flex items-center gap-3 self-end md:self-auto">
+                  <div className="flex items-center gap-2.5 self-end md:self-auto flex-wrap">
+                    <button
+                      onClick={() => setEnrollPackageModalOpen(true)}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-xs flex items-center gap-2 shadow-lg transition-all"
+                    >
+                      <Package size={16} />
+                      <span>إضافة الطالب لباكدج</span>
+                    </button>
                     <button
                       onClick={() => setEnrollModalOpen(true)}
                       className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-2 border border-white/20 transition-all backdrop-blur-sm"
                     >
-                      <Plus size={16} />
-                      قيد في مجموعة جديدة
+                      <Users size={16} />
+                      <span>إضافة لمجموعة (برايفت)</span>
                     </button>
                     <button
                       onClick={() => loadStudentAccount(selectedStudentId)}
@@ -368,178 +387,436 @@ export default function StudentSubscriptionsPage() {
                 </div>
               </div>
 
-              {/* Group Accounts & Sessions Details */}
+              {/* 1. ACTIVE PACKAGE BUNDLES (اشتراكات الباكدج المجمعة) */}
+              {studentAccount.packageEnrollments && studentAccount.packageEnrollments.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                      <Package size={20} className="text-amber-600" />
+                      <span>اشتراكات الباكدج الدراسية المجمعة ({studentAccount.packageEnrollments.length})</span>
+                    </h3>
+                    <span className="text-xs text-amber-800 bg-amber-100/80 px-3 py-1 rounded-xl border border-amber-300 font-bold flex items-center gap-1.5 shadow-2xs">
+                      <span>✨ اشتراك باكدج متكامل</span>
+                      <span>•</span>
+                      <span>حساب واسترداد عادل بسعر الباكدج</span>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {studentAccount.packageEnrollments.map((pkg) => {
+                      const totalPkgSessions = parseInt(pkg.total_sessions || 0, 10);
+                      const usedPkgSessions = parseInt(pkg.used_sessions || 0, 10);
+                      const remPkgSessions = Math.max(0, parseInt(pkg.remaining_sessions || 0, 10));
+                      const effectiveRate = parseFloat(pkg.effective_session_price || 0);
+                      const pkgPrice = parseFloat(pkg.total_price || 0);
+                      const pkgDue = parseFloat(pkg.total_amount_due || 0);
+                      const pkgPaid = parseFloat(pkg.total_amount_paid || 0);
+                      const refundEst = Math.max(0, parseInt(pkg.refundable_amount || 0, 10));
+
+                      return (
+                        <div
+                          key={pkg.id}
+                          className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 via-amber-50/50 to-orange-500/10 border-2 border-amber-300/80 shadow-md relative overflow-hidden"
+                        >
+                          {/* Package Header */}
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-200/80 pb-4">
+                            <div className="flex items-center gap-3.5">
+                              <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 flex items-center justify-center font-black shadow-md flex-shrink-0">
+                                <Package size={26} />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-lg font-black text-slate-900 tracking-tight">
+                                    {pkg.package_name}
+                                  </h4>
+                                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-amber-200 text-amber-950 border border-amber-300">
+                                    {pkg.grade_name}
+                                  </span>
+                                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    باكدج نشط
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1 flex items-center gap-2 flex-wrap">
+                                  <span>تاريخ التسجيل: <strong>{new Date(pkg.enrolled_at).toLocaleDateString('ar-EG')}</strong></span>
+                                  <span>•</span>
+                                  <span>إجمالي قيمة الباكدج: <strong className="text-[#0C3C82]">{pkgPrice} ج.م</strong></span>
+                                  <span>•</span>
+                                  <span>المسدد: <strong className="text-emerald-700">{pkgPaid} ج.م</strong></span>
+                                  {pkgDue > 0 && (
+                                    <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                                      مديونية: {pkgDue} ج.م
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* One-Click Full Package Clearance Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedPackageForClearance(pkg);
+                                setClearPackageModalOpen(true);
+                              }}
+                              className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all self-start md:self-auto hover:shadow-lg"
+                              title="تصفية اشتراك الباكدج بالكامل واسترداد الرصيد المتبقي بسعر الباكدج"
+                            >
+                              <LogOut size={16} />
+                              <span>تصفية واسترداد الباكدج بالكامل</span>
+                            </button>
+                          </div>
+
+                          {/* Sessions Aggregated Math Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                            <div className="bg-white/90 p-3 rounded-2xl border border-amber-200 shadow-2xs">
+                              <span className="text-[11px] font-bold text-slate-500 block">إجمالي حصص الباكدج</span>
+                              <span className="text-xl font-black text-slate-900 mt-0.5 block">{totalPkgSessions} حصة</span>
+                            </div>
+                            <div className="bg-white/90 p-3 rounded-2xl border border-amber-200 shadow-2xs">
+                              <span className="text-[11px] font-bold text-slate-500 block">الحصص المستهلكة (حضور)</span>
+                              <span className="text-xl font-black text-blue-700 mt-0.5 block">{usedPkgSessions} حصة</span>
+                            </div>
+                            <div className="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-300 shadow-2xs">
+                              <span className="text-[11px] font-bold text-emerald-800 block">الرصيد المتبقي الإجمالي</span>
+                              <span className="text-xl font-black text-emerald-700 mt-0.5 block">{remPkgSessions} حصة</span>
+                            </div>
+                            <div className="bg-white/90 p-3 rounded-2xl border border-amber-200 shadow-2xs">
+                              <span className="text-[11px] font-bold text-slate-500 block">سعر الحصة الفعلي بالباكدج</span>
+                              <span className="text-xl font-black text-indigo-700 mt-0.5 block">{effectiveRate.toFixed(2)} ج.م</span>
+                            </div>
+                          </div>
+
+                          {/* Sessions Progress Bar */}
+                          <div className="space-y-1.5 mb-3 bg-white/70 p-3 rounded-2xl border border-amber-200/70">
+                            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                              <span>استهلاك حصص الباكدج:</span>
+                              <span className="font-mono text-[#0C3C82]">
+                                مستهلك {usedPkgSessions} من {totalPkgSessions} حصة ({totalPkgSessions > 0 ? Math.round((usedPkgSessions / totalPkgSessions) * 100) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex">
+                              <div
+                                className="bg-blue-600 h-full transition-all"
+                                style={{ width: `${totalPkgSessions > 0 ? (usedPkgSessions / totalPkgSessions) * 100 : 0}%` }}
+                                title={`مستهلك: ${usedPkgSessions}`}
+                              />
+                              <div
+                                className="bg-emerald-500 h-full transition-all"
+                                style={{ width: `${totalPkgSessions > 0 ? (remPkgSessions / totalPkgSessions) * 100 : 0}%` }}
+                                title={`متبقي: ${remPkgSessions}`}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                              <span>قيمة الرصيد المتبقي: <strong className="text-emerald-700">{refundEst} ج.م</strong></span>
+                              <span className="text-slate-400">محسوب بسعر الباكدج العادل وليس البرايفت</span>
+                            </div>
+                          </div>
+
+                          {/* Included Groups & Teachers Pills */}
+                          {pkg.groups && pkg.groups.length > 0 && (
+                            <div className="pt-2 border-t border-amber-200/80">
+                              <span className="text-xs font-bold text-slate-700 mb-2 block">
+                                المواد والمجموعات المقيد بها الطالب ضمن هذا الباكدج ({pkg.groups.length}):
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {pkg.groups.map((g) => (
+                                  <div
+                                    key={g.group_id}
+                                    className="px-3 py-1.5 rounded-xl bg-white border border-amber-200 text-slate-800 text-xs font-medium flex items-center gap-2 shadow-2xs"
+                                  >
+                                    <span
+                                      className="w-2.5 h-2.5 rounded-full"
+                                      style={{ backgroundColor: g.subject_color || '#0C3C82' }}
+                                    />
+                                    <strong>{g.subject_name}:</strong>
+                                    <span>{g.teacher_name || '—'}</span>
+                                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200">
+                                      {g.remaining_sessions || 0} حصة متبقية
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. GROUP ACCOUNTS & SESSIONS DETAILS (المجموعات المستقلة والتفصيلية) */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                    <Layers size={18} className="text-[#0C3C82]" />
-                    رصيد الحصص والاشتراكات لكل مجموعة ({studentAccount.groups.length})
-                  </h3>
-                  <span className="text-xs text-slate-500">
-                    يمكن شحن وتجديد الحصص لأي مجموعة بشكل مستقل
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                      <Layers size={18} className="text-[#0C3C82]" />
+                      <span>رصيد الحصص والاشتراكات لكل مجموعة ({studentAccount.groups.length})</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      متابعة استهلاك الحصص، شحن الرصيد، أو تصفية مجموعة محددة وسحب الطالب منها
+                    </p>
+                  </div>
+
+                  {/* Filter Pills */}
+                  {studentAccount.groups.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setGroupFilter('all')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                          groupFilter === 'all'
+                            ? 'bg-white text-[#0C3C82] shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        الكل ({studentAccount.groups.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGroupFilter('package')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                          groupFilter === 'package'
+                            ? 'bg-amber-500 text-slate-950 shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        📦 باكدج ({studentAccount.groups.filter((g) => g.enrollment_type === 'PACKAGE').length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGroupFilter('private')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                          groupFilter === 'private'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        👨‍🏫 عادي / برايفت ({studentAccount.groups.filter((g) => g.enrollment_type === 'PRIVATE').length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGroupFilter('debt')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                          groupFilter === 'debt'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        ⚠️ مديونيات ({studentAccount.groups.filter((g) => parseFloat(g.amount_due || 0) > 0).length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGroupFilter('zero')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                          groupFilter === 'zero'
+                            ? 'bg-slate-700 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🔴 رصيد 0 ({studentAccount.groups.filter((g) => parseInt(g.remaining_sessions || 0, 10) <= 0).length})
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {studentAccount.groups.length === 0 ? (
                   <div className="atlas-card p-8 text-center border-dashed border-slate-300">
                     <p className="text-sm font-bold text-slate-600 mb-2">الطالب غير مقيد في أي مجموعة حالياً</p>
-                    <button
-                      onClick={() => setEnrollModalOpen(true)}
-                      className="atlas-btn-primary text-xs px-4 py-2 inline-flex items-center gap-2"
-                    >
-                      <Plus size={15} />
-                      تسجيل الطالب في أول مجموعة
-                    </button>
+                    <div className="flex items-center justify-center gap-3 mt-3 flex-wrap">
+                      <button
+                        onClick={() => setEnrollPackageModalOpen(true)}
+                        className="atlas-btn-primary text-xs px-4 py-2.5 inline-flex items-center gap-2 shadow-md"
+                      >
+                        <Package size={15} />
+                        <span>إضافة الطالب لباكدج</span>
+                      </button>
+                      <button
+                        onClick={() => setEnrollModalOpen(true)}
+                        className="atlas-btn atlas-btn-outline text-xs px-4 py-2.5 inline-flex items-center gap-2"
+                      >
+                        <Users size={15} />
+                        <span>إضافة لمجموعة خاصة (برايفت)</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {studentAccount.groups.map((group) => {
-                      const remaining = parseInt(group.remaining_sessions || 0, 10);
-                      const total = parseInt(group.total_sessions || 0, 10);
-                      const used = parseInt(group.used_sessions || 0, 10);
-                      const isOutOfSessions = remaining <= 0;
-                      const hasDebt = parseFloat(group.amount_due || 0) > 0;
+                    {studentAccount.groups
+                      .filter((group) => {
+                        if (groupFilter === 'package') return group.enrollment_type === 'PACKAGE';
+                        if (groupFilter === 'private') return group.enrollment_type === 'PRIVATE';
+                        if (groupFilter === 'debt') return parseFloat(group.amount_due || 0) > 0;
+                        if (groupFilter === 'zero') return parseInt(group.remaining_sessions || 0, 10) <= 0;
+                        return true;
+                      })
+                      .map((group) => {
+                        const remaining = parseInt(group.remaining_sessions || 0, 10);
+                        const total = parseInt(group.total_sessions || 0, 10);
+                        const used = parseInt(group.used_sessions || 0, 10);
+                        const isOutOfSessions = remaining <= 0;
+                        const hasDebt = parseFloat(group.amount_due || 0) > 0;
+                        const nominalSessionRate = parseFloat(group.price_per_session || 0);
+                        const amountPaid = parseFloat(group.amount_paid || 0);
+                        const actualSessionRate = (total > 0 && amountPaid > 0) ? (amountPaid / total) : nominalSessionRate;
+                        const isDiscountedRate = actualSessionRate > 0 && actualSessionRate < nominalSessionRate;
 
-                      return (
-                        <div
-                          key={group.group_id}
-                          className={`atlas-card p-5 border transition-all flex flex-col justify-between ${
-                            isOutOfSessions
-                              ? 'border-rose-200 bg-rose-50/20 shadow-xs'
-                              : 'border-slate-200 hover:border-blue-300 hover:shadow-md'
-                          }`}
-                        >
-                          {/* Group Info Header */}
-                          <div>
-                            <div className="flex items-start justify-between gap-3 mb-2.5">
-                              <div>
-                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                  <span
-                                    className="text-[11px] font-bold px-2 py-0.5 rounded-md text-white inline-block"
-                                    style={{ backgroundColor: group.subject_color || '#0C3C82' }}
+                        return (
+                          <div
+                            key={group.group_id}
+                            className={`atlas-card p-5 border transition-all flex flex-col justify-between ${
+                              isOutOfSessions
+                                ? 'border-rose-200 bg-rose-50/20 shadow-xs'
+                                : 'border-slate-200 hover:border-blue-300 hover:shadow-md'
+                            }`}
+                          >
+                            {/* Group Info Header */}
+                            <div>
+                              <div className="flex items-start justify-between gap-3 mb-2.5">
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                    <span
+                                      className="text-[11px] font-bold px-2 py-0.5 rounded-md text-white inline-block"
+                                      style={{ backgroundColor: group.subject_color || '#0C3C82' }}
+                                    >
+                                      {group.subject_name || 'مادة'}
+                                    </span>
+                                    {group.enrollment_type === 'PRIVATE' ? (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        👨‍🏫 طالب برايفت
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                                        📦 طالب باكدج
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h4 className="text-base font-black text-slate-900">
+                                    {group.group_name_ar || group.group_name}
+                                  </h4>
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                    المدرس: <strong>{group.teacher_name || '—'}</strong> {group.classroom_name ? `• ${group.classroom_name}` : ''}
+                                  </p>
+                                </div>
+
+                                {/* Remaining Sessions Highlight Badge */}
+                                <div className="text-center">
+                                  <div
+                                    className={`px-3.5 py-2 rounded-2xl border text-center shadow-xs ${
+                                      remaining > 2
+                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                        : remaining > 0
+                                        ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                        : 'bg-rose-50 border-rose-300 text-rose-800 animate-pulse'
+                                    }`}
                                   >
-                                    {group.subject_name || 'مادة'}
+                                    <p className="text-[10px] font-bold opacity-80">الرصيد المتبقي</p>
+                                    <p className="text-xl font-black">{remaining} حصة</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Session Balance Progress Meter */}
+                              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 my-3">
+                                <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                                  <span className="text-slate-600">
+                                    إجمالي الحصص المشحونة: <strong className="text-slate-900">{total}</strong>
                                   </span>
-                                  {group.enrollment_type === 'PRIVATE' ? (
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                      👨‍🏫 طالب برايفت
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
-                                      📦 طالب باكدج
-                                    </span>
-                                  )}
+                                  <span className="text-slate-600">
+                                    الحصص المستهلكة: <strong className="text-slate-900">{used}</strong>
+                                  </span>
                                 </div>
-                                <h4 className="text-base font-black text-slate-900">
-                                  {group.group_name_ar || group.group_name}
-                                </h4>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  المدرس: <strong>{group.teacher_name || '—'}</strong> {group.classroom_name ? `• ${group.classroom_name}` : ''}
-                                </p>
-                              </div>
-
-                              {/* Remaining Sessions Highlight Badge */}
-                              <div className="text-center">
-                                <div
-                                  className={`px-3.5 py-2 rounded-2xl border text-center shadow-xs ${
-                                    remaining > 2
-                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                                      : remaining > 0
-                                      ? 'bg-amber-50 border-amber-300 text-amber-800'
-                                      : 'bg-rose-50 border-rose-300 text-rose-800 animate-pulse'
-                                  }`}
-                                >
-                                  <p className="text-[10px] font-bold opacity-80">الرصيد المتبقي</p>
-                                  <p className="text-xl font-black">{remaining} حصة</p>
+                                <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
+                                  <div
+                                    className="bg-blue-600 h-full transition-all"
+                                    style={{ width: `${total > 0 ? (used / total) * 100 : 0}%` }}
+                                    title={`مستهلك: ${used}`}
+                                  />
+                                  <div
+                                    className="bg-emerald-500 h-full transition-all"
+                                    style={{ width: `${total > 0 ? (remaining / total) * 100 : 0}%` }}
+                                    title={`متبقي: ${remaining}`}
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5">
+                                  <span>
+                                    سعر الحصة: <strong className="text-[#0C3C82]">{actualSessionRate.toFixed(2)} ج.م</strong>
+                                    {isDiscountedRate && (
+                                      <span className="text-[10px] text-amber-800 font-bold mr-1 bg-amber-100/80 px-1.5 py-0.5 rounded">
+                                        سعر باكدج مخفض
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span>سعر الشهر: <strong>{group.price_per_month || 0} ج.م</strong></span>
                                 </div>
                               </div>
-                            </div>
 
-                            {/* Session Balance Progress Meter */}
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 my-3">
-                              <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                                <span className="text-slate-600">
-                                  إجمالي الحصص المشحونة: <strong className="text-slate-900">{total}</strong>
-                                </span>
-                                <span className="text-slate-600">
-                                  الحصص المستهلكة: <strong className="text-slate-900">{used}</strong>
-                                </span>
-                              </div>
-                              <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
-                                <div
-                                  className="bg-blue-600 h-full transition-all"
-                                  style={{ width: `${total > 0 ? (used / total) * 100 : 0}%` }}
-                                  title={`مستهلك: ${used}`}
-                                />
-                                <div
-                                  className="bg-emerald-500 h-full transition-all"
-                                  style={{ width: `${total > 0 ? (remaining / total) * 100 : 0}%` }}
-                                  title={`متبقي: ${remaining}`}
-                                />
-                              </div>
-                              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5">
-                                <span>سعر الحصة: <strong>{group.price_per_session || 0} ج.م</strong></span>
-                                <span>سعر الشهر: <strong>{group.price_per_month || 0} ج.م</strong></span>
+                              {/* Financial status for this group */}
+                              <div className="flex items-center justify-between text-xs font-semibold px-1 py-1 text-slate-600">
+                                <span>المسدد: <strong className="text-emerald-700">{group.amount_paid || 0} ج.م</strong></span>
+                                {hasDebt ? (
+                                  <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                                    مديونية متبقية: {group.amount_due} ج.م
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 font-bold flex items-center gap-1">
+                                    <Check size={14} /> لا توجد مديونية
+                                  </span>
+                                )}
                               </div>
                             </div>
 
-                            {/* Financial status for this group */}
-                            <div className="flex items-center justify-between text-xs font-semibold px-1 py-1 text-slate-600">
-                              <span>المسدد: <strong className="text-emerald-700">{group.amount_paid || 0} ج.م</strong></span>
-                              {hasDebt ? (
-                                <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                                  مديونية متبقية: {group.amount_due} ج.م
-                                </span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                                  <Check size={14} /> لا توجد مديونية
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                            {/* Action Buttons: Recharge, Pay Debt, Clearance */}
+                            <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-[11px] text-slate-400">
+                                آخر تجديد: {group.billing_month || '—'}
+                              </span>
 
-                          {/* Action Buttons: Recharge, Pay Debt, Clearance */}
-                          <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between gap-2 flex-wrap">
-                            <span className="text-[11px] text-slate-400">
-                              آخر تجديد: {group.billing_month || '—'}
-                            </span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {hasDebt && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPayDebt(group)}
+                                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                                    title="سداد مديونية الاشتراك بدون إضافة حصص إضافية"
+                                  >
+                                    <Wallet size={14} />
+                                    سداد مديونية ({group.amount_due} ج.م)
+                                  </button>
+                                )}
 
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {hasDebt && (
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenPayDebt(group)}
-                                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                                  title="سداد مديونية الاشتراك بدون إضافة حصص إضافية"
+                                  onClick={() => handleOpenRenew(group)}
+                                  className="atlas-btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-sm"
                                 >
-                                  <Wallet size={14} />
-                                  سداد مديونية ({group.amount_due} ج.م)
+                                  <Coins size={14} />
+                                  شحن وتجديد
                                 </button>
-                              )}
 
-                              <button
-                                type="button"
-                                onClick={() => handleOpenRenew(group)}
-                                className="atlas-btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-sm"
-                              >
-                                <Coins size={14} />
-                                شحن وتجديد
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleOpenClearance(group)}
-                                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-all flex items-center gap-1.5 shadow-xs"
-                                title="تصفية رصيد الحصص المتبقي للطالب واسترداد المبلغ"
-                              >
-                                <LogOut size={13} />
-                                تصفية واسترداد
-                              </button>
+                                {group.enrollment_type === 'PRIVATE' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenClearance(group)}
+                                    className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-all flex items-center gap-1.5 shadow-xs"
+                                    title="تصفية رصيد الحصص المتبقي للطالب في هذه المجموعة وإلغاء قيده منها"
+                                  >
+                                    <LogOut size={13} />
+                                    تصفية واسترداد
+                                  </button>
+                                ) : (
+                                  <span
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-900 text-[11px] font-bold border border-amber-200 flex items-center gap-1 shadow-2xs"
+                                    title="هذه المجموعة تابعة للباكدج، وتتم تصفيتها حصراً مع الباكدج بالكامل من بطاقة الباكدج بالأعلى"
+                                  >
+                                    📦 تصفية مع الباكدج بالأعلى
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 )}
               </div>
@@ -775,7 +1052,21 @@ export default function StudentSubscriptionsPage() {
         />
       )}
 
-      {/* ENROLL STUDENT IN GROUP MODAL */}
+      {/* ENROLL STUDENT IN PACKAGE MODAL */}
+      {enrollPackageModalOpen && studentAccount && (
+        <EnrollPackageModal
+          isOpen={enrollPackageModalOpen}
+          onClose={() => setEnrollPackageModalOpen(false)}
+          student={studentAccount.student}
+          onSuccess={() => {
+            setEnrollPackageModalOpen(false);
+            loadStudentAccount(studentAccount.student.id);
+            fetchDebts();
+          }}
+        />
+      )}
+
+      {/* ENROLL STUDENT IN PRIVATE GROUP MODAL */}
       {enrollModalOpen && studentAccount && (
         <EnrollGroupModal
           isOpen={enrollModalOpen}
@@ -787,6 +1078,7 @@ export default function StudentSubscriptionsPage() {
           onSuccess={() => {
             setEnrollModalOpen(false);
             loadStudentAccount(studentAccount.student.id);
+            fetchDebts();
           }}
         />
       )}
@@ -815,6 +1107,21 @@ export default function StudentSubscriptionsPage() {
           group={selectedGroupForClearance}
           onSuccess={() => {
             setClearanceModalOpen(false);
+            if (selectedStudentId) loadStudentAccount(selectedStudentId);
+            fetchDebts();
+          }}
+        />
+      )}
+
+      {/* CLEAR PACKAGE REFUND MODAL */}
+      {clearPackageModalOpen && selectedPackageForClearance && (
+        <ClearPackageRefundModal
+          isOpen={clearPackageModalOpen}
+          onClose={() => setClearPackageModalOpen(false)}
+          student={studentAccount?.student}
+          packageEnrollment={selectedPackageForClearance}
+          onSuccess={() => {
+            setClearPackageModalOpen(false);
             if (selectedStudentId) loadStudentAccount(selectedStudentId);
             fetchDebts();
           }}
@@ -1340,10 +1647,17 @@ function formatModalSchedule(schedule) {
 // -------------------------------------------------------------
 function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroups, allGrades = [], onSuccess }) {
   const [selectedGroupId, setSelectedGroupId] = useState('');
-  const [enrollmentType, setEnrollmentType] = useState('PACKAGE');
+  const [enrollmentType, setEnrollmentType] = useState('PRIVATE');
   const [loading, setLoading] = useState(false);
   const [freshGroups, setFreshGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+
+  // Financial & Discount States
+  const [discountType, setDiscountType] = useState('FIXED');
+  const [discountValue, setDiscountValue] = useState(0);
+  const [sessionsCount, setSessionsCount] = useState(4);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [billingMonth, setBillingMonth] = useState(new Date().toISOString().slice(0, 7));
 
   // Filters State (Grade is strictly locked to student.grade_id)
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -1357,7 +1671,7 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
     const fetchGroups = async () => {
       setLoadingGroups(true);
       try {
-        const { data } = await api.get('/groups?status=active');
+        const { data } = await api.get('/groups?status=active&is_private=true');
         if (isMounted && Array.isArray(data?.data)) {
           setFreshGroups(data.data);
         }
@@ -1377,15 +1691,17 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
     setTeacherFilter('');
     setSearchQuery('');
     setSelectedGroupId('');
+    setDiscountValue(0);
+    setAmountPaid(0);
   }, [student?.id, isOpen]);
 
   const activeGroupSource = freshGroups.length > 0 ? freshGroups : allGroups;
 
-  // Filter groups STRICTLY by student's grade and not already enrolled
+  // Filter groups STRICTLY by student's grade, private only (not in any package), and not already enrolled
   const availableGroups = useMemo(() => {
     if (!student?.grade_id) return [];
     return activeGroupSource.filter(
-      (g) => g.grade_id === student.grade_id && !existingGroupIds.includes(g.id)
+      (g) => g.grade_id === student.grade_id && (g.is_private === true || !g.is_in_package) && !existingGroupIds.includes(g.id)
     );
   }, [activeGroupSource, student?.grade_id, existingGroupIds]);
 
@@ -1449,6 +1765,25 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
     setSearchQuery('');
   };
 
+  const grossPrice = selectedGroup ? (parseFloat(selectedGroup.price_per_month) || 0) : 0;
+  const discountAmount = useMemo(() => {
+    const val = Math.max(0, parseFloat(discountValue) || 0);
+    if (discountType === 'PERCENT') {
+      return Math.min(grossPrice, Math.round((grossPrice * val) / 100));
+    }
+    return Math.min(grossPrice, val);
+  }, [grossPrice, discountType, discountValue]);
+
+  const netPrice = Math.max(0, grossPrice - discountAmount);
+  const paidNum = Math.min(netPrice, Math.max(0, parseFloat(amountPaid) || 0));
+  const remainingDebt = Math.max(0, netPrice - paidNum);
+
+  useEffect(() => {
+    if (selectedGroup) {
+      setAmountPaid(netPrice);
+    }
+  }, [selectedGroupId, netPrice]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedGroupId) {
@@ -1461,10 +1796,16 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
       const { data } = await api.post('/subscriptions/enroll', {
         student_id: student.id,
         group_id: selectedGroupId,
-        enrollment_type: enrollmentType,
+        enrollment_type: 'PRIVATE',
+        discount_type: discountType,
+        discount_value: parseFloat(discountValue) || 0,
+        sessions_count: parseInt(sessionsCount, 10) || 4,
+        amount_paid: paidNum,
+        billing_month: billingMonth,
       });
-      toast.success(data.message || 'تم قيد الطالب في المجموعة بنجاح');
+      toast.success(data.message || 'تم قيد الطالب في المجموعة الخاصة بنجاح وتحديث الحساب');
       onSuccess();
+      onClose();
     } catch (err) {
       toast.error(err.response?.data?.message || 'حدث خطأ أثناء القيد');
     } finally {
@@ -1481,13 +1822,14 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
         <div className="p-5 text-white flex items-center justify-between" style={{ background: '#0C3C82' }}>
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/15 rounded-xl">
-              <BookOpen size={22} />
+              <Users size={22} />
             </div>
             <div>
-              <h3 className="text-base font-black">تسجيل وقيد الطالب في مجموعة جديدة</h3>
+              <h3 className="text-base font-black">تسجيل وقيد الطالب في مجموعة خاصة (برايفت)</h3>
               <p className="text-xs text-white/80 mt-0.5">
                 الطالب: <strong>{student?.full_name_ar || student?.full_name}</strong> {student?.student_code ? `(#${student.student_code})` : ''} 
                 {student?.grade_name && <span className="mr-2 text-white/90">• {student.grade_name}</span>}
+                <span className="mr-2 text-amber-300 font-bold">• مجموعات مستقلة خارج الباكدجات</span>
               </p>
             </div>
           </div>
@@ -1705,33 +2047,101 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
             )}
           </div>
 
-          {/* Enrollment Type Selection */}
+          {/* Financial Calculation & Pricing Strip when group selected */}
           {selectedGroup && (
-            <div className="px-4 py-2.5 bg-blue-50/60 border-t border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-              <span className="font-bold text-slate-700">نوع اشتراك الطالب في هذه المجموعة:</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEnrollmentType('PACKAGE')}
-                  className={`px-3 py-1 rounded-xl font-bold border text-xs transition-all ${
-                    enrollmentType === 'PACKAGE'
-                      ? 'bg-amber-100 border-amber-400 text-amber-950 shadow-xs ring-1 ring-amber-300'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  📦 طالب باكدج عادي
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEnrollmentType('PRIVATE')}
-                  className={`px-3 py-1 rounded-xl font-bold border text-xs transition-all ${
-                    enrollmentType === 'PRIVATE'
-                      ? 'bg-emerald-100 border-emerald-400 text-emerald-950 shadow-xs ring-1 ring-emerald-300'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  👨‍🏫 طالب برايفت (تبع المستر)
-                </button>
+            <div className="p-4 bg-slate-900 text-white border-t border-slate-800 space-y-3">
+              <div className="flex items-center justify-between text-xs border-b border-white/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-white/60">المجموعة المختارة:</span>
+                  <span className="text-amber-300 font-black">{selectedGroup.name_ar || selectedGroup.name}</span>
+                  <span className="text-white/40">•</span>
+                  <span className="text-white/80">م/ {selectedGroup.teacher_name}</span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold">
+                  سعر الشهر: {grossPrice} ج.م
+                </span>
+              </div>
+
+              {/* Financial Inputs Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs text-right">
+                {/* Gross Price */}
+                <div className="bg-white/5 rounded-xl p-2.5 border border-white/10">
+                  <span className="text-[10px] text-white/60 block">سعر الشهر</span>
+                  <p className="text-base font-black text-white mt-0.5">{grossPrice} ج.م</p>
+                </div>
+
+                {/* Persistent Discount */}
+                <div className="bg-white/5 rounded-xl p-2.5 border border-white/10">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-white/60">الخصم</span>
+                    <button
+                      type="button"
+                      onClick={() => setDiscountType(t => t === 'FIXED' ? 'PERCENT' : 'FIXED')}
+                      className="text-[9px] bg-white/10 hover:bg-white/20 text-amber-300 px-1 py-0.2 rounded font-bold"
+                    >
+                      {discountType === 'FIXED' ? 'ج.م' : '%'}
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    className="w-full bg-white/10 text-white text-xs font-bold py-1 px-1.5 rounded border border-white/10 text-center"
+                  />
+                  <span className="text-[9px] text-amber-300 block mt-0.5">خصم: {discountAmount} ج.م</span>
+                </div>
+
+                {/* Net Price */}
+                <div className="bg-white/5 rounded-xl p-2.5 border border-white/10">
+                  <span className="text-[10px] text-white/60 block">الصافي المطلوب</span>
+                  <p className="text-base font-black text-emerald-400 mt-0.5">{netPrice} ج.م</p>
+                </div>
+
+                {/* Amount Paid Now */}
+                <div className="bg-white/5 rounded-xl p-2.5 border border-white/10">
+                  <span className="text-[10px] text-white/60 block mb-1">المدفوع نقداً</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={netPrice}
+                    value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value)}
+                    className="w-full bg-white/10 text-white text-xs font-bold py-1 px-1.5 rounded border border-white/10 text-center"
+                  />
+                  <span className={`text-[9px] block mt-0.5 ${remainingDebt > 0 ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {remainingDebt > 0 ? `مديونية: ${remainingDebt} ج.م` : 'مسدد'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sessions Count & Month */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-white/10 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-white/60">الحصص المشحونة:</span>
+                  {[1, 2, 4, 8].map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setSessionsCount(num)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                        sessionsCount === num ? 'bg-amber-400 text-slate-900' : 'bg-white/10 text-white'
+                      }`}
+                    >
+                      {num} حصص
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-white/60">الشهر:</span>
+                  <input
+                    type="month"
+                    value={billingMonth}
+                    onChange={(e) => setBillingMonth(e.target.value)}
+                    className="bg-white/10 text-white text-xs font-bold py-0.5 px-2 rounded border border-white/10"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1739,17 +2149,7 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
           {/* Selected Preview & Footer */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-xs font-bold text-slate-700 w-full sm:w-auto">
-              {selectedGroup ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500">المجموعة المختارة:</span>
-                  <span className="text-[#0C3C82] font-black">{selectedGroup.name_ar || selectedGroup.name}</span>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-slate-600">م/ {selectedGroup.teacher_name}</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-mono font-bold">
-                    {selectedGroup.price_per_month} ج.م/شهر
-                  </span>
-                </div>
-              ) : (
+              {!selectedGroup && (
                 <span className="text-amber-700 font-medium">
                   👈 يرجى الضغط على إحدى المجموعات أعلاه لاختيارها
                 </span>
@@ -1765,7 +2165,7 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
                 disabled={loading || !selectedGroupId}
                 className="atlas-btn-primary text-xs px-6 py-2.5 flex items-center gap-2 shadow-md disabled:opacity-50"
               >
-                {loading ? 'جاري القيد...' : 'تأكيد قيد الطالب بالمجموعة'}
+                {loading ? 'جاري القيد والماليات...' : `تأكيد قيد الطالب وشحن الحصص (${netPrice} ج.م)`}
               </button>
             </div>
           </div>
@@ -1976,16 +2376,27 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
   const basePricePerSession = parseFloat(group.price_per_session) || 
                               (parseFloat(group.price_per_month) ? Math.round(parseFloat(group.price_per_month) / 4) : 50);
 
-  // Apply student's persistent discount
-  const dType = group.discount_type || 'FIXED';
-  const dVal = parseFloat(group.discount_value) || 0;
+  const totalSessions = parseInt(group.total_sessions || 0, 10);
+  const amountPaid = parseFloat(group.amount_paid || 0);
+  const actualPaidRate = (totalSessions > 0 && amountPaid > 0) ? (amountPaid / totalSessions) : basePricePerSession;
+
   let sessionDiscount = 0;
-  if (dType === 'PERCENT' && dVal > 0) {
-    sessionDiscount = (basePricePerSession * Math.min(100, dVal)) / 100;
-  } else if (dType === 'FIXED' && dVal > 0) {
-    sessionDiscount = dVal / 4;
+  // Use actual paid session rate if lower than standard group price (e.g. package or discounted center rate)
+  let effectivePricePerSession = basePricePerSession;
+  if (actualPaidRate > 0 && actualPaidRate < basePricePerSession) {
+    effectivePricePerSession = Math.round(actualPaidRate);
+  } else {
+    // Apply student's persistent discount
+    const dType = group.discount_type || 'FIXED';
+    const dVal = parseFloat(group.discount_value) || 0;
+    if (dType === 'PERCENT' && dVal > 0) {
+      sessionDiscount = (basePricePerSession * Math.min(100, dVal)) / 100;
+    } else if (dType === 'FIXED' && dVal > 0) {
+      sessionDiscount = dVal / 4;
+    }
+    effectivePricePerSession = Math.max(0, basePricePerSession - sessionDiscount);
   }
-  const effectivePricePerSession = Math.max(0, basePricePerSession - sessionDiscount);
+
   const grossSessionsValue = Math.max(0, Math.round(remaining * effectivePricePerSession));
   const currentDebt = Math.max(0, parseFloat(group.amount_due) || 0);
   const netRefund = Math.max(0, grossSessionsValue - currentDebt);

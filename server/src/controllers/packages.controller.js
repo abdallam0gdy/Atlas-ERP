@@ -292,13 +292,27 @@ const enrollStudentInPackage = async (req, res, next) => {
   try {
     await client.query('BEGIN');
     const { id } = req.params;
-    const { student_id, selected_group_ids, notes } = req.body;
+    const {
+      student_id,
+      selected_group_ids,
+      group_ids,
+      discount_type = 'FIXED',
+      discount_value = 0,
+      amount_paid = 0,
+      sessions_count = 4,
+      initial_sessions,
+      billing_month,
+      notes,
+    } = req.body;
+
+    const actualGroupIds = selected_group_ids || group_ids;
+    const actualSessions = initial_sessions !== undefined ? initial_sessions : sessions_count;
 
     if (!student_id) {
       throw new BadRequestError('الطالب مطلوب');
     }
-    if (!Array.isArray(selected_group_ids) || selected_group_ids.length === 0) {
-      throw new BadRequestError('يرجى اختيار مجموعات المواد');
+    if (!Array.isArray(actualGroupIds) || actualGroupIds.length === 0) {
+      throw new BadRequestError('يرجى اختيار مجموعة واحدة على الأقل');
     }
 
     // 1. Get package
@@ -313,6 +327,7 @@ const enrollStudentInPackage = async (req, res, next) => {
     if (studentRes.rows.length === 0) {
       throw new NotFoundError('الطالب');
     }
+    const student = studentRes.rows[0];
 
     // 3. Get all groups belonging to this package
     const pkgGroupsRes = await client.query(
@@ -341,7 +356,7 @@ const enrollStudentInPackage = async (req, res, next) => {
 
     // 4. Validate selected groups: exactly one group per subject!
     const selectedSubjects = new Map();
-    for (const groupId of selected_group_ids) {
+    for (const groupId of actualGroupIds) {
       const grp = pkgGroupMap.get(groupId);
       if (!grp) {
         throw new BadRequestError(`إحدى المجموعات المحددة لا تنتمي لهذا الباكدج`);
@@ -353,44 +368,135 @@ const enrollStudentInPackage = async (req, res, next) => {
       selectedSubjects.set(grp.subject_id, grp);
     }
 
-    // Check that ALL distinct subjects in package are selected
-    for (const [subId, subName] of requiredSubjectMap.entries()) {
-      if (!selectedSubjects.has(subId)) {
-        throw new BadRequestError(`يجب اختيار مجموعة لمادة (${subName}) لإتمام الاشتراك في الباكدج`);
-      }
+    // 5. Automatic Pricing Logic:
+    // If student selected all subjects -> Full Package Price
+    // If student selected fewer subjects -> Center Single Subject Price * count
+    const totalRequiredSubjects = requiredSubjectMap.size;
+    const selectedCount = selectedSubjects.size;
+    const isFullPackage = selectedCount === totalRequiredSubjects;
+
+    const packagePriceNum = parseFloat(pkg.package_price) || 0;
+    const singlePriceNum = parseFloat(pkg.single_subject_price) || 0;
+
+    let grossPrice = 0;
+    let enrollmentCategory = '';
+    if (isFullPackage) {
+      grossPrice = packagePriceNum;
+      enrollmentCategory = 'الباكدج الكامل';
+    } else {
+      grossPrice = singlePriceNum * selectedCount;
+      enrollmentCategory = `مواد سنتر منفردة (${selectedCount} مادة)`;
     }
 
-    // 5. Insert into student_package_enrollments
+    // 6. Discount & Net Price Calculation
+    const discType = discount_type === 'PERCENT' ? 'PERCENT' : 'FIXED';
+    const discVal = Math.max(0, parseFloat(discount_value) || 0);
+    const discountAmount = discType === 'PERCENT'
+      ? Math.min(grossPrice, Math.round((grossPrice * discVal) / 100))
+      : Math.min(grossPrice, discVal);
+
+    const netPrice = Math.max(0, grossPrice - discountAmount);
+    const paidNum = Math.min(netPrice, Math.max(0, parseFloat(amount_paid) || 0));
+    const dueNum = Math.max(0, netPrice - paidNum);
+    const sessionsNum = Math.max(1, parseInt(actualSessions, 10) || 4);
+    const currentMonth = billing_month || new Date().toISOString().slice(0, 7);
+
+    // 7. Insert into student_package_enrollments
+    const enrollNotes = notes || `${enrollmentCategory} - إجمالي السعر: ${grossPrice} ج.م - الخصم: ${discountAmount} ج.م - الصافي: ${netPrice} ج.م`;
     const enrollRes = await client.query(
       `INSERT INTO student_package_enrollments (student_id, package_id, selected_group_ids, total_price, notes)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [student_id, id, selected_group_ids, pkg.package_price, notes || null]
+      [student_id, id, actualGroupIds, netPrice, enrollNotes]
     );
 
-    // 6. Enroll student in each selected group in group_enrollments
-    for (const groupId of selected_group_ids) {
+    const packageEnrollmentId = enrollRes.rows[0].id;
+
+    // 8. Enroll student in each selected group & create student_subscriptions
+    const perGroupPaid = (paidNum / actualGroupIds.length).toFixed(2);
+    const perGroupDue = (dueNum / actualGroupIds.length).toFixed(2);
+
+    for (const groupId of actualGroupIds) {
+      // Upsert group_enrollments with persistent discount
       await client.query(
-        `INSERT INTO group_enrollments (student_id, group_id, is_active, enrollment_type)
-         VALUES ($1, $2, true, 'PACKAGE')
-         ON CONFLICT (student_id, group_id) DO UPDATE SET is_active = true, enrollment_type = 'PACKAGE'`,
-        [student_id, groupId]
+        `INSERT INTO group_enrollments (student_id, group_id, is_active, enrollment_type, discount_type, discount_value)
+         VALUES ($1, $2, true, 'PACKAGE', $3, $4)
+         ON CONFLICT (student_id, group_id) DO UPDATE 
+         SET is_active = true, enrollment_type = 'PACKAGE', discount_type = $3, discount_value = $4`,
+        [student_id, groupId, discType, discVal]
+      );
+
+      // Create subscription credit record
+      await client.query(
+        `INSERT INTO student_subscriptions (
+          student_id, group_id, total_sessions, used_sessions,
+          amount_paid, amount_due, status, billing_month, enrollment_type,
+          discount_type, discount_value, notes
+        ) VALUES ($1, $2, $3, 0, $4, $5, 'active', $6, 'PACKAGE', $7, $8, $9)`,
+        [
+          student_id,
+          groupId,
+          sessionsNum,
+          perGroupPaid,
+          perGroupDue,
+          currentMonth,
+          discType,
+          discVal,
+          `اشتراك ${enrollmentCategory} - باكدج: ${pkg.name}`,
+        ]
       );
     }
 
-    // Audit log
+    // 9. If money was collected, record into treasury_transactions
+    if (paidNum > 0) {
+      await client.query(
+        `INSERT INTO treasury_transactions 
+         (transaction_type, amount, reference_id, notes, recorded_by)
+         VALUES ('subscription_fee', $1, $2, $3, $4)`,
+        [
+          paidNum,
+          packageEnrollmentId,
+          `تحصيل اشتراك ${enrollmentCategory} (${paidNum} ج.م) - الطالب: ${student.full_name} (#${student.student_code})`,
+          req.user.id,
+        ]
+      );
+    }
+
+    // 10. Audit log
     await client.query(
       `INSERT INTO audit_log (user_id, action, entity_type, entity_id, new_data)
        VALUES ($1, 'ENROLL_PACKAGE', 'grade_packages', $2, $3)`,
-      [req.user.id, id, JSON.stringify({ student_id, selected_group_ids, package_price: pkg.package_price })]
+      [
+        req.user.id,
+        id,
+        JSON.stringify({
+          student_id,
+          selected_group_ids: actualGroupIds,
+          category: enrollmentCategory,
+          grossPrice,
+          netPrice,
+          paidNum,
+          dueNum,
+        }),
+      ]
     );
 
     await client.query('COMMIT');
 
     res.status(201).json({
       success: true,
-      message: `تم تسكين الطالب بنجاح في ${selected_group_ids.length} مجموعات تابعة للباكدج`,
-      data: enrollRes.rows[0],
+      message: `تم تسكين الطالب بنجاح في ${actualGroupIds.length} مجموعة (${enrollmentCategory}) وتفعيل الحصص والماليات`,
+      data: {
+        ...enrollRes.rows[0],
+        enrollment_type: isFullPackage ? 'PACKAGE' : 'CENTER_SUBJECT',
+        is_full_package: isFullPackage,
+        category: enrollmentCategory,
+        gross_price: grossPrice,
+        net_price: netPrice,
+        amount_paid: paidNum,
+        debt_amount: dueNum,
+        amount_due: dueNum,
+      },
     });
   } catch (err) {
     await client.query('ROLLBACK');

@@ -141,7 +141,7 @@ async function runTests() {
       assert(dupRes.status === 400, `Selecting duplicate groups/subjects rejected with 400 Bad Request`);
       console.log(`     ℹ️ Rejection message: "${dupJson.message}"`);
 
-      // B) Missing required subjects test
+      // B) Partial subject selection test (Now treated as Center Single Subject as requested)
       const partialRes = await fetch(`${API_URL}/packages/${testPackage.id}/enroll`, {
         method: 'POST',
         headers: adminHeaders,
@@ -151,11 +151,13 @@ async function runTests() {
         }),
       });
       const partialJson = await partialRes.json();
-      // If package requires more than 1 subject, this should fail with 400
       const distinctSubjectsCount = new Set(currentPkgGroups.map(g => g.subject_id)).size;
       if (distinctSubjectsCount > 1) {
-        assert(partialRes.status === 400, `Incomplete subject selection rejected with 400 (requires all ${distinctSubjectsCount} subjects)`);
-        console.log(`     ℹ️ Rejection message: "${partialJson.message}"`);
+        assert(
+          partialRes.status === 201 && partialJson.data?.enrollment_type === 'CENTER_SUBJECT',
+          `Partial subject selection treated as Center Single Subject (status: ${partialRes.status})`
+        );
+        console.log(`     ℹ️ Enrollment message: "${partialJson.message}"`);
       }
 
       // C) Valid selection (pick exactly one group per distinct subject)

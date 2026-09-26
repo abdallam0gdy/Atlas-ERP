@@ -84,10 +84,59 @@ const getStudentAccount = async (req, res, next) => {
          ORDER BY ss.created_at DESC
          LIMIT 1
        ) s_sub ON true
-       WHERE ge.student_id = $1
-       ORDER BY ge.is_active DESC, g.name ASC`,
+       WHERE ge.student_id = $1 AND ge.is_active = true
+      ORDER BY g.name ASC`,
       [student.id, currentMonth]
     );
+
+    // 2.1 Fetch active package enrollments for student
+    const pkgEnrollmentsRes = await db.query(
+      `SELECT spe.*, gp.name as package_name, gp.package_price, gp.single_subject_price,
+              gp.grade_id, ag.name_ar as grade_name
+       FROM student_package_enrollments spe
+       JOIN grade_packages gp ON spe.package_id = gp.id
+       JOIN academic_grades ag ON gp.grade_id = ag.id
+       WHERE spe.student_id = $1 AND (spe.status = 'active' OR spe.status IS NULL)
+       ORDER BY spe.enrolled_at DESC`,
+      [student.id]
+    );
+
+    const packageEnrollments = pkgEnrollmentsRes.rows.map(spe => {
+      const groupIds = spe.selected_group_ids || [];
+      const packageGroups = groupsRes.rows.filter(g => groupIds.includes(g.group_id));
+
+      let totalSessions = 0;
+      let usedSessions = 0;
+      let remainingSessions = 0;
+      let totalAmountDue = 0;
+      let totalAmountPaid = 0;
+
+      packageGroups.forEach(g => {
+        totalSessions += parseInt(g.total_sessions || 0, 10);
+        usedSessions += parseInt(g.used_sessions || 0, 10);
+        remainingSessions += Math.max(0, parseInt(g.remaining_sessions || 0, 10));
+        totalAmountDue += parseFloat(g.amount_due || 0);
+        totalAmountPaid += parseFloat(g.amount_paid || 0);
+      });
+
+      const netPrice = parseFloat(spe.total_price || 0);
+      const effectiveSessionPrice = totalSessions > 0 ? (netPrice / totalSessions) : 0;
+      const remainingValue = Math.round(remainingSessions * effectiveSessionPrice);
+      const refundableAmount = Math.max(0, remainingValue - totalAmountDue);
+
+      return {
+        ...spe,
+        groups: packageGroups,
+        total_sessions: totalSessions,
+        used_sessions: usedSessions,
+        remaining_sessions: remainingSessions,
+        total_amount_due: totalAmountDue,
+        total_amount_paid: totalAmountPaid,
+        effective_session_price: effectiveSessionPrice.toFixed(2),
+        remaining_value: remainingValue,
+        refundable_amount: refundableAmount,
+      };
+    });
 
     // 3. Fetch recent payments / transactions for this student
     const historyRes = await db.query(
@@ -118,6 +167,7 @@ const getStudentAccount = async (req, res, next) => {
       success: true,
       data: {
         student,
+        packageEnrollments,
         groups: groupsRes.rows,
         history: historyRes.rows,
         summary: {
@@ -325,39 +375,126 @@ const renewSubscription = async (req, res, next) => {
  * Enroll student into a group directly
  */
 const enrollStudentInGroup = async (req, res, next) => {
+  const client = await db.getClient();
   try {
-    const { student_id, group_id, enrollment_type } = req.body;
+    await client.query('BEGIN');
+    const {
+      student_id,
+      group_id,
+      enrollment_type = 'PRIVATE',
+      discount_type = 'FIXED',
+      discount_value = 0,
+      sessions_count = 0,
+      amount_paid = 0,
+      billing_month,
+      notes,
+    } = req.body;
+
     if (!student_id || !group_id) {
       throw new BadRequestError('معرف الطالب والمجموعة مطلوبان');
     }
-    const finalEnrollmentType = enrollment_type === 'PRIVATE' ? 'PRIVATE' : 'PACKAGE';
+    const finalEnrollmentType = enrollment_type === 'PACKAGE' ? 'PACKAGE' : 'PRIVATE';
+    const discType = discount_type === 'PERCENT' ? 'PERCENT' : 'FIXED';
+    const discVal = Math.max(0, parseFloat(discount_value) || 0);
 
-    const check = await db.query(
+    // Fetch group details for pricing
+    const groupRes = await client.query('SELECT * FROM groups WHERE id = $1', [group_id]);
+    if (groupRes.rows.length === 0) {
+      throw new NotFoundError('المجموعة غير موجودة');
+    }
+    const group = groupRes.rows[0];
+
+    const studentRes = await client.query('SELECT full_name, student_code FROM students WHERE id = $1', [student_id]);
+    const student = studentRes.rows[0];
+
+    const check = await client.query(
       `SELECT id, is_active, enrollment_type FROM group_enrollments WHERE student_id = $1 AND group_id = $2`,
       [student_id, group_id]
     );
 
+    let enrollmentId;
     if (check.rows.length > 0) {
+      enrollmentId = check.rows[0].id;
       if (!check.rows[0].is_active) {
-        await db.query(`UPDATE group_enrollments SET is_active = true, enrollment_type = $1 WHERE id = $2`, [finalEnrollmentType, check.rows[0].id]);
-        return res.json({ success: true, message: 'تم إعادة تفعيل قيد الطالب في المجموعة' });
+        await client.query(
+          `UPDATE group_enrollments 
+           SET is_active = true, enrollment_type = $1, discount_type = $2, discount_value = $3 
+           WHERE id = $4`,
+          [finalEnrollmentType, discType, discVal, enrollmentId]
+        );
+      } else {
+        await client.query(
+          `UPDATE group_enrollments 
+           SET enrollment_type = $1, discount_type = $2, discount_value = $3 
+           WHERE id = $4`,
+          [finalEnrollmentType, discType, discVal, enrollmentId]
+        );
       }
-      // If already active, update enrollment_type if changed
-      if (check.rows[0].enrollment_type !== finalEnrollmentType) {
-        await db.query(`UPDATE group_enrollments SET enrollment_type = $1 WHERE id = $2`, [finalEnrollmentType, check.rows[0].id]);
-        return res.json({ success: true, message: 'تم تحديث نوع قيد الطالب في المجموعة بنجاح' });
-      }
-      return res.status(400).json({ success: false, message: 'الطالب مسجل بالفعل في هذه المجموعة' });
+    } else {
+      const ins = await client.query(
+        `INSERT INTO group_enrollments (student_id, group_id, enrollment_type, is_active, discount_type, discount_value) 
+         VALUES ($1, $2, $3, true, $4, $5)
+         RETURNING id`,
+        [student_id, group_id, finalEnrollmentType, discType, discVal]
+      );
+      enrollmentId = ins.rows[0].id;
     }
 
-    await db.query(
-      `INSERT INTO group_enrollments (student_id, group_id, enrollment_type, is_active) VALUES ($1, $2, $3, true)`,
-      [student_id, group_id, finalEnrollmentType]
-    );
+    // If initial sessions are requested, create subscription
+    const sessionsNum = parseInt(sessions_count, 10) || 0;
+    if (sessionsNum > 0) {
+      const grossCharge = parseFloat(group.price_per_month) || 0;
+      const discountAmount = discType === 'PERCENT'
+        ? Math.min(grossCharge, Math.round((grossCharge * discVal) / 100))
+        : Math.min(grossCharge, discVal);
+      const netCharge = Math.max(0, grossCharge - discountAmount);
+      const paidNum = Math.min(netCharge, Math.max(0, parseFloat(amount_paid) || 0));
+      const dueNum = Math.max(0, netCharge - paidNum);
+      const month = billing_month || new Date().toISOString().slice(0, 7);
 
-    res.status(201).json({ success: true, message: 'تم قيد الطالب في المجموعة بنجاح' });
+      const subRes = await client.query(
+        `INSERT INTO student_subscriptions (
+          student_id, group_id, total_sessions, used_sessions,
+          amount_paid, amount_due, status, billing_month, enrollment_type,
+          discount_type, discount_value, notes
+        ) VALUES ($1, $2, $3, 0, $4, $5, 'active', $6, $7, $8, $9, $10)
+        RETURNING id`,
+        [
+          student_id,
+          group_id,
+          sessionsNum,
+          paidNum,
+          dueNum,
+          month,
+          finalEnrollmentType,
+          discType,
+          discVal,
+          notes || `قيد وشحن مبدئي - مجموعة: ${group.name}`,
+        ]
+      );
+
+      if (paidNum > 0) {
+        await client.query(
+          `INSERT INTO treasury_transactions 
+           (transaction_type, amount, reference_id, notes, recorded_by)
+           VALUES ('subscription_fee', $1, $2, $3, $4)`,
+          [
+            paidNum,
+            subRes.rows[0].id,
+            `تحصيل اشتراك مجموعة خاصة (${paidNum} ج.م) - الطالب: ${student?.full_name || student_id}`,
+            req.user.id,
+          ]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ success: true, message: 'تم قيد الطالب في المجموعة وتحديث الحساب بنجاح' });
   } catch (err) {
+    await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
   }
 };
 
@@ -626,8 +763,17 @@ const refundClearance = async (req, res, next) => {
     const groupRow = groupRes.rows[0] || {};
     const groupName = groupRow.name_ar || groupRow.name || 'المجموعة';
 
-    const pricePerSession = parseFloat(groupRow.price_per_session) || 
-                            (parseFloat(groupRow.price_per_month) ? Math.round(parseFloat(groupRow.price_per_month) / 4) : 0);
+    let baseSessionRate = parseFloat(groupRow.price_per_session) || 
+                          (parseFloat(groupRow.price_per_month) ? Math.round(parseFloat(groupRow.price_per_month) / 4) : 0);
+
+    // If subscription was enrolled under a package or center subject discount, use actual paid session rate
+    const latestActiveSub = allSubsRes.rows.find(s => s.status === 'active') || allSubsRes.rows[0];
+    if (latestActiveSub && parseInt(latestActiveSub.total_sessions, 10) > 0 && parseFloat(latestActiveSub.amount_paid) > 0) {
+      const actualSubRate = parseFloat(latestActiveSub.amount_paid) / parseInt(latestActiveSub.total_sessions, 10);
+      if (actualSubRate > 0 && actualSubRate < baseSessionRate) {
+        baseSessionRate = actualSubRate;
+      }
+    }
 
     // Fetch student's persistent discount in this group
     const enrollRes = await client.query(
@@ -652,11 +798,11 @@ const refundClearance = async (req, res, next) => {
 
     let sessionDiscount = 0;
     if (dType === 'PERCENT' && dVal > 0) {
-      sessionDiscount = (pricePerSession * Math.min(100, dVal)) / 100;
+      sessionDiscount = (baseSessionRate * Math.min(100, dVal)) / 100;
     } else if (dType === 'FIXED' && dVal > 0) {
       sessionDiscount = dVal / 4;
     }
-    const effectivePricePerSession = Math.max(0, pricePerSession - sessionDiscount);
+    const effectivePricePerSession = Math.max(0, baseSessionRate - sessionDiscount);
 
     // Calculate total remaining sessions across active subscriptions
     let totalClearedSessions = 0;
@@ -706,8 +852,9 @@ const refundClearance = async (req, res, next) => {
       );
     }
 
-    // 3. If drop_group is requested, deactivate enrollment
-    if (drop_group) {
+    // 3. Drop/unenroll student from group by default so they never stay with 0 sessions
+    const shouldDrop = drop_group !== false;
+    if (shouldDrop) {
       await client.query(
         `UPDATE group_enrollments SET is_active = false, updated_at = NOW() WHERE student_id = $1 AND group_id = $2`,
         [student_id, group_id]
@@ -732,14 +879,151 @@ const refundClearance = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: `تمت تصفية الحساب بنجاح (استرداد صافي ${refundNum} ج.م بعد خصم مديونية ${totalCurrentDebt} ج.م من قيمة ${totalClearedSessions} حصص)${drop_group ? ' وتم إيقاف قيد الطالب في المجموعة' : ''}`,
+      message: `تمت تصفية الحساب بنجاح وإلغاء قيد الطالب من المجموعة (استرداد صافي ${refundNum} ج.م بعد خصم مديونية ${totalCurrentDebt} ج.م من قيمة ${totalClearedSessions} حصص)`,
       data: {
         clearedSessions: totalClearedSessions,
         grossSessionsValue,
         currentDebt: totalCurrentDebt,
         refundAmount: refundNum,
         remainingDebtAfterClearance,
-        groupDropped: Boolean(drop_group)
+        groupDropped: true
+      }
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * POST /api/subscriptions/clear-package
+ * Clear student's entire package enrollment, refund remaining sessions at package rate,
+ * unenroll student from all groups in package, and record treasury refund.
+ */
+const clearPackageEnrollment = async (req, res, next) => {
+  const client = await db.getClient();
+  try {
+    const { package_enrollment_id, notes, refund_amount } = req.body;
+    const userId = req.user.id;
+
+    if (!package_enrollment_id) {
+      throw new BadRequestError('معرف قيد الباكدج مطلوب');
+    }
+
+    await client.query('BEGIN');
+
+    // 1. Fetch package enrollment
+    const pkgEnrollRes = await client.query(
+      `SELECT spe.*, s.full_name as student_name, s.student_code, gp.name as package_name
+       FROM student_package_enrollments spe
+       JOIN students s ON spe.student_id = s.id
+       JOIN grade_packages gp ON spe.package_id = gp.id
+       WHERE spe.id = $1`,
+      [package_enrollment_id]
+    );
+
+    if (pkgEnrollRes.rows.length === 0) {
+      throw new NotFoundError('قيد الباكدج غير موجود');
+    }
+
+    const pkgEnroll = pkgEnrollRes.rows[0];
+    const groupIds = pkgEnroll.selected_group_ids || [];
+
+    // 2. Fetch subscriptions for these groups
+    const subsRes = await client.query(
+      `SELECT ss.*, g.name as group_name
+       FROM student_subscriptions ss
+       JOIN groups g ON ss.group_id = g.id
+       WHERE ss.student_id = $1 AND ss.group_id = ANY($2::uuid[])`,
+      [pkgEnroll.student_id, groupIds]
+    );
+
+    let totalSessions = 0;
+    let usedSessions = 0;
+    let remainingSessions = 0;
+    let totalDebt = 0;
+
+    subsRes.rows.forEach(sub => {
+      totalSessions += parseInt(sub.total_sessions || 0, 10);
+      usedSessions += parseInt(sub.used_sessions || 0, 10);
+      remainingSessions += Math.max(0, parseInt(sub.remaining_sessions || 0, 10));
+      totalDebt += Math.max(0, parseFloat(sub.amount_due || 0));
+    });
+
+    const netPaid = parseFloat(pkgEnroll.total_price || 0);
+    const effectivePricePerSession = totalSessions > 0 ? (netPaid / totalSessions) : 0;
+    const remainingValue = Math.round(remainingSessions * effectivePricePerSession);
+    const maxRefund = Math.max(0, remainingValue - totalDebt);
+
+    const actualRefund = refund_amount !== undefined 
+      ? Math.min(maxRefund, Math.max(0, parseFloat(refund_amount) || 0)) 
+      : maxRefund;
+
+    // 3. Deactivate group_enrollments (completely unenroll student from all groups in package!)
+    await client.query(
+      `UPDATE group_enrollments 
+       SET is_active = false, updated_at = NOW() 
+       WHERE student_id = $1 AND group_id = ANY($2::uuid[])`,
+      [pkgEnroll.student_id, groupIds]
+    );
+
+    // 4. Clear/expire active subscriptions for these groups
+    await client.query(
+      `UPDATE student_subscriptions 
+       SET total_sessions = used_sessions,
+           status = 'expired',
+           amount_due = 0,
+           notes = COALESCE($1, notes),
+           updated_at = NOW()
+       WHERE student_id = $2 AND group_id = ANY($3::uuid[])`,
+      [
+        `تمت تصفية الباكدج بالكامل واسترداد رصيد ${remainingSessions} حصة (صافي: ${actualRefund} ج.م)`,
+        pkgEnroll.student_id,
+        groupIds
+      ]
+    );
+
+    // 5. Update package enrollment status to 'cleared'
+    await client.query(
+      `UPDATE student_package_enrollments 
+       SET status = 'cleared',
+           notes = COALESCE(notes || ' - ', '') || 'تمت تصفية الباكدج بتاريخ ' || NOW()::date
+       WHERE id = $1`,
+      [package_enrollment_id]
+    );
+
+    // 6. Record treasury outflow if refund > 0
+    if (actualRefund > 0) {
+      await client.query(
+        `INSERT INTO treasury_transactions
+         (transaction_type, amount, reference_id, notes, recorded_by)
+         VALUES ('cash_out', $1, $2, $3, $4)`,
+        [
+          -Math.abs(actualRefund),
+          package_enrollment_id,
+          `استرداد تصفية باكدج (${actualRefund} ج.م) - الطالب: ${pkgEnroll.student_name} (#${pkgEnroll.student_code}) - رصيد مسترد: ${remainingSessions} حصة`,
+          userId
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `تمت تصفية الباكدج بنجاح وإلغاء قيد الطالب من ${groupIds.length} مجموعة واسترداد ${actualRefund} ج.م`,
+      data: {
+        package_enrollment_id,
+        clearedGroupsCount: groupIds.length,
+        totalSessions,
+        usedSessions,
+        remainingSessions,
+        effectivePricePerSession: effectivePricePerSession.toFixed(2),
+        remainingValue,
+        totalDebt,
+        refundAmount: actualRefund
       }
     });
   } catch (err) {
@@ -758,4 +1042,5 @@ module.exports = {
   getDebtsList,
   payDebt,
   refundClearance,
+  clearPackageEnrollment,
 };

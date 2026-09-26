@@ -10,6 +10,7 @@ const {
   getDebtsList,
   payDebt,
   refundClearance,
+  clearPackageEnrollment,
 } = require('../controllers/subscriptions.controller');
 
 router.use(authenticate);
@@ -26,6 +27,7 @@ router.post('/pay-debt', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINAN
 
 // Clearance & refund remaining sessions
 router.post('/refund-clearance', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), refundClearance);
+router.post('/clear-package', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), clearPackageEnrollment);
 
 // Group enrollment actions
 router.post('/enroll', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), enrollStudentInGroup);

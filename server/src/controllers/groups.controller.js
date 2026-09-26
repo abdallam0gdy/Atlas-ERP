@@ -59,7 +59,7 @@ async function verifyNoClassroomConflict(classroomId, newSchedule, excludeGroupI
  */
 const listGroups = async (req, res, next) => {
   try {
-    const { search, grade_id, teacher_id, status } = req.query;
+    const { search, grade_id, teacher_id, status, is_private } = req.query;
 
     let whereClause = 'WHERE 1=1';
     const params = [];
@@ -85,6 +85,11 @@ const listGroups = async (req, res, next) => {
       params.push(status);
       paramIndex++;
     }
+    if (is_private === 'true') {
+      whereClause += ` AND NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)`;
+    } else if (is_private === 'false') {
+      whereClause += ` AND EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)`;
+    }
 
     const result = await db.query(
       `SELECT g.*,
@@ -92,7 +97,9 @@ const listGroups = async (req, res, next) => {
               s.name_ar as subject_name, s.color as subject_color,
               ag.name_ar as grade_name, ag.grade_order,
               cr.name as classroom_name, cr.capacity as classroom_capacity,
-              (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.group_id = g.id AND ge.is_active = true) as student_count
+              (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.group_id = g.id AND ge.is_active = true) as student_count,
+              (EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_in_package,
+              (NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_private
        FROM groups g
        LEFT JOIN teachers t ON g.teacher_id = t.id
        LEFT JOIN subjects s ON g.subject_id = s.id
