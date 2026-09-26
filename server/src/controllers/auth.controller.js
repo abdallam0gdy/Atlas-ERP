@@ -10,15 +10,16 @@ const { AuthenticationError } = require('../utils/errors');
 const login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
+    const identifier = (username || '').trim();
 
-    // Fetch user with role info and permissions
+    // Fetch user with role info and permissions (by username OR phone number)
     const userResult = await db.query(
       `SELECT u.id, u.username, u.password_hash, u.full_name, u.full_name_ar, u.phone, u.email,
               u.is_active, r.id as role_id, r.name as role_name, r.label_ar as role_label, r.allowed_pages
        FROM users u
        JOIN roles r ON u.role_id = r.id
-       WHERE u.username = $1`,
-      [username]
+       WHERE LOWER(u.username) = LOWER($1) OR u.phone = $1`,
+      [identifier]
     );
 
     if (userResult.rows.length === 0) {

@@ -143,23 +143,34 @@ const createTeacher = async (req, res, next) => {
     const primarySubjectId = data.subject_id || (subjectIds.length > 0 ? subjectIds[0] : null);
 
     const result = await db.query(
-      `INSERT INTO teachers (full_name, full_name_ar, phone, email, specialization,
-                              subject_id, subject_ids,
-                              revenue_split_percent, revenue_split_type, fixed_rate_per_student, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO teachers (full_name, full_name_ar, aka, phone, email, gender, national_id, date_of_birth,
+                              specialization, subject_id, subject_ids,
+                              revenue_split_percent, revenue_split_type, fixed_rate_per_student,
+                              bio, social_links, secretary_name, secretary_phone, photo_url, logo_url, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING *`,
       [
         data.full_name,
-        data.full_name_ar,
+        data.full_name_ar || null,
+        data.aka || null,
         data.phone,
-        data.email,
-        data.specialization,
+        data.email || null,
+        data.gender || 'male',
+        data.national_id || null,
+        data.date_of_birth ? data.date_of_birth : null,
+        data.specialization || null,
         primarySubjectId,
         subjectIds,
         data.revenue_split_percent || 0,
         data.revenue_split_type || 'percentage',
         data.fixed_rate_per_student || 0,
-        data.notes,
+        data.bio || null,
+        data.social_links ? (typeof data.social_links === 'string' ? data.social_links : JSON.stringify(data.social_links)) : '{}',
+        data.secretary_name || null,
+        data.secretary_phone || null,
+        data.photo_url || null,
+        data.logo_url || null,
+        data.notes || null,
       ]
     );
 
@@ -203,16 +214,28 @@ const updateTeacher = async (req, res, next) => {
     let paramIndex = 1;
 
     const updatableFields = [
-      'full_name', 'full_name_ar', 'phone', 'email', 'specialization',
-      'subject_id', 'subject_ids',
+      'full_name', 'full_name_ar', 'aka', 'phone', 'email', 'gender', 'national_id', 'date_of_birth',
+      'specialization', 'subject_id', 'subject_ids',
       'revenue_split_percent', 'revenue_split_type', 'fixed_rate_per_student',
+      'bio', 'social_links', 'secretary_name', 'secretary_phone', 'photo_url', 'logo_url',
       'is_active', 'notes',
     ];
 
     for (const field of updatableFields) {
       if (data[field] !== undefined) {
         fields.push(`${field} = $${paramIndex}`);
-        const val = (field === 'subject_id' && !data[field]) ? null : data[field];
+        let val;
+        if (field === 'subject_id' && !data[field]) {
+          val = null;
+        } else if (field === 'date_of_birth' && (!data[field] || data[field] === '')) {
+          val = null;
+        } else if (field === 'social_links') {
+          val = typeof data[field] === 'string' ? data[field] : JSON.stringify(data[field] || {});
+        } else if (['photo_url', 'logo_url', 'bio', 'national_id', 'aka', 'notes', 'secretary_name', 'secretary_phone', 'phone', 'email', 'specialization'].includes(field) && data[field] === '') {
+          val = null;
+        } else {
+          val = data[field];
+        }
         values.push(val);
         paramIndex++;
       }

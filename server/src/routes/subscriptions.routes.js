@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorize, requirePageAccess } = require('../middleware/rbac');
 const {
   getStudentAccount,
   renewSubscription,
@@ -13,6 +13,7 @@ const {
 } = require('../controllers/subscriptions.controller');
 
 router.use(authenticate);
+router.use(requirePageAccess('subscriptions'));
 
 // Student account & sessions balance
 router.get('/student-account/:studentId', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), getStudentAccount);

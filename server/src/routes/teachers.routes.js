@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorize, requirePageAccess } = require('../middleware/rbac');
 const { validate, createTeacherSchema } = require('../utils/validators');
 const { listTeachers, getTeacher, createTeacher, updateTeacher, bulkImportTeachers } = require('../controllers/teachers.controller');
 
 router.use(authenticate);
+router.use(requirePageAccess('teachers'));
 
 router.get('/',
   authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT', 'RECEPTIONIST'),

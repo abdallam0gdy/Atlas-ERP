@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
 import useAuthStore from '../stores/authStore';
+import ImageUpload from '../components/ImageUpload';
 import {
   Users, ShieldCheck, UserPlus, KeyRound, ShieldAlert, CheckCircle2,
   XCircle, Edit, Trash2, Search, Lock, Phone, User, Check,
@@ -377,13 +378,25 @@ export default function UsersManagementPage() {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-2xs ${
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-2xs overflow-hidden ${
                                   isSuperAdmin
                                     ? 'bg-gradient-to-br from-amber-500 to-amber-700'
                                     : 'bg-gradient-to-br from-[#0C3C82] to-blue-700'
                                 }`}
                               >
-                                {u.fullNameAr?.[0] || u.fullName?.[0] || 'U'}
+                                {u.photoUrl ? (
+                                  <img
+                                    src={u.photoUrl}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = '';
+                                    }}
+                                  />
+                                ) : (
+                                  u.fullNameAr?.[0] || u.fullName?.[0] || 'U'
+                                )}
                               </div>
                               <div>
                                 <p className="font-bold text-slate-800 leading-tight">
@@ -719,6 +732,7 @@ function UserFormModal({ user, roles, systemPages, onClose, onSave, isLoading })
     fullNameAr: user?.fullNameAr || '',
     phone: user?.phone || '',
     email: user?.email || '',
+    photoUrl: user?.photoUrl || '',
     roleId: user?.role?.id || roles[0]?.id || '',
   });
 
@@ -767,6 +781,18 @@ function UserFormModal({ user, roles, systemPages, onClose, onSave, isLoading })
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4 text-right">
+          {/* User Photo */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <ImageUpload
+              value={formData.photoUrl}
+              onChange={(url) => setFormData({ ...formData, photoUrl: url })}
+              category="users"
+              label="الصورة الشخصية للموظف"
+              shape="circle"
+              size={64}
+              hint="صورة رمزية تظهر في النظام وقائمة المستخدمين"
+            />
+          </div>
           {/* Username & Password (Password only required when creating) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

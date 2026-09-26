@@ -4,8 +4,9 @@ import toast from 'react-hot-toast';
 import {
   Package, Search, Edit3, CheckCircle2,
   GraduationCap, Sparkles, Filter, RefreshCw,
-  X, Check, AlertCircle, Loader2, Coins
+  X, Check, AlertCircle, Loader2, Coins, Layers, Eye
 } from 'lucide-react';
+import PackageDetailModal from '../components/PackageDetailModal';
 
 export default function PackagesPage() {
   const [packages, setPackages] = useState([]);
@@ -17,6 +18,15 @@ export default function PackagesPage() {
   // Edit modal
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(null);
+
+  // Detail & Groups Management Modal
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailPackage, setDetailPackage] = useState(null);
+
+  const handleOpenDetail = (pkg) => {
+    setDetailPackage(pkg);
+    setDetailModalOpen(true);
+  };
 
   useEffect(() => {
     fetchPackages();
@@ -247,23 +257,38 @@ export default function PackagesPage() {
                   )}
                 </div>
 
-                {/* Footer Edit Button */}
-                <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    آخر تحديث: {new Date(pkg.updated_at || pkg.created_at).toLocaleDateString('ar-EG')}
-                  </span>
+                {/* Footer Action Buttons */}
+                <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => handleOpenDetail(pkg)}
+                    className="atlas-btn atlas-btn-primary text-xs px-3 py-1.5 flex-1 flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <Layers size={13} />
+                    <span>إدارة المجموعات والتسكين</span>
+                  </button>
+
                   <button
                     onClick={() => handleOpenEdit(pkg)}
-                    className="atlas-btn atlas-btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5 text-[#0C3C82] hover:bg-blue-50 border-blue-200"
+                    title="تعديل أسعار الباكدج"
+                    className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
                   >
-                    <Edit3 size={13} />
-                    <span>تعديل الأسعار</span>
+                    <Edit3 size={14} />
                   </button>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Package Detail & Groups/Enrollment Modal */}
+      {detailModalOpen && detailPackage && (
+        <PackageDetailModal
+          isOpen={detailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
+          pkg={detailPackage}
+          onUpdated={fetchPackages}
+        />
       )}
 
       {/* Edit Package Modal */}

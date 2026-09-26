@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const bookletsController = require('../controllers/booklets.controller');
 const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorize, requirePageAccess } = require('../middleware/rbac');
 
 router.use(authenticate);
+router.use(requirePageAccess('booklets'));
 
 // Booklets CRUD
 router.get('/', bookletsController.listBooklets);

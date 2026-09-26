@@ -165,9 +165,288 @@ const updatePackage = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/packages/:id/groups
+ * List all groups currently linked to this package, grouped/annotated with subjects
+ */
+const getPackageGroups = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `SELECT g.*, 
+              s.id as subject_id, s.name_ar as subject_name, s.color as subject_color,
+              t.id as teacher_id, t.full_name as teacher_name, t.photo_url as teacher_photo,
+              cr.name as classroom_name,
+              (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.group_id = g.id AND ge.is_active = true) as student_count
+       FROM package_groups pg
+       JOIN groups g ON pg.group_id = g.id
+       LEFT JOIN subjects s ON g.subject_id = s.id
+       LEFT JOIN teachers t ON g.teacher_id = t.id
+       LEFT JOIN classrooms cr ON g.classroom_id = cr.id
+       WHERE pg.package_id = $1
+       ORDER BY s.name_ar ASC, g.name ASC`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/packages/:id/available-groups
+ * List grade groups not yet added to this package
+ */
+const getAvailableGroupsForPackage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const pkgRes = await db.query('SELECT grade_id FROM grade_packages WHERE id = $1', [id]);
+    if (pkgRes.rows.length === 0) {
+      throw new NotFoundError('الباكدج غير موجود');
+    }
+    const gradeId = pkgRes.rows[0].grade_id;
+
+    const result = await db.query(
+      `SELECT g.*, 
+              s.id as subject_id, s.name_ar as subject_name, s.color as subject_color,
+              t.id as teacher_id, t.full_name as teacher_name,
+              cr.name as classroom_name,
+              (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.group_id = g.id AND ge.is_active = true) as student_count
+       FROM groups g
+       LEFT JOIN subjects s ON g.subject_id = s.id
+       LEFT JOIN teachers t ON g.teacher_id = t.id
+       LEFT JOIN classrooms cr ON g.classroom_id = cr.id
+       WHERE g.grade_id = $1
+         AND g.id NOT IN (SELECT group_id FROM package_groups WHERE package_id = $2)
+       ORDER BY s.name_ar ASC, g.name ASC`,
+      [gradeId, id]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/packages/:id/groups
+ * Add candidate groups to package
+ */
+const addGroupsToPackage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { group_ids } = req.body;
+
+    if (!Array.isArray(group_ids) || group_ids.length === 0) {
+      throw new BadRequestError('يرجى تحديد المجموعات المطلوب إضافتها');
+    }
+
+    for (const gid of group_ids) {
+      await db.query(
+        `INSERT INTO package_groups (package_id, group_id)
+         VALUES ($1, $2)
+         ON CONFLICT (package_id, group_id) DO NOTHING`,
+        [id, gid]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `تم إضافة ${group_ids.length} مجموعة للباكدج بنجاح`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/packages/:id/groups/:groupId
+ * Remove a group from package
+ */
+const removeGroupFromPackage = async (req, res, next) => {
+  try {
+    const { id, groupId } = req.params;
+    await db.query('DELETE FROM package_groups WHERE package_id = $1 AND group_id = $2', [id, groupId]);
+    res.json({
+      success: true,
+      message: 'تم إزالة المجموعة من الباكدج بنجاح',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/packages/:id/enroll
+ * Enroll student into package bundle with 1-group-per-subject constraint
+ */
+const enrollStudentInPackage = async (req, res, next) => {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const { id } = req.params;
+    const { student_id, selected_group_ids, notes } = req.body;
+
+    if (!student_id) {
+      throw new BadRequestError('الطالب مطلوب');
+    }
+    if (!Array.isArray(selected_group_ids) || selected_group_ids.length === 0) {
+      throw new BadRequestError('يرجى اختيار مجموعات المواد');
+    }
+
+    // 1. Get package
+    const pkgRes = await client.query('SELECT * FROM grade_packages WHERE id = $1', [id]);
+    if (pkgRes.rows.length === 0) {
+      throw new NotFoundError('الباكدج');
+    }
+    const pkg = pkgRes.rows[0];
+
+    // 2. Get student
+    const studentRes = await client.query('SELECT * FROM students WHERE id = $1', [student_id]);
+    if (studentRes.rows.length === 0) {
+      throw new NotFoundError('الطالب');
+    }
+
+    // 3. Get all groups belonging to this package
+    const pkgGroupsRes = await client.query(
+      `SELECT g.id, g.name, g.subject_id, s.name_ar as subject_name, g.price_per_month
+       FROM package_groups pg
+       JOIN groups g ON pg.group_id = g.id
+       JOIN subjects s ON g.subject_id = s.id
+       WHERE pg.package_id = $1`,
+      [id]
+    );
+
+    if (pkgGroupsRes.rows.length === 0) {
+      throw new BadRequestError('هذا الباكدج لا يحتوي على مجموعات بعد. أضف مجموعات للباكدج أولاً');
+    }
+
+    const allPkgGroups = pkgGroupsRes.rows;
+    const pkgGroupMap = new Map(allPkgGroups.map(g => [g.id, g]));
+
+    // Check all required subjects in package
+    const requiredSubjectMap = new Map();
+    for (const g of allPkgGroups) {
+      if (!requiredSubjectMap.has(g.subject_id)) {
+        requiredSubjectMap.set(g.subject_id, g.subject_name);
+      }
+    }
+
+    // 4. Validate selected groups: exactly one group per subject!
+    const selectedSubjects = new Map();
+    for (const groupId of selected_group_ids) {
+      const grp = pkgGroupMap.get(groupId);
+      if (!grp) {
+        throw new BadRequestError(`إحدى المجموعات المحددة لا تنتمي لهذا الباكدج`);
+      }
+      if (selectedSubjects.has(grp.subject_id)) {
+        const dupSubject = grp.subject_name;
+        throw new BadRequestError(`لا يمكن اختيار أكثر من مجموعة واحدة لنفس المادة (${dupSubject}) في هذا الباكدج`);
+      }
+      selectedSubjects.set(grp.subject_id, grp);
+    }
+
+    // Check that ALL distinct subjects in package are selected
+    for (const [subId, subName] of requiredSubjectMap.entries()) {
+      if (!selectedSubjects.has(subId)) {
+        throw new BadRequestError(`يجب اختيار مجموعة لمادة (${subName}) لإتمام الاشتراك في الباكدج`);
+      }
+    }
+
+    // 5. Insert into student_package_enrollments
+    const enrollRes = await client.query(
+      `INSERT INTO student_package_enrollments (student_id, package_id, selected_group_ids, total_price, notes)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [student_id, id, selected_group_ids, pkg.package_price, notes || null]
+    );
+
+    // 6. Enroll student in each selected group in group_enrollments
+    for (const groupId of selected_group_ids) {
+      await client.query(
+        `INSERT INTO group_enrollments (student_id, group_id, is_active, enrollment_type)
+         VALUES ($1, $2, true, 'PACKAGE')
+         ON CONFLICT (student_id, group_id) DO UPDATE SET is_active = true, enrollment_type = 'PACKAGE'`,
+        [student_id, groupId]
+      );
+    }
+
+    // Audit log
+    await client.query(
+      `INSERT INTO audit_log (user_id, action, entity_type, entity_id, new_data)
+       VALUES ($1, 'ENROLL_PACKAGE', 'grade_packages', $2, $3)`,
+      [req.user.id, id, JSON.stringify({ student_id, selected_group_ids, package_price: pkg.package_price })]
+    );
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: `تم تسكين الطالب بنجاح في ${selected_group_ids.length} مجموعات تابعة للباكدج`,
+      data: enrollRes.rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * GET /api/packages/:id/students
+ * List all students enrolled in this package
+ */
+const getPackageStudents = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `SELECT spe.*,
+              s.full_name as student_name, s.phone as student_phone, s.barcode_id, s.student_code, s.photo_url,
+              (
+                SELECT json_agg(json_build_object(
+                  'id', g.id,
+                  'name', g.name,
+                  'subject_name', sub.name_ar,
+                  'teacher_name', t.full_name
+                ))
+                FROM groups g
+                LEFT JOIN subjects sub ON g.subject_id = sub.id
+                LEFT JOIN teachers t ON g.teacher_id = t.id
+                WHERE g.id = ANY(spe.selected_group_ids)
+              ) as selected_groups
+       FROM student_package_enrollments spe
+       JOIN students s ON spe.student_id = s.id
+       WHERE spe.package_id = $1
+       ORDER BY spe.enrolled_at DESC`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   listPackages,
   getPackage,
   createPackage,
   updatePackage,
+  getPackageGroups,
+  getAvailableGroupsForPackage,
+  addGroupsToPackage,
+  removeGroupFromPackage,
+  enrollStudentInPackage,
+  getPackageStudents,
 };

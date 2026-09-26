@@ -832,8 +832,8 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
   const [amountPaid, setAmountPaid] = useState(0);
   const [totalCharge, setTotalCharge] = useState(0);
   const [enrollmentType, setEnrollmentType] = useState(group.enrollment_type || 'PACKAGE');
-  const [discountType, setDiscountType] = useState('FIXED'); // 'FIXED' or 'PERCENT'
-  const [discountValue, setDiscountValue] = useState(0);
+  const [discountType, setDiscountType] = useState(group.discount_type || 'FIXED'); // 'FIXED' or 'PERCENT'
+  const [discountValue, setDiscountValue] = useState(group.discount_value || 0);
   const [billingMonth, setBillingMonth] = useState(new Date().toISOString().slice(0, 7));
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -860,10 +860,23 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
     { label: 'شهر كامل (8 حصص)', sessions: 8, calculate: () => pricePerMonth || (pricePerSession * 8) || 350 },
   ];
 
-  // Set initial preset to 4 sessions
+  // Set initial preset with student's persistent discount
   useEffect(() => {
-    applyPreset(presets[3]);
+    const initDiscType = group.discount_type || 'FIXED';
+    const initDiscVal = parseFloat(group.discount_value) || 0;
+    setDiscountType(initDiscType);
+    setDiscountValue(initDiscVal);
     setEnrollmentType(group.enrollment_type || 'PACKAGE');
+
+    // Preset 4 sessions
+    setSessionsCount(presets[3].sessions);
+    const charge = presets[3].calculate();
+    setTotalCharge(charge);
+    const disc = initDiscType === 'PERCENT'
+      ? Math.min(charge, Math.round((charge * initDiscVal) / 100))
+      : Math.min(charge, initDiscVal);
+    const net = Math.max(0, charge - disc);
+    setAmountPaid(net + currentDebt);
   }, [group]);
 
   const applyPreset = (preset) => {
@@ -1960,9 +1973,20 @@ function PayDebtModal({ isOpen, onClose, student, group, onSuccess }) {
 // -------------------------------------------------------------
 function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
   const remaining = parseInt(group.remaining_sessions || 0, 10);
-  const pricePerSession = parseFloat(group.price_per_session) || 
-                          (parseFloat(group.price_per_month) ? Math.round(parseFloat(group.price_per_month) / 4) : 50);
-  const grossSessionsValue = Math.max(0, remaining * pricePerSession);
+  const basePricePerSession = parseFloat(group.price_per_session) || 
+                              (parseFloat(group.price_per_month) ? Math.round(parseFloat(group.price_per_month) / 4) : 50);
+
+  // Apply student's persistent discount
+  const dType = group.discount_type || 'FIXED';
+  const dVal = parseFloat(group.discount_value) || 0;
+  let sessionDiscount = 0;
+  if (dType === 'PERCENT' && dVal > 0) {
+    sessionDiscount = (basePricePerSession * Math.min(100, dVal)) / 100;
+  } else if (dType === 'FIXED' && dVal > 0) {
+    sessionDiscount = dVal / 4;
+  }
+  const effectivePricePerSession = Math.max(0, basePricePerSession - sessionDiscount);
+  const grossSessionsValue = Math.max(0, Math.round(remaining * effectivePricePerSession));
   const currentDebt = Math.max(0, parseFloat(group.amount_due) || 0);
   const netRefund = Math.max(0, grossSessionsValue - currentDebt);
 
@@ -2086,9 +2110,15 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
               </span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
-              <span>سعر الحصة التقديري: <strong>{pricePerSession} ج.م</strong></span>
+              <span>سعر الحصة التقديري: <strong>{basePricePerSession} ج.م</strong></span>
               <span>إجمالي قيمة الحصص: <strong className="font-mono">{grossSessionsValue} ج.م</strong></span>
             </div>
+            {sessionDiscount > 0 && (
+              <div className="flex items-center justify-between text-[11px] text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200 font-bold">
+                <span>🏷️ تم تطبيق الخصم الدائم للطالب (-{sessionDiscount} ج.م/حصة):</span>
+                <span>السعر الفعلي للحصة: {effectivePricePerSession} ج.م</span>
+              </div>
+            )}
 
             {/* Debt deduction details */}
             {currentDebt > 0 && (

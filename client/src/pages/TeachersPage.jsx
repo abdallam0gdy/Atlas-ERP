@@ -91,23 +91,6 @@ export default function TeachersPage() {
     }
   };
 
-  const getFinancialBadge = (teacher) => {
-    if (teacher.revenue_split_type === 'fixed') {
-      return (
-        <span className="atlas-badge inline-flex items-center gap-1" style={{ background: '#ECFDF5', color: '#065F46' }}>
-          <Coins size={12} />
-          <span>{Number(teacher.fixed_rate_per_student)} ج/طالب</span>
-        </span>
-      );
-    }
-    return (
-      <span className="atlas-badge inline-flex items-center gap-1" style={{ background: '#EFF6FF', color: '#1E40AF' }}>
-        <Percent size={12} />
-        <span>{Number(teacher.revenue_split_percent)}% للمدرس</span>
-      </span>
-    );
-  };
-
   // Export to CSV with UTF-8 BOM
   const handleExportCsv = () => {
     if (teachers.length === 0) {
@@ -277,18 +260,7 @@ export default function TeachersPage() {
             )}
           </div>
 
-          {/* Revenue Split Filter */}
-          <div>
-            <select
-              value={selectedSplitType}
-              onChange={(e) => setSelectedSplitType(e.target.value)}
-              className="atlas-input text-xs sm:text-sm"
-            >
-              <option value="">نظام المحاسبة (الكل)</option>
-              <option value="percentage">نسبة مئوية (%)</option>
-              <option value="fixed">مبلغ ثابت لكل طالب (ج)</option>
-            </select>
-          </div>
+
 
           {/* Subjects Filter */}
           {subjects.length > 0 && (
@@ -410,7 +382,6 @@ export default function TeachersPage() {
                   <th className="text-white text-xs font-semibold py-3 px-4">الموبايل</th>
                   <th className="text-white text-xs font-semibold py-3 px-4">المجموعات</th>
                   <th className="text-white text-xs font-semibold py-3 px-4">الطلاب</th>
-                  <th className="text-white text-xs font-semibold py-3 px-4">نظام المحاسبة</th>
                   <th className="text-white text-xs font-semibold py-3 px-4">الحالة</th>
                   <th className="text-white text-xs font-semibold py-3 px-4">إجراءات</th>
                 </tr>
@@ -425,14 +396,33 @@ export default function TeachersPage() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm overflow-hidden border border-slate-200"
                           style={{ background: 'linear-gradient(135deg, #0C3C82, #0EA5E9)' }}
                         >
-                          {teacher.full_name?.[0] || '؟'}
+                          {teacher.photo_url ? (
+                            <img
+                              src={teacher.photo_url}
+                              alt={teacher.full_name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '';
+                              }}
+                            />
+                          ) : (
+                            teacher.full_name?.[0] || '؟'
+                          )}
                         </div>
-                        <p className="font-bold text-sm text-slate-800">
-                          {teacher.full_name}
-                        </p>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                            <span>{teacher.full_name}</span>
+                            {teacher.aka && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 font-bold border border-amber-200">
+                                {teacher.aka}
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -454,9 +444,6 @@ export default function TeachersPage() {
                       <span className="atlas-badge atlas-badge-success text-xs">
                         {teacher.total_students || 0} طالب
                       </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {getFinancialBadge(teacher)}
                     </td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 ${
@@ -506,13 +493,32 @@ export default function TeachersPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-base shadow-md shrink-0"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-base shadow-md shrink-0 overflow-hidden border border-slate-200"
                     style={{ background: 'linear-gradient(135deg, #0C3C82, #0EA5E9)' }}
                   >
-                    {teacher.full_name?.[0] || '؟'}
+                    {teacher.photo_url ? (
+                      <img
+                        src={teacher.photo_url}
+                        alt={teacher.full_name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '';
+                        }}
+                      />
+                    ) : (
+                      teacher.full_name?.[0] || '؟'
+                    )}
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-slate-800">{teacher.full_name}</p>
+                    <p className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                      <span>{teacher.full_name}</span>
+                      {teacher.aka && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 font-bold border border-amber-200">
+                          {teacher.aka}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs mt-0.5 text-slate-500">{teacher.specialization || 'بدون تخصص'}</p>
                   </div>
                 </div>
@@ -535,9 +541,9 @@ export default function TeachersPage() {
                 </div>
               </div>
 
-              {/* Financial Badge & Phone */}
+              {/* Specialization & Phone */}
               <div className="flex items-center justify-between text-xs">
-                {getFinancialBadge(teacher)}
+                <span className="text-xs text-slate-500 font-medium">{teacher.specialization || 'مدرس'}</span>
                 {teacher.phone && (
                   <span className="font-mono text-slate-400 flex items-center gap-1">
                     <Phone size={12} />

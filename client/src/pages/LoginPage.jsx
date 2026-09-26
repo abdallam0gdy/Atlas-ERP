@@ -111,7 +111,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-white/80 text-xs sm:text-sm font-semibold mb-1.5">
-                اسم المستخدم
+                اسم المستخدم أو رقم الهاتف
               </label>
               <div className="relative">
                 <input
@@ -119,7 +119,7 @@ export default function LoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="مثال: admin"
+                  placeholder="مثال: admin أو 01012345678"
                   required
                   autoFocus
                   className="w-full pr-11 pl-4 py-3 sm:py-3.5 rounded-xl text-white placeholder-white/35 outline-none transition-all text-sm font-medium"

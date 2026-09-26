@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone         VARCHAR(20),
   email         VARCHAR(100),
   role_id       UUID NOT NULL REFERENCES roles(id),
+  photo_url     VARCHAR(500),
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
   last_login_at TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -167,11 +168,19 @@ CREATE TABLE IF NOT EXISTS students (
   full_name       VARCHAR(150) NOT NULL,
   phone           VARCHAR(20),
   parent_phone    VARCHAR(20),
+  father_phone    VARCHAR(20),
+  mother_phone    VARCHAR(20),
+  parent_name     VARCHAR(150),
+  gender          VARCHAR(10) DEFAULT 'male',
+  national_id     VARCHAR(20),
+  date_of_birth   DATE,
   grade_id        UUID NOT NULL REFERENCES academic_grades(id),
   status_id       UUID REFERENCES student_statuses(id),
   education_type  VARCHAR(20) NOT NULL DEFAULT 'PUBLIC', -- 'PUBLIC' (حكومي/عربي) or 'LANGUAGES' (لغات/تجريبي)
   enrollment_type VARCHAR(20) NOT NULL DEFAULT 'PACKAGE', -- 'PACKAGE' or 'PRIVATE'
   school_name     VARCHAR(150),
+  photo_url       VARCHAR(500),
+  address         TEXT,
   notes           TEXT,
   is_active       BOOLEAN NOT NULL DEFAULT TRUE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -202,10 +211,25 @@ CREATE TABLE IF NOT EXISTS subjects (
 CREATE TABLE IF NOT EXISTS teachers (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name            VARCHAR(150) NOT NULL,
+  full_name_ar         VARCHAR(150),
+  aka                  VARCHAR(100),
   phone                VARCHAR(20),
+  email                VARCHAR(100),
+  gender               VARCHAR(10) DEFAULT 'male',
+  national_id          VARCHAR(20),
+  specialization       VARCHAR(100),
   subject_id           UUID REFERENCES subjects(id),
+  subject_ids          UUID[] DEFAULT '{}',
   revenue_split_percent NUMERIC(5,2) DEFAULT 0.00,
   revenue_split_type   VARCHAR(20) DEFAULT 'percentage',
+  fixed_rate_per_student NUMERIC(10,2) DEFAULT 0.00,
+  bio                  TEXT,
+  social_links         JSONB DEFAULT '{}'::jsonb,
+  secretary_name       VARCHAR(150),
+  secretary_phone      VARCHAR(20),
+  photo_url            VARCHAR(500),
+  logo_url             VARCHAR(500),
+  date_of_birth        DATE,
   notes                TEXT,
   is_active            BOOLEAN NOT NULL DEFAULT TRUE,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -257,8 +281,11 @@ CREATE TABLE IF NOT EXISTS group_enrollments (
   student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   group_id        UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   enrollment_type VARCHAR(20) NOT NULL DEFAULT 'PACKAGE',
+  discount_type   VARCHAR(10) NOT NULL DEFAULT 'FIXED',
+  discount_value  NUMERIC(10,2) NOT NULL DEFAULT 0.00,
   enrolled_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+  notes           TEXT,
   UNIQUE (student_id, group_id)
 );
 
@@ -738,6 +765,32 @@ VALUES
   ('كارت حضور ذكي بديل (QR)', 'card', 'ITM-CARD-REP', 5.00, 20.00, 100, 20),
   ('قلم جاف أزرق روترنج', 'supply', 'ITM-PEN-BLUE', 4.00, 8.00, 60, 10)
 ON CONFLICT (barcode) DO NOTHING;
+
+-- 5.12 Package Groups & Enrollments
+CREATE TABLE IF NOT EXISTS package_groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    package_id UUID NOT NULL REFERENCES grade_packages(id) ON DELETE CASCADE,
+    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT package_groups_unique UNIQUE(package_id, group_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pkg_groups_pkg ON package_groups(package_id);
+CREATE INDEX IF NOT EXISTS idx_pkg_groups_grp ON package_groups(group_id);
+
+CREATE TABLE IF NOT EXISTS student_package_enrollments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    package_id UUID NOT NULL REFERENCES grade_packages(id) ON DELETE CASCADE,
+    selected_group_ids UUID[] NOT NULL,
+    total_price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    status VARCHAR(20) DEFAULT 'active',
+    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_pkg_student ON student_package_enrollments(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_pkg_package ON student_package_enrollments(package_id);
 
 -- ============================================================
 -- 6. VERIFICATION BLOCK

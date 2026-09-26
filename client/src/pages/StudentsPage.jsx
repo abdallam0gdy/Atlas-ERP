@@ -477,7 +477,33 @@ export default function StudentsPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <p className="font-bold text-sm text-slate-800">{student.full_name}</p>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs bg-slate-100 text-[#0C3C82] border border-slate-200">
+                          {student.photo_url ? (
+                            <img
+                              src={student.photo_url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '';
+                              }}
+                            />
+                          ) : (
+                            student.full_name?.[0] || 'ط'
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                            <span>{student.full_name}</span>
+                            {student.gender && (
+                              <span className="text-[11px]" title={student.gender === 'female' ? 'أنثى' : 'ذكر'}>
+                                {student.gender === 'female' ? '👧' : '👦'}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded">
@@ -492,7 +518,9 @@ export default function StudentsPage() {
                     <td className="py-3 px-4">
                       <div className="text-xs">
                         <p className="font-semibold text-slate-700">{student.parent_name || 'ولي أمر'}</p>
-                        <p className="font-mono text-slate-500 text-[11px]">{student.parent_phone || student.phone || '—'}</p>
+                        <p className="font-mono text-slate-500 text-[11px]">
+                          {student.father_phone || student.parent_phone || student.mother_phone || student.phone || '—'}
+                        </p>
                       </div>
                     </td>
                     <td className="py-3 px-4">

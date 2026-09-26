@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorize, requirePageAccess } = require('../middleware/rbac');
 const { validate, generateBarcodeSchema, assignBarcodeSchema } = require('../utils/validators');
 const { generateBatch, assignCard, listBatches, getBatchItems, printSticker } = require('../controllers/barcode.controller');
 
 router.use(authenticate);
+router.use(requirePageAccess('qrcode'));
 
 // Generate a batch of barcodes
 router.post('/generate-batch',

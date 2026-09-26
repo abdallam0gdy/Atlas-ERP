@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
+import ImageUpload from './ImageUpload';
 import {
   X, User, Phone, Mail, BookOpen,
-  Percent, Coins, Loader2, StickyNote, Check, Sparkles
+  Percent, Coins, Loader2, StickyNote, Check, Sparkles,
+  Share2, Shield, Calendar, CreditCard, Award, MessageCircle
 } from 'lucide-react';
 
 export default function TeacherModal({ isOpen, onClose, onSuccess, initialData = null }) {
@@ -15,14 +17,29 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
   const [formData, setFormData] = useState({
     full_name: '',
     full_name_ar: '',
+    aka: '',
     phone: '',
     email: '',
+    gender: 'male',
+    national_id: '',
+    date_of_birth: '',
     specialization: '',
     subject_id: '',
     subject_ids: [],
     revenue_split_type: 'percentage',
     revenue_split_percent: 80,
     fixed_rate_per_student: 0,
+    bio: '',
+    secretary_name: '',
+    secretary_phone: '',
+    photo_url: '',
+    logo_url: '',
+    social_links: {
+      facebook: '',
+      youtube: '',
+      telegram: '',
+      whatsapp: '',
+    },
     notes: '',
   });
 
@@ -51,31 +68,72 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
         ? initialData.subject_ids
         : (initialData.subject_id ? [initialData.subject_id] : (initialData.subjects?.map(s => s.id) || []));
 
+      let social = { facebook: '', youtube: '', telegram: '', whatsapp: '' };
+      if (initialData.social_links) {
+        try {
+          social = typeof initialData.social_links === 'string'
+            ? JSON.parse(initialData.social_links)
+            : initialData.social_links;
+        } catch (e) {
+          social = { facebook: '', youtube: '', telegram: '', whatsapp: '' };
+        }
+      }
+
       setFormData({
         full_name: initialData.full_name || '',
         full_name_ar: initialData.full_name_ar || '',
+        aka: initialData.aka || '',
         phone: initialData.phone || '',
         email: initialData.email || '',
+        gender: initialData.gender || 'male',
+        national_id: initialData.national_id || '',
+        date_of_birth: initialData.date_of_birth ? initialData.date_of_birth.slice(0, 10) : '',
         specialization: initialData.specialization || '',
         subject_id: initialData.subject_id || (sIds[0] || ''),
         subject_ids: sIds,
         revenue_split_type: initialData.revenue_split_type || 'percentage',
         revenue_split_percent: initialData.revenue_split_percent ?? 80,
         fixed_rate_per_student: initialData.fixed_rate_per_student ?? 0,
+        bio: initialData.bio || '',
+        secretary_name: initialData.secretary_name || '',
+        secretary_phone: initialData.secretary_phone || '',
+        photo_url: initialData.photo_url || '',
+        logo_url: initialData.logo_url || '',
+        social_links: {
+          facebook: social.facebook || '',
+          youtube: social.youtube || '',
+          telegram: social.telegram || '',
+          whatsapp: social.whatsapp || '',
+        },
         notes: initialData.notes || '',
       });
     } else {
       setFormData({
         full_name: '',
         full_name_ar: '',
+        aka: '',
         phone: '',
         email: '',
+        gender: 'male',
+        national_id: '',
+        date_of_birth: '',
         specialization: '',
         subject_id: '',
         subject_ids: [],
         revenue_split_type: 'percentage',
         revenue_split_percent: 80,
         fixed_rate_per_student: 0,
+        bio: '',
+        secretary_name: '',
+        secretary_phone: '',
+        photo_url: '',
+        logo_url: '',
+        social_links: {
+          facebook: '',
+          youtube: '',
+          telegram: '',
+          whatsapp: '',
+        },
         notes: '',
       });
     }
@@ -92,10 +150,8 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
         updatedIds = [...prev.subject_ids, subjectId];
       }
 
-      // Update primary subject_id
       const newPrimary = updatedIds.length > 0 ? (updatedIds.includes(prev.subject_id) ? prev.subject_id : updatedIds[0]) : '';
 
-      // Auto update specialization text
       const selectedNames = subjectsList
         .filter((s) => updatedIds.includes(s.id))
         .map((s) => s.name_ar)
@@ -119,16 +175,33 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
       toast.error('يرجى إدخال اسم المدرس');
       return;
     }
+    if (!formData.phone.trim()) {
+      toast.error('يرجى إدخال رقم هاتف المدرس');
+      return;
+    }
+    if (formData.subject_ids.length === 0) {
+      toast.error('يرجى اختيار مادة دراسية واحدة على الأقل');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        date_of_birth: formData.date_of_birth || null,
+        email: formData.email || null,
+        revenue_split_percent: Number(formData.revenue_split_percent) || 0,
+        fixed_rate_per_student: Number(formData.fixed_rate_per_student) || 0,
+      };
+
       if (isEdit) {
-        const { data } = await api.put(`/teachers/${initialData.id}`, formData);
+        const { data } = await api.put(`/teachers/${initialData.id}`, payload);
         toast.success(data.message || 'تم تحديث بيانات المدرس بنجاح');
       } else {
-        const { data } = await api.post('/teachers', formData);
+        const { data } = await api.post('/teachers', payload);
         toast.success(data.message || 'تم إضافة المدرس بنجاح');
       }
+
       onSuccess();
       onClose();
     } catch (err) {
@@ -139,15 +212,10 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
     }
   };
 
-  const splitTypeOptions = [
-    { value: 'percentage', label: '📊 نسبة مئوية', desc: 'المدرس يأخذ نسبة من التحصيل' },
-    { value: 'fixed', label: '💵 مبلغ ثابت', desc: 'مبلغ ثابت لكل طالب حاضر' },
-  ];
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
       <div
-        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -158,10 +226,10 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">
-                {isEdit ? 'تعديل بيانات المدرس' : 'إضافة مدرس جديد'}
+                {isEdit ? 'تعديل ملف المدرس' : 'إضافة مدرس جديد'}
               </h2>
               <p className="text-white/70 text-xs mt-0.5">
-                {isEdit ? 'تحديث البيانات الشخصية والمالية' : 'تسجيل مدرس جديد وتحديد نظام المحاسبة'}
+                إدارة بيانات المدرس، الصور، اللوجو، السكرتارية، والنسب المالية
               </p>
             </div>
           </div>
@@ -175,38 +243,109 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Section 1: Personal Info */}
+          {/* Section 1: Photos & Logos */}
+          <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ImageUpload
+              value={formData.photo_url}
+              onChange={(url) => setFormData({ ...formData, photo_url: url })}
+              category="teachers"
+              label="صورة المدرس الشخصية"
+              shape="circle"
+              size={84}
+              hint="صورة بروفايل عالية الجودة للمدرس تظهر في الكروت والتقارير"
+            />
+            <ImageUpload
+              value={formData.logo_url}
+              onChange={(url) => setFormData({ ...formData, logo_url: url })}
+              category="logos"
+              label="لوجو / شعار المدرس"
+              shape="rounded"
+              size={84}
+              hint="شعار براند المدرس للطباعة على الملازم وكروت الحضور"
+            />
+          </div>
+
+          {/* Section 2: Identity & Basic Details */}
           <div>
             <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
               <User size={16} className="text-sky-500" />
-              البيانات الشخصية
+              البيانات الشخصية والتعريفية
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Full Name */}
-              <div className="sm:col-span-2">
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  اسم المدرس <span className="text-red-500">*</span>
+                  اسم المدرس بالكامل <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="مثال: أ/ أحمد محمود"
+                  placeholder="مثال: محمد أحمد علي"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   className="atlas-input"
                 />
               </div>
 
+              {/* AKA (اسم الشهرة) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  اسم الشهرة / اللقب
+                </label>
+                <div className="relative">
+                  <Award size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="مثال: مستر أحمد الباشا / القيصر"
+                    value={formData.aka}
+                    onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
+                    className="atlas-input pr-9"
+                  />
+                </div>
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  النوع (الجنس) <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, gender: 'male' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      formData.gender === 'male'
+                        ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>👨 أستاذ (ذكر)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, gender: 'female' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      formData.gender === 'female'
+                        ? 'bg-pink-50 border-pink-500 text-pink-800 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>👩 أستاذة (أنثى)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Phone */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  رقم الموبايل
+                  رقم هاتف المدرس <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="tel"
+                    required
                     placeholder="01012345678"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -215,10 +354,28 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
                 </div>
               </div>
 
+              {/* National ID */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  الرقم القومي (اختياري)
+                </label>
+                <div className="relative">
+                  <CreditCard size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    maxLength={14}
+                    placeholder="14 رقم"
+                    value={formData.national_id}
+                    onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
+                    className="atlas-input pr-9 font-mono"
+                  />
+                </div>
+              </div>
+
               {/* Email */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  البريد الإلكتروني
+                  البريد الإلكتروني (اختياري)
                 </label>
                 <div className="relative">
                   <Mail size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -227,198 +384,190 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
                     placeholder="teacher@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="atlas-input pr-9"
-                  />
-                </div>
-              </div>
-
-              {/* Subject Selection Box & Badges */}
-              <div className="sm:col-span-2 space-y-3 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-800 flex items-center gap-2">
-                    <BookOpen size={16} className="text-sky-600" />
-                    المادة الدراسية للمدرس <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                    {formData.subject_ids.length > 0 ? `${formData.subject_ids.length} مادة مختارة` : 'اختر مادة أو أكثر'}
-                  </span>
-                </div>
-
-                {/* Main Stylish Select Dropdown */}
-                <div className="relative">
-                  <select
-                    value={formData.subject_id}
-                    onChange={(e) => {
-                      const sId = e.target.value;
-                      if (!sId) return;
-                      if (!formData.subject_ids.includes(sId)) {
-                        toggleSubject(sId);
-                      } else {
-                        setFormData((prev) => ({ ...prev, subject_id: sId }));
-                      }
-                    }}
-                    className="atlas-input appearance-none bg-white cursor-pointer pr-4 pl-10 font-medium text-slate-800"
-                  >
-                    <option value="">-- اضغط لاختيار مادة من قائمة المواد --</option>
-                    {subjectsList.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name_ar} {s.name_en ? `(${s.name_en})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <BookOpen size={16} />
-                  </div>
-                </div>
-
-                {/* Quick Subject Chips / Badges Grid */}
-                <div>
-                  <p className="text-[11px] text-slate-500 mb-2">أو انقر لاختيار المادة / المواد مباشرة:</p>
-                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
-                    {loadingSubjects ? (
-                      <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
-                        <Loader2 size={14} className="animate-spin" /> جاري تحميل المواد الدراسية...
-                      </div>
-                    ) : (
-                      subjectsList.map((s) => {
-                        const isSelected = formData.subject_ids.includes(s.id);
-                        return (
-                          <button
-                            type="button"
-                            key={s.id}
-                            onClick={() => toggleSubject(s.id)}
-                            className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                              isSelected
-                                ? 'bg-white shadow-sm ring-2'
-                                : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                            }`}
-                            style={{
-                              borderColor: isSelected ? s.color || '#0C3C82' : undefined,
-                              boxShadow: isSelected ? `0 0 0 1px ${s.color || '#0C3C82'}` : undefined,
-                            }}
-                          >
-                            <span
-                              className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-transform group-hover:scale-125"
-                              style={{ backgroundColor: s.color || '#0C3C82' }}
-                            />
-                            <span>{s.name_ar}</span>
-                            {isSelected && (
-                              <span
-                                className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px]"
-                                style={{ backgroundColor: s.color || '#0C3C82' }}
-                              >
-                                <Check size={11} strokeWidth={3} />
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Synchronized Specialization Text (editable if needed) */}
-                <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
-                  <span className="text-[11px] text-slate-500 flex-shrink-0">وصف التخصص:</span>
-                  <input
-                    type="text"
-                    placeholder="مثال: رياضيات، لغة عربية"
-                    value={formData.specialization}
-                    onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                    className="text-xs bg-transparent border-b border-dashed border-slate-300 focus:border-sky-500 focus:outline-none px-1 py-0.5 flex-1 font-medium text-slate-700"
+                    className="atlas-input pr-9 font-mono"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 2: Financial Configuration */}
+          {/* Section 3: Secretariat Info (السكرتارية) */}
           <div className="pt-4 border-t border-slate-100">
             <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-              <Coins size={16} className="text-sky-500" />
-              نظام المحاسبة المالي مع السنتر
+              <Shield size={16} className="text-emerald-600" />
+              بيانات السكرتارية والمساعدين
             </h3>
 
-            {/* Revenue Split Type Selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              {splitTypeOptions.map((opt) => {
-                const isSelected = formData.revenue_split_type === opt.value;
-                return (
-                  <div
-                    key={opt.value}
-                    onClick={() => setFormData({ ...formData, revenue_split_type: opt.value })}
-                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-sky-500 bg-sky-50/70 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <p className="text-sm font-bold text-slate-900">{opt.label}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Percentage Input */}
-            {formData.revenue_split_type === 'percentage' && (
-              <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-100">
-                <label className="block text-xs font-semibold text-slate-700 mb-2">
-                  نسبة المدرس من التحصيل (%)
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  اسم السكرتير/ة الرئيسي
                 </label>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Percent size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={formData.revenue_split_percent}
-                      onChange={(e) => setFormData({ ...formData, revenue_split_percent: Number(e.target.value) })}
-                      className="atlas-input pr-9 font-mono text-center"
-                    />
-                  </div>
-                  <div className="text-xs text-slate-600 bg-white px-3 py-2 rounded-lg border border-slate-200 flex-shrink-0">
-                    حصة السنتر: <strong className="text-red-600">{100 - (formData.revenue_split_percent || 0)}%</strong>
-                  </div>
-                </div>
+                <input
+                  type="text"
+                  placeholder="مثال: أستاذ عمر (المساعد)"
+                  value={formData.secretary_name}
+                  onChange={(e) => setFormData({ ...formData, secretary_name: e.target.value })}
+                  className="atlas-input"
+                />
               </div>
-            )}
 
-            {/* Fixed Rate Input */}
-            {formData.revenue_split_type === 'fixed' && (
-              <div className="p-4 rounded-xl bg-green-50/60 border border-green-100">
-                <label className="block text-xs font-semibold text-slate-700 mb-2">
-                  المبلغ الثابت لكل طالب حاضر (ج.م)
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  رقم تليفون السكرتارية
                 </label>
                 <div className="relative">
-                  <Coins size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={formData.fixed_rate_per_student}
-                    onChange={(e) => setFormData({ ...formData, fixed_rate_per_student: Number(e.target.value) })}
-                    className="atlas-input pr-9 font-mono text-center"
-                    placeholder="40"
+                    type="tel"
+                    placeholder="012..."
+                    value={formData.secretary_phone}
+                    onChange={(e) => setFormData({ ...formData, secretary_phone: e.target.value })}
+                    className="atlas-input pr-9 font-mono"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  💡 المدرس يحصل على هذا المبلغ عن كل طالب يحضر الحصة، والباقي من سعر الحصة يذهب للسنتر.
-                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Subjects Assignment */}
+          <div className="pt-4 border-t border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <BookOpen size={16} className="text-sky-500" />
+              المواد الدراسية المسندة للمدرس <span className="text-red-500">*</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              حدد مادة واحدة أو أكثر. عند إنشاء أي مجموعة جديدة لهذا المدرس سيتم حصر اختيار المواد في هذه القائمة فقط.
+            </p>
+
+            {loadingSubjects ? (
+              <div className="p-4 flex items-center justify-center text-slate-400">
+                <Loader2 size={20} className="animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-2 bg-slate-50/70 border border-slate-200 rounded-2xl">
+                {subjectsList.map((subject) => {
+                  const isSelected = formData.subject_ids.includes(subject.id);
+                  return (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      onClick={() => toggleSubject(subject.id)}
+                      className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-xs font-bold ${
+                        isSelected
+                          ? 'bg-white border-[#0C3C82] text-[#0C3C82] shadow-xs'
+                          : 'bg-white/60 border-slate-200 text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="truncate">{subject.name_ar}</span>
+                      {isSelected && (
+                        <span className="w-5 h-5 rounded-full bg-[#0C3C82] text-white flex items-center justify-center flex-shrink-0">
+                          <Check size={12} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Section 3: Notes */}
+
+          {/* Section 6: Bio & Social Links */}
+          <div className="pt-4 border-t border-slate-100 space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Share2 size={16} className="text-sky-500" />
+              النبذة التعريفية وروابط التواصل الاجتماعي
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                نبذة عن المدرس وتاريخه التعليمي
+              </label>
+              <textarea
+                rows={2}
+                placeholder="مؤهلات، سنوات الخبرة، أسلوب التدريس..."
+                value={formData.bio}
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                className="atlas-input resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  صفحة الفيسبوك (Facebook)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://facebook.com/..."
+                  value={formData.social_links.facebook}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    social_links: { ...formData.social_links, facebook: e.target.value }
+                  })}
+                  className="atlas-input text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  قناة اليوتيوب (YouTube)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://youtube.com/..."
+                  value={formData.social_links.youtube}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    social_links: { ...formData.social_links, youtube: e.target.value }
+                  })}
+                  className="atlas-input text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  قناة التليجرام (Telegram)
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://t.me/..."
+                  value={formData.social_links.telegram}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    social_links: { ...formData.social_links, telegram: e.target.value }
+                  })}
+                  className="atlas-input text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  واتساب المدرس / السكرتارية
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://wa.me/201..."
+                  value={formData.social_links.whatsapp}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    social_links: { ...formData.social_links, whatsapp: e.target.value }
+                  })}
+                  className="atlas-input text-xs font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 7: General Notes */}
           <div className="pt-4 border-t border-slate-100">
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              ملاحظات إضافية
+              ملاحظات إدارية
             </label>
             <textarea
               rows={2}
-              placeholder="أي ملاحظات خاصة بالمدرس..."
+              placeholder="أي ملاحظات داخلية خاصة بإدارة السنتر..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="atlas-input resize-none"
@@ -427,30 +576,32 @@ export default function TeacherModal({ isOpen, onClose, onSuccess, initialData =
         </form>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
           <button
             type="button"
             onClick={onClose}
-            className="atlas-btn atlas-btn-ghost text-sm"
+            className="atlas-btn atlas-btn-outline"
+            disabled={isSubmitting}
           >
             إلغاء
           </button>
-
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="atlas-btn atlas-btn-primary text-sm px-6"
+            className="atlas-btn atlas-btn-primary flex items-center gap-2"
+            style={{ background: '#0C3C82' }}
           >
             {isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 جاري الحفظ...
               </>
-            ) : isEdit ? (
-              'حفظ التعديلات'
             ) : (
-              'حفظ وتسجيل المدرس'
+              <>
+                <Check size={16} />
+                {isEdit ? 'حفظ التعديلات' : 'إضافة المدرس'}
+              </>
             )}
           </button>
         </div>

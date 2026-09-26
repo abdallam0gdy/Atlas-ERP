@@ -48,23 +48,67 @@ function App() {
           {/* Protected Routes with Sidebar Layout */}
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/students" element={<StudentsPage />} />
-            <Route path="/students/:id" element={<StudentDetailPage />} />
-            <Route path="/teachers" element={<TeachersPage />} />
-            <Route path="/teachers/:id" element={<TeacherDetailPage />} />
-            <Route path="/groups" element={<GroupsPage />} />
-            <Route path="/groups/:id" element={<GroupDetailPage />} />
-            <Route path="/subjects" element={<SubjectsPage />} />
-            <Route path="/qrcode" element={<QrCardsPage />} />
-            <Route path="/barcodes" element={<Navigate to="/qrcode" replace />} />
-            <Route path="/subscriptions" element={<StudentSubscriptionsPage />} />
-            <Route path="/packages" element={<PackagesPage />} />
-            <Route path="/finance" element={<FinancePage />} />
-            <Route path="/booklets" element={<BookletsPage />} />
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/pos" element={<PosPage />} />
-            <Route path="/users" element={<UsersManagementPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+
+            {/* Students */}
+            <Route element={<ProtectedRoute pageId="students" />}>
+              <Route path="/students" element={<StudentsPage />} />
+              <Route path="/students/:id" element={<StudentDetailPage />} />
+            </Route>
+
+            {/* Teachers */}
+            <Route element={<ProtectedRoute pageId="teachers" />}>
+              <Route path="/teachers" element={<TeachersPage />} />
+              <Route path="/teachers/:id" element={<TeacherDetailPage />} />
+            </Route>
+
+            {/* Groups */}
+            <Route element={<ProtectedRoute pageId="groups" />}>
+              <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/groups/:id" element={<GroupDetailPage />} />
+            </Route>
+
+            {/* Subjects */}
+            <Route element={<ProtectedRoute pageId="subjects" />}>
+              <Route path="/subjects" element={<SubjectsPage />} />
+            </Route>
+
+            {/* QR Codes */}
+            <Route element={<ProtectedRoute pageId="qrcode" />}>
+              <Route path="/qrcode" element={<QrCardsPage />} />
+              <Route path="/barcodes" element={<Navigate to="/qrcode" replace />} />
+            </Route>
+
+            {/* Subscriptions */}
+            <Route element={<ProtectedRoute pageId="subscriptions" />}>
+              <Route path="/subscriptions" element={<StudentSubscriptionsPage />} />
+            </Route>
+
+            {/* Packages */}
+            <Route element={<ProtectedRoute pageId="packages" />}>
+              <Route path="/packages" element={<PackagesPage />} />
+            </Route>
+
+            {/* Finance */}
+            <Route element={<ProtectedRoute pageId="finance" />}>
+              <Route path="/finance" element={<FinancePage />} />
+            </Route>
+
+            {/* Booklets */}
+            <Route element={<ProtectedRoute pageId="booklets" />}>
+              <Route path="/booklets" element={<BookletsPage />} />
+            </Route>
+
+            {/* Inventory / POS */}
+            <Route element={<ProtectedRoute pageId="pos" />}>
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/pos" element={<PosPage />} />
+            </Route>
+
+            {/* Users Management - Strictly SUPER_ADMIN_OWNER */}
+            <Route element={<ProtectedRoute adminOnly />}>
+              <Route path="/users" element={<UsersManagementPage />} />
+            </Route>
           </Route>
 
           {/* Default redirect */}

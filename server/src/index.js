@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -58,6 +59,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
+// Static files — uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // ============================================================
 // API ROUTES
 // ============================================================
@@ -75,6 +79,7 @@ app.use('/api/booklets', require('./routes/booklets.routes'));
 app.use('/api/subscriptions', require('./routes/subscriptions.routes'));
 app.use('/api/packages', require('./routes/packages.routes'));
 app.use('/api/users', require('./routes/users.routes'));
+app.use('/api/uploads', require('./routes/uploads.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

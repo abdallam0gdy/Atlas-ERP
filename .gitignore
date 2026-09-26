@@ -49,3 +49,7 @@ Thumbs.db
 *.sln
 *.sw?
 *.bak
+
+# Uploads & Media
+server/uploads/**
+!server/uploads/**/.gitkeep

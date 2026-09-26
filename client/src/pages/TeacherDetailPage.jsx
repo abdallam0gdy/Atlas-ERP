@@ -86,41 +86,77 @@ export default function TeacherDetailPage() {
       {/* Teacher Profile Card */}
       <div className="atlas-card overflow-hidden mb-6 animate-fade-in-up">
         {/* Header Banner */}
-        <div className="px-6 py-5" style={{ background: 'linear-gradient(135deg, #0C3C82, #0a2e63)' }}>
-          <div className="flex items-start justify-between">
+        <div className="px-6 py-6" style={{ background: 'linear-gradient(135deg, #0C3C82, #0a2e63)' }}>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #0EA5E9, #0284c7)' }}>
-                {teacher.full_name?.[0] || '؟'}
+              {/* Photo / Avatar */}
+              <div
+                className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg flex-shrink-0 overflow-hidden border-2 border-white/20 bg-slate-800"
+              >
+                {teacher.photo_url ? (
+                  <img
+                    src={teacher.photo_url}
+                    alt={teacher.full_name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '';
+                    }}
+                  />
+                ) : (
+                  teacher.full_name?.[0] || '؟'
+                )}
               </div>
+
               <div>
-                <h1 className="text-xl font-bold text-white">{teacher.full_name}</h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-bold text-white">{teacher.full_name}</h1>
+                  {teacher.aka && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/30">
+                      ★ {teacher.aka}
+                    </span>
+                  )}
+                  {teacher.gender && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/90">
+                      {teacher.gender === 'female' ? '👩 أستاذة' : '👨 أستاذ'}
+                    </span>
+                  )}
+                </div>
+
                 <p className="text-white/70 text-sm mt-1">{teacher.specialization || 'بدون تخصص محدد'}</p>
-                <div className="flex items-center gap-3 mt-2">
+
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
                   <span className={`atlas-badge ${teacher.is_active ? 'atlas-badge-success' : 'atlas-badge-error'}`}>
                     {teacher.is_active ? '✅ نشط' : '⛔ معطل'}
                   </span>
-                  {teacher.revenue_split_type === 'percentage' ? (
-                    <span className="atlas-badge" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
-                      <Percent size={12} className="ml-1" />
-                      {Number(teacher.revenue_split_percent)}% نسبة المدرس
-                    </span>
-                  ) : (
-                    <span className="atlas-badge" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
-                      <Coins size={12} className="ml-1" />
-                      {Number(teacher.fixed_rate_per_student)} ج/طالب
+                  <span className="atlas-badge" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
+                    <BookOpen size={12} className="ml-1" />
+                    {groups.length} مجموعة دراسية
+                  </span>
+
+                  {teacher.national_id && (
+                    <span className="text-xs text-white/60 font-mono">
+                      الرقم القومي: {teacher.national_id}
                     </span>
                   )}
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="atlas-btn text-sm text-white/80 hover:text-white hover:bg-white/10 border border-white/20"
-            >
-              <Edit2 size={16} />
-              تعديل
-            </button>
+
+            <div className="flex items-center gap-3">
+              {teacher.logo_url && (
+                <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/20 bg-white/10 p-1 flex items-center justify-center">
+                  <img src={teacher.logo_url} alt="شعار المدرس" className="max-h-full max-w-full object-contain" />
+                </div>
+              )}
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="atlas-btn text-sm text-white/90 hover:text-white hover:bg-white/10 border border-white/20"
+              >
+                <Edit2 size={16} />
+                تعديل الملف
+              </button>
+            </div>
           </div>
         </div>
 
@@ -128,7 +164,9 @@ export default function TeacherDetailPage() {
         <div className="px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 border-b" style={{ borderColor: '#E2E8F0' }}>
           <div className="flex items-center gap-2">
             <Phone size={16} style={{ color: '#64748B' }} />
-            <span className="text-sm font-mono" style={{ color: '#1E293B' }}>{teacher.phone || '—'}</span>
+            <a href={`tel:${teacher.phone}`} className="text-sm font-mono font-bold text-sky-700 hover:underline">
+              {teacher.phone || '—'}
+            </a>
           </div>
           <div className="flex items-center gap-2">
             <Mail size={16} style={{ color: '#64748B' }} />
@@ -144,9 +182,60 @@ export default function TeacherDetailPage() {
           </div>
         </div>
 
+        {/* Secretariat & Social Media Bar */}
+        {(teacher.secretary_name || teacher.secretary_phone || (teacher.social_links && Object.values(teacher.social_links).some(Boolean))) && (
+          <div className="px-6 py-3 bg-slate-50 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs" style={{ borderColor: '#E2E8F0' }}>
+            {/* Secretariat */}
+            {(teacher.secretary_name || teacher.secretary_phone) && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <span className="font-bold text-slate-900">🛡️ سكرتارية المدرس:</span>
+                <span>{teacher.secretary_name || 'مسؤول السكرتارية'}</span>
+                {teacher.secretary_phone && (
+                  <a href={`tel:${teacher.secretary_phone}`} className="font-mono font-bold text-emerald-700 hover:underline">
+                    ({teacher.secretary_phone})
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Social Links */}
+            {teacher.social_links && (
+              <div className="flex items-center gap-2">
+                {teacher.social_links.facebook && (
+                  <a href={teacher.social_links.facebook} target="_blank" rel="noreferrer" className="px-2 py-1 rounded bg-blue-100 text-blue-800 font-bold hover:bg-blue-200">
+                    فيسبوك
+                  </a>
+                )}
+                {teacher.social_links.youtube && (
+                  <a href={teacher.social_links.youtube} target="_blank" rel="noreferrer" className="px-2 py-1 rounded bg-red-100 text-red-800 font-bold hover:bg-red-200">
+                    يوتيوب
+                  </a>
+                )}
+                {teacher.social_links.telegram && (
+                  <a href={teacher.social_links.telegram} target="_blank" rel="noreferrer" className="px-2 py-1 rounded bg-sky-100 text-sky-800 font-bold hover:bg-sky-200">
+                    تليجرام
+                  </a>
+                )}
+                {teacher.social_links.whatsapp && (
+                  <a href={teacher.social_links.whatsapp} target="_blank" rel="noreferrer" className="px-2 py-1 rounded bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200">
+                    واتساب
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bio */}
+        {teacher.bio && (
+          <div className="px-6 py-3 bg-blue-50/40 border-b text-xs text-slate-700 leading-relaxed" style={{ borderColor: '#E2E8F0' }}>
+            <strong>نبذة:</strong> {teacher.bio}
+          </div>
+        )}
+
         {/* Notes */}
         {teacher.notes && (
-          <div className="px-6 py-3 bg-amber-50/50 border-b text-xs text-amber-800" style={{ borderColor: '#E2E8F0' }}>
+          <div className="px-6 py-2.5 bg-amber-50/50 border-b text-xs text-amber-800" style={{ borderColor: '#E2E8F0' }}>
             📝 {teacher.notes}
           </div>
         )}

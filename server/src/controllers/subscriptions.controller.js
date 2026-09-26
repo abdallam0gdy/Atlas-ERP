@@ -35,6 +35,8 @@ const getStudentAccount = async (req, res, next) => {
          ge.enrolled_at,
          ge.is_active as enrollment_active,
          ge.enrollment_type,
+         COALESCE(ge.discount_type, s_sub.discount_type, 'FIXED') as discount_type,
+         COALESCE(ge.discount_value, s_sub.discount_value, 0.00) as discount_value,
          g.id as group_id,
          g.name as group_name,
          g.name_ar as group_name_ar,
@@ -173,20 +175,20 @@ const renewSubscription = async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    // Ensure student is enrolled in group with correct enrollment_type
+    // Ensure student is enrolled in group with correct enrollment_type and persistent discount
     const enrollCheck = await client.query(
-      `SELECT id, is_active, enrollment_type FROM group_enrollments WHERE student_id = $1 AND group_id = $2`,
+      `SELECT id, is_active, enrollment_type, discount_type, discount_value FROM group_enrollments WHERE student_id = $1 AND group_id = $2`,
       [student_id, group_id]
     );
     if (enrollCheck.rows.length === 0) {
       await client.query(
-        `INSERT INTO group_enrollments (student_id, group_id, enrollment_type, is_active) VALUES ($1, $2, $3, true)`,
-        [student_id, group_id, finalEnrollmentType]
+        `INSERT INTO group_enrollments (student_id, group_id, enrollment_type, discount_type, discount_value, is_active) VALUES ($1, $2, $3, $4, $5, true)`,
+        [student_id, group_id, finalEnrollmentType, finalDiscountType, finalDiscountValue]
       );
     } else {
       await client.query(
-        `UPDATE group_enrollments SET is_active = true, enrollment_type = $1 WHERE id = $2`,
-        [finalEnrollmentType, enrollCheck.rows[0].id]
+        `UPDATE group_enrollments SET is_active = true, enrollment_type = $1, discount_type = $2, discount_value = $3, updated_at = NOW() WHERE id = $4`,
+        [finalEnrollmentType, finalDiscountType, finalDiscountValue, enrollCheck.rows[0].id]
       );
     }
 
@@ -627,6 +629,12 @@ const refundClearance = async (req, res, next) => {
     const pricePerSession = parseFloat(groupRow.price_per_session) || 
                             (parseFloat(groupRow.price_per_month) ? Math.round(parseFloat(groupRow.price_per_month) / 4) : 0);
 
+    // Fetch student's persistent discount in this group
+    const enrollRes = await client.query(
+      `SELECT discount_type, discount_value FROM group_enrollments WHERE student_id = $1 AND group_id = $2`,
+      [student_id, group_id]
+    );
+
     // 2. Fetch all active or unpaid subscriptions for this group
     const allSubsRes = await client.query(
       `SELECT * FROM student_subscriptions
@@ -638,6 +646,17 @@ const refundClearance = async (req, res, next) => {
     if (allSubsRes.rows.length === 0) {
       throw new BadRequestError('لا يوجد اشتراك مسجل لهذا الطالب في هذه المجموعة لتصفيته');
     }
+
+    const dType = enrollRes.rows[0]?.discount_type || allSubsRes.rows[0]?.discount_type || 'FIXED';
+    const dVal = parseFloat(enrollRes.rows[0]?.discount_value ?? allSubsRes.rows[0]?.discount_value ?? 0);
+
+    let sessionDiscount = 0;
+    if (dType === 'PERCENT' && dVal > 0) {
+      sessionDiscount = (pricePerSession * Math.min(100, dVal)) / 100;
+    } else if (dType === 'FIXED' && dVal > 0) {
+      sessionDiscount = dVal / 4;
+    }
+    const effectivePricePerSession = Math.max(0, pricePerSession - sessionDiscount);
 
     // Calculate total remaining sessions across active subscriptions
     let totalClearedSessions = 0;
@@ -654,12 +673,12 @@ const refundClearance = async (req, res, next) => {
       throw new BadRequestError('لا توجد حصص متبقية أو مديونية مستحقة لتصفية الحساب في هذه المجموعة');
     }
 
-    const grossSessionsValue = Math.max(0, totalClearedSessions * pricePerSession);
+    const grossSessionsValue = Math.max(0, Math.round(totalClearedSessions * effectivePricePerSession));
     const maxAllowedRefund = Math.max(0, grossSessionsValue - totalCurrentDebt);
 
     if (refundNum > maxAllowedRefund + 0.001) {
       throw new BadRequestError(
-        `مبلغ الاسترداد (${refundNum} ج.م) يتجاوز صافي المستحق للطالب (${maxAllowedRefund} ج.م) بعد خصم المديونية (${totalCurrentDebt} ج.م) من قيمة الحصص المتبقية (${grossSessionsValue} ج.م)`
+        `مبلغ الاسترداد (${refundNum} ج.م) يتجاوز صافي المستحق للطالب (${maxAllowedRefund} ج.م) بعد خصم المديونية (${totalCurrentDebt} ج.م) من قيمة الحصص المتبقية بسعر الخصم الفعلي (${grossSessionsValue} ج.م)`
       );
     }
 

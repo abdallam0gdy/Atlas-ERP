@@ -126,12 +126,24 @@ export default function StudentDetailPage() {
       <div className="atlas-card p-6 lg:p-8 animate-fade-in-up">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            {/* Avatar */}
+            {/* Avatar with Photo Support */}
             <div
-              className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-extrabold text-3xl shadow-lg flex-shrink-0"
+              className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-extrabold text-3xl shadow-lg flex-shrink-0 overflow-hidden border-2 border-slate-200"
               style={{ background: 'linear-gradient(135deg, #0C3C82 0%, #1a5ab8 100%)' }}
             >
-              {student.full_name?.[0] || 'ط'}
+              {student.photo_url ? (
+                <img
+                  src={student.photo_url}
+                  alt={student.full_name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '';
+                  }}
+                />
+              ) : (
+                student.full_name?.[0] || 'ط'
+              )}
             </div>
 
             <div>
@@ -139,6 +151,13 @@ export default function StudentDetailPage() {
                 <h1 className="text-2xl font-black text-slate-900">
                   {student.full_name}
                 </h1>
+                {student.gender && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    student.gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {student.gender === 'female' ? '👧 أنثى' : '👦 ذكر'}
+                  </span>
+                )}
                 {student.student_code && (
                   <span className="text-sm font-mono font-bold px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 border border-sky-200">
                     كود السنتر: #{student.student_code}
@@ -172,12 +191,21 @@ export default function StudentDetailPage() {
                 <span className={`atlas-badge ${student.enrollment_type === 'PRIVATE' ? 'atlas-badge-warning' : 'atlas-badge-success'}`}>
                   {student.enrollment_type === 'PRIVATE' ? '👤 برايفت مدرس' : '🏫 باقة سنتر'}
                 </span>
+
+                {student.national_id && (
+                  <>
+                    <span>•</span>
+                    <span className="text-xs text-slate-500 font-mono">
+                      الرقم القومي: {student.national_id}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           {/* Quick Contact Box */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-sm sm:w-72">
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-sm sm:w-80">
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500 font-medium">موبايل الطالب:</span>
               {student.phone ? (
@@ -188,20 +216,40 @@ export default function StudentDetailPage() {
                 <span className="text-xs text-slate-400">غير مسجل</span>
               )}
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-medium">موبايل ولي الأمر:</span>
-              {student.parent_phone ? (
+            {student.father_phone && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">هاتف الأب:</span>
+                <a href={`tel:${student.father_phone}`} className="font-mono font-bold text-sky-700 hover:underline">
+                  {student.father_phone}
+                </a>
+              </div>
+            )}
+            {student.mother_phone && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">هاتف الأم:</span>
+                <a href={`tel:${student.mother_phone}`} className="font-mono font-bold text-sky-700 hover:underline">
+                  {student.mother_phone}
+                </a>
+              </div>
+            )}
+            {student.parent_phone && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">رقم ولي الأمر:</span>
                 <a href={`tel:${student.parent_phone}`} className="font-mono font-bold text-sky-700 hover:underline">
                   {student.parent_phone}
                 </a>
-              ) : (
-                <span className="text-xs text-slate-400">غير مسجل</span>
-              )}
-            </div>
+              </div>
+            )}
             {student.parent_name && (
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>اسم ولي الأمر:</span>
                 <span className="font-semibold text-slate-800">{student.parent_name}</span>
+              </div>
+            )}
+            {student.address && (
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/60">
+                <span>العنوان:</span>
+                <span className="font-medium text-slate-700 truncate max-w-[180px]">{student.address}</span>
               </div>
             )}
           </div>

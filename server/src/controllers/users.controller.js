@@ -24,7 +24,7 @@ const ALL_SYSTEM_PAGES = [
 const getUsers = async (req, res, next) => {
   try {
     const result = await db.query(
-      `SELECT u.id, u.username, u.full_name, u.full_name_ar, u.phone, u.email,
+      `SELECT u.id, u.username, u.full_name, u.full_name_ar, u.phone, u.email, u.photo_url,
               u.is_active, u.last_login_at, u.created_at,
               r.id as role_id, r.name as role_name, r.label_ar as role_label_ar,
               r.allowed_pages, r.is_system as role_is_system
@@ -42,6 +42,7 @@ const getUsers = async (req, res, next) => {
         fullNameAr: u.full_name_ar,
         phone: u.phone,
         email: u.email,
+        photoUrl: u.photo_url,
         isActive: u.is_active,
         lastLoginAt: u.last_login_at,
         createdAt: u.created_at,
@@ -114,7 +115,7 @@ const getUserById = async (req, res, next) => {
  */
 const createUser = async (req, res, next) => {
   try {
-    const { username, password, fullName, fullNameAr, phone, email, roleId } = req.body;
+    const { username, password, fullName, fullNameAr, phone, email, photoUrl, roleId } = req.body;
 
     if (!username || !password || !fullName || !roleId) {
       return res.status(400).json({
@@ -160,10 +161,10 @@ const createUser = async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const insertResult = await db.query(
-      `INSERT INTO users (username, password_hash, full_name, full_name_ar, phone, email, role_id, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-       RETURNING id, username, full_name, full_name_ar, phone, email, is_active, created_at`,
-      [cleanUsername, passwordHash, fullName.trim(), fullNameAr?.trim() || fullName.trim(), phone || null, email || null, roleId]
+      `INSERT INTO users (username, password_hash, full_name, full_name_ar, phone, email, photo_url, role_id, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+       RETURNING id, username, full_name, full_name_ar, phone, email, photo_url, is_active, created_at`,
+      [cleanUsername, passwordHash, fullName.trim(), fullNameAr?.trim() || fullName.trim(), phone || null, email || null, photoUrl || null, roleId]
     );
 
     const newUser = insertResult.rows[0];
@@ -179,6 +180,7 @@ const createUser = async (req, res, next) => {
         fullNameAr: newUser.full_name_ar,
         phone: newUser.phone,
         email: newUser.email,
+        photoUrl: newUser.photo_url,
         isActive: newUser.is_active,
         role: {
           id: role.id,
@@ -200,7 +202,7 @@ const createUser = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { fullName, fullNameAr, phone, email, roleId, isActive } = req.body;
+    const { fullName, fullNameAr, phone, email, photoUrl, roleId, isActive } = req.body;
 
     const userCheck = await db.query('SELECT id, username, role_id FROM users WHERE id = $1', [id]);
     if (userCheck.rows.length === 0) {
@@ -223,16 +225,18 @@ const updateUser = async (req, res, next) => {
            full_name_ar = COALESCE($2, full_name_ar),
            phone = $3,
            email = $4,
-           role_id = COALESCE($5, role_id),
-           is_active = COALESCE($6, is_active),
+           photo_url = COALESCE($5, photo_url),
+           role_id = COALESCE($6, role_id),
+           is_active = COALESCE($7, is_active),
            updated_at = NOW()
-       WHERE id = $7
-       RETURNING id, username, full_name, full_name_ar, phone, email, is_active, role_id`,
+       WHERE id = $8
+       RETURNING id, username, full_name, full_name_ar, phone, email, photo_url, is_active, role_id`,
       [
         fullName?.trim() || null,
         fullNameAr?.trim() || null,
         phone || null,
         email || null,
+        photoUrl !== undefined ? photoUrl : null,
         roleId || null,
         isActive !== undefined ? isActive : null,
         id,
@@ -253,6 +257,7 @@ const updateUser = async (req, res, next) => {
         fullNameAr: u.full_name_ar,
         phone: u.phone,
         email: u.email,
+        photoUrl: u.photo_url,
         isActive: u.is_active,
         role: {
           id: role.id,

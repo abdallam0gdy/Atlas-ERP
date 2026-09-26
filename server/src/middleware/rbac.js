@@ -81,4 +81,41 @@ const requirePermission = (...requiredPermissions) => {
   };
 };
 
-module.exports = { authorize, requirePermission };
+/**
+ * Page-Level Access Control
+ * Checks if user's role has permission for a specific page module (from allowed_pages)
+ * SUPER_ADMIN_OWNER always bypasses.
+ * 
+ * Usage:
+ *   router.use(requirePageAccess('finance'));
+ */
+const requirePageAccess = (pageKey) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        code: 'AUTH_REQUIRED',
+        message: 'الرجاء تسجيل الدخول أولاً',
+      });
+    }
+
+    // SUPER_ADMIN_OWNER always has unrestricted access
+    if (req.user.roleName === 'SUPER_ADMIN_OWNER') {
+      return next();
+    }
+
+    const allowed = req.user.allowedPages || [];
+    if (!allowed.includes(pageKey)) {
+      return res.status(403).json({
+        success: false,
+        code: 'FORBIDDEN',
+        message: `ليس لديك صلاحية الوصول إلى هذا القسم (${pageKey})`,
+        page: pageKey,
+      });
+    }
+
+    next();
+  };
+};
+
+module.exports = { authorize, requirePermission, requirePageAccess };

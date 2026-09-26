@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorize, requirePageAccess } = require('../middleware/rbac');
 const { validate, createGroupSchema } = require('../utils/validators');
 const { listGroups, getGroup, createGroup, updateGroup, enrollStudent } = require('../controllers/groups.controller');
 
 router.use(authenticate);
+router.use(requirePageAccess('groups'));
 
 router.get('/',
   authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT', 'RECEPTIONIST'),

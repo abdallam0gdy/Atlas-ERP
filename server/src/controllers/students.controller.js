@@ -60,8 +60,9 @@ const listStudents = async (req, res, next) => {
 
     // Fetch paginated results
     const dataResult = await db.query(
-      `SELECT s.id, s.barcode_id, s.student_code, s.full_name, s.full_name_ar, s.phone, s.parent_phone, s.parent_name, s.notes,
-              s.billing_model, s.education_type, s.enrollment_type, s.is_active, s.photo_url, s.created_at,
+      `SELECT s.id, s.barcode_id, s.student_code, s.full_name, s.full_name_ar, s.phone, s.parent_phone, s.parent_name,
+              s.father_phone, s.mother_phone, s.gender, s.national_id, s.date_of_birth, s.notes,
+              s.billing_model, s.education_type, s.enrollment_type, s.is_active, s.photo_url, s.address, s.created_at,
               g.name_ar as grade_name, g.grade_order,
               ss.name_ar as status_name, ss.discount_percent,
               (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.student_id = s.id AND ge.is_active = true) as group_count
@@ -206,16 +207,24 @@ const createStudent = async (req, res, next) => {
       throw new ConflictError(`الباركود أو كود الطالب (${barcodeId}) مستخدم بالفعل`);
     }
 
+    const parentPhone = data.parent_phone || data.father_phone || data.mother_phone || data.phone || null;
+    const parentName = data.parent_name || 'ولي أمر الطالب';
+
     const result = await client.query(
       `INSERT INTO students (barcode_id, student_code, full_name, full_name_ar, phone, parent_phone, parent_name,
+                              father_phone, mother_phone, gender, national_id, date_of_birth,
                               grade_id, status_id, billing_model, education_type, enrollment_type, photo_url, address, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING *`,
       [
-        barcodeId, studentCode, data.full_name, data.full_name_ar, data.phone, data.parent_phone,
-        data.parent_name, data.grade_id, data.status_id || null, data.billing_model || 'PACKAGE_BUNDLE',
+        barcodeId, studentCode, data.full_name, data.full_name_ar || null,
+        data.phone, parentPhone, parentName,
+        data.father_phone || null, data.mother_phone || null,
+        data.gender || 'male', data.national_id || null,
+        data.date_of_birth ? data.date_of_birth : null,
+        data.grade_id, data.status_id || null, data.billing_model || 'PACKAGE_BUNDLE',
         data.education_type || 'PUBLIC', data.enrollment_type || 'PACKAGE',
-        data.photo_url, data.address, data.notes,
+        data.photo_url || null, data.address || null, data.notes || null,
       ]
     );
 
@@ -277,13 +286,20 @@ const updateStudent = async (req, res, next) => {
 
     const updatableFields = [
       'full_name', 'full_name_ar', 'phone', 'parent_phone', 'parent_name',
+      'father_phone', 'mother_phone', 'gender', 'national_id', 'date_of_birth',
       'grade_id', 'status_id', 'billing_model', 'education_type', 'enrollment_type', 'photo_url', 'address', 'notes', 'is_active',
     ];
 
     for (const field of updatableFields) {
       if (data[field] !== undefined) {
         fields.push(`${field} = $${paramIndex}`);
-        const val = ((field === 'status_id' || field === 'grade_id') && !data[field]) ? null : data[field];
+        let val = data[field];
+        if (
+          ['status_id', 'grade_id', 'date_of_birth', 'national_id', 'father_phone', 'mother_phone', 'parent_phone', 'parent_name', 'photo_url', 'address', 'notes'].includes(field) &&
+          (val === '' || val === undefined)
+        ) {
+          val = null;
+        }
         values.push(val);
         paramIndex++;
       }

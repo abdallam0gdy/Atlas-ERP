@@ -27,47 +27,68 @@ const createStudentSchema = Joi.object({
     'string.pattern.base': 'رقم موبايل الطالب غير صحيح',
     'any.required': 'رقم موبايل الطالب مطلوب',
   }),
-  parent_phone: phonePattern.required().messages({
-    'string.empty': 'رقم ولي الأمر مطلوب',
-    'string.pattern.base': 'رقم ولي الأمر غير صحيح',
-    'any.required': 'رقم ولي الأمر مطلوب',
-  }),
-  parent_name: Joi.string().min(2).max(150).required().messages({
-    'string.empty': 'اسم ولي الأمر مطلوب',
-    'any.required': 'اسم ولي الأمر مطلوب',
-  }),
+  parent_phone: phonePattern.allow('', null),
+  parent_name: Joi.string().max(150).allow('', null),
+  father_phone: phonePattern.allow('', null),
+  mother_phone: phonePattern.allow('', null),
+  gender: Joi.string().valid('male', 'female').default('male').allow('', null),
+  national_id: Joi.string().max(20).allow('', null),
+  date_of_birth: Joi.string().max(30).allow('', null),
   grade_id: uuidPattern.required().messages({
     'string.empty': 'المرحلة الدراسية مطلوبة',
     'any.required': 'المرحلة الدراسية مطلوبة',
   }),
   status_id: uuidPattern.allow('', null),
   billing_model: Joi.string().valid('PACKAGE_BUNDLE', 'PER_SUBJECT').default('PACKAGE_BUNDLE').allow('', null),
-  education_type: Joi.string().valid('PUBLIC', 'LANGUAGES').default('PUBLIC'),
-  enrollment_type: Joi.string().valid('PACKAGE', 'PRIVATE').default('PACKAGE'),
-  photo_url: Joi.string().uri().max(500).allow('', null),
+  education_type: Joi.string().valid('PUBLIC', 'LANGUAGES').default('PUBLIC').allow('', null),
+  enrollment_type: Joi.string().valid('PACKAGE', 'PRIVATE').default('PACKAGE').allow('', null),
+  photo_url: Joi.string().max(500).allow('', null),
   address: Joi.string().max(500).allow('', null),
   notes: Joi.string().max(1000).allow('', null),
   group_ids: Joi.array().items(uuidPattern.allow('', null)).optional(),
 });
 
 const updateStudentSchema = createStudentSchema.fork(
-  ['full_name', 'phone', 'parent_phone', 'parent_name', 'grade_id', 'education_type', 'enrollment_type'],
+  [
+    'full_name', 'phone', 'parent_phone', 'parent_name', 'father_phone', 'mother_phone',
+    'gender', 'national_id', 'date_of_birth', 'grade_id', 'education_type', 'enrollment_type',
+    'photo_url', 'address', 'notes'
+  ],
   (field) => field.optional()
-);
+).keys({
+  is_active: Joi.boolean().optional(),
+});
 
 // Teacher
 const createTeacherSchema = Joi.object({
   full_name: Joi.string().min(2).max(150).required(),
   full_name_ar: Joi.string().max(150).allow('', null),
+  aka: Joi.string().max(100).allow('', null),
   phone: phonePattern.allow('', null),
   email: Joi.string().email().max(100).allow('', null),
+  gender: Joi.string().valid('male', 'female').default('male').allow('', null),
+  national_id: Joi.string().max(20).allow('', null),
+  date_of_birth: Joi.string().max(30).allow('', null),
   specialization: Joi.string().max(100).allow('', null),
   subject_id: uuidPattern.allow('', null),
   subject_ids: Joi.array().items(uuidPattern).optional(),
   revenue_split_percent: Joi.number().min(0).max(100).default(0),
   revenue_split_type: Joi.string().valid('percentage', 'fixed', 'hybrid').default('percentage'),
   fixed_rate_per_student: Joi.number().min(0).default(0),
+  bio: Joi.string().allow('', null),
+  social_links: Joi.alternatives().try(Joi.object(), Joi.string()).optional(),
+  secretary_name: Joi.string().max(150).allow('', null),
+  secretary_phone: phonePattern.allow('', null),
+  photo_url: Joi.string().max(500).allow('', null),
+  logo_url: Joi.string().max(500).allow('', null),
   notes: Joi.string().max(1000).allow('', null),
+});
+
+const updateTeacherSchema = createTeacherSchema.fork(
+  ['full_name'],
+  (field) => field.optional()
+).keys({
+  is_active: Joi.boolean().optional(),
 });
 
 // Group

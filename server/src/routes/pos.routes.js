@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorize, requirePageAccess } = require('../middleware/rbac');
 const {
   listInventory,
   createItem,
@@ -13,6 +13,7 @@ const {
 } = require('../controllers/pos.controller');
 
 router.use(authenticate);
+router.use(requirePageAccess('pos'));
 
 // Inventory
 router.get('/inventory', listInventory);

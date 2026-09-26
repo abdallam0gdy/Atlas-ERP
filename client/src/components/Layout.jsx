@@ -10,7 +10,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 
 // Protected route wrapper
-export function ProtectedRoute({ allowedRoles, pageId }) {
+export function ProtectedRoute({ allowedRoles, pageId, adminOnly }) {
   const { isAuthenticated, user, hasPageAccess } = useAuthStore();
 
   if (!isAuthenticated) {
@@ -22,8 +22,14 @@ export function ProtectedRoute({ allowedRoles, pageId }) {
     return <Outlet />;
   }
 
+  if (adminOnly) {
+    toast.error('هذه الصفحة مخصصة لمالك النظام فقط');
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Check pageId permission if specified
   if (pageId && !hasPageAccess(pageId)) {
+    toast.error('عفواً، ليس لديك صلاحية الوصول إلى هذه الصفحة');
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -31,6 +37,7 @@ export function ProtectedRoute({ allowedRoles, pageId }) {
   if (allowedRoles && allowedRoles.length > 0) {
     const hasAccess = allowedRoles.includes(user?.role?.name);
     if (!hasAccess) {
+      toast.error('عفواً، دورك الحالي لا يملك صلاحية الوصول إلى هذه الصفحة');
       return <Navigate to="/dashboard" replace />;
     }
   }
