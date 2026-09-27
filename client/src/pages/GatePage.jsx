@@ -628,21 +628,32 @@ export default function GatePage() {
                     {/* Today's Registered Sessions */}
                     {scanResult.data?.sessions?.length > 0 && (
                       <div className="mt-3 space-y-2 text-right">
+                        {scanResult.data.sessions.length > 1 && (
+                          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold animate-pulse">
+                            <CheckCircle2 size={16} className="text-cyan-300 shrink-0" />
+                            <span>تسجيل ذكي: تم إثبات حضور الحصص المتتالية معاً (لا داعي للخروج للمسح مرة أخرى)</span>
+                          </div>
+                        )}
                         {scanResult.data.sessions.map((session, i) => (
                           <div
                             key={i}
                             className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/10 border border-white/5"
                           >
                             <div>
-                              <p className="text-white text-sm font-semibold">
-                                {session.subjectName || session.groupName}
+                              <p className="text-white text-sm font-semibold flex items-center gap-2">
+                                <span>{session.subjectName || session.groupName}</span>
+                                {session.startTime && (
+                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 font-normal">
+                                    {session.startTime} {session.endTime ? `— ${session.endTime}` : ''}
+                                  </span>
+                                )}
                               </p>
-                              <p className="text-white/50 text-xs">
-                                {session.teacherName} • {session.classroomName}
+                              <p className="text-white/50 text-xs mt-0.5">
+                                {session.teacherName} • {session.classroomName || 'القاعة المحددة'}
                               </p>
                             </div>
-                            <span className="text-xs font-bold text-emerald-400">
-                              {session.paymentStatus === 'paid' ? '✅ مدفوع' : '⚠️ يحتاج دفع'}
+                            <span className={`text-xs font-bold ${session.paymentStatus === 'paid' ? 'text-emerald-400' : session.paymentStatus === 'free' ? 'text-cyan-400' : 'text-amber-400'}`}>
+                              {session.paymentStatus === 'paid' ? '✅ مدفوع' : session.paymentStatus === 'free' ? '🎁 مجاني' : '⚠️ يحتاج دفع'}
                             </span>
                           </div>
                         ))}

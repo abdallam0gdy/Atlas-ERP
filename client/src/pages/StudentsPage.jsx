@@ -31,10 +31,12 @@ export default function StudentsPage() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
 
-  const fetchStudents = async (page = 1) => {
+  const [pageSize, setPageSize] = useState(25);
+
+  const fetchStudents = async (page = 1, currentLimit = pageSize) => {
     setLoading(true);
     try {
-      const params = { page, limit: 20, search, sort_by: 'created_at', sort_order: 'desc' };
+      const params = { page, limit: currentLimit, search, sort_by: 'created_at', sort_order: 'desc' };
       if (selectedGrade) params.grade_id = selectedGrade;
       if (selectedEnrollmentType) params.enrollment_type = selectedEnrollmentType;
       if (selectedEducationType) params.education_type = selectedEducationType;
@@ -42,7 +44,7 @@ export default function StudentsPage() {
 
       const { data } = await api.get('/students', { params });
       setStudents(data.data.students || []);
-      setPagination(data.data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
+      setPagination(data.data.pagination || { page, limit: currentLimit, total: 0, totalPages: 0 });
     } catch (err) {
       console.error('Failed to load students:', err);
       toast.error('فشل تحميل قائمة الطلاب');
@@ -56,9 +58,9 @@ export default function StudentsPage() {
   }, []);
 
   useEffect(() => {
-    const debounce = setTimeout(() => fetchStudents(1), 300);
+    const debounce = setTimeout(() => fetchStudents(1, pageSize), 300);
     return () => clearTimeout(debounce);
-  }, [search, selectedGrade, selectedEnrollmentType, selectedEducationType, selectedStatus]);
+  }, [search, selectedGrade, selectedEnrollmentType, selectedEducationType, selectedStatus, pageSize]);
 
   const hasActiveFilters = Boolean(
     search || selectedGrade || selectedEnrollmentType || selectedEducationType || selectedStatus
@@ -558,31 +560,87 @@ export default function StudentsPage() {
         )}
 
         {/* Pagination Bar */}
-        {pagination.totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-3 bg-slate-50/50">
+          <div className="flex flex-wrap items-center gap-3">
             <p className="text-xs text-slate-500">
-              عرض الصفحة <span className="font-bold text-slate-800">{pagination.page}</span> من أصل <span className="font-bold text-slate-800">{pagination.totalPages}</span> صفحات ({pagination.total} إجمالي)
+              عرض <span className="font-bold text-slate-800">{students.length}</span> من أصل <span className="font-bold text-slate-800">{pagination.total}</span> طالب
+              {pagination.totalPages > 1 && (
+                <span className="mr-1">
+                  (صفحة <span className="font-bold text-slate-800">{pagination.page}</span> من <span className="font-bold text-slate-800">{pagination.totalPages}</span>)
+                </span>
+              )}
             </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => fetchStudents(pagination.page - 1)}
-                disabled={pagination.page <= 1}
-                className="atlas-btn atlas-btn-ghost text-xs flex items-center gap-1 disabled:opacity-40"
+
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 border-r border-slate-200 pr-3">
+              <span>الحد الأقصى بالصفحة:</span>
+              <select
+                id="students-page-size"
+                value={pageSize}
+                onChange={(e) => {
+                  const newLimit = Number(e.target.value);
+                  setPageSize(newLimit);
+                  fetchStudents(1, newLimit);
+                }}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs"
               >
-                <ChevronRight size={15} />
-                <span>السابق</span>
-              </button>
-              <button
-                onClick={() => fetchStudents(pagination.page + 1)}
-                disabled={pagination.page >= pagination.totalPages}
-                className="atlas-btn atlas-btn-ghost text-xs flex items-center gap-1 disabled:opacity-40"
-              >
-                <span>التالي</span>
-                <ChevronLeft size={15} />
-              </button>
+                <option value={10}>10 طلاب</option>
+                <option value={25}>25 طالب</option>
+                <option value={50}>50 طالب</option>
+                <option value={100}>100 طالب</option>
+                <option value={200}>200 طالب</option>
+                <option value={500}>500 طالب</option>
+              </select>
             </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => fetchStudents(pagination.page - 1, pageSize)}
+              disabled={pagination.page <= 1}
+              className="atlas-btn atlas-btn-ghost text-xs flex items-center gap-1 disabled:opacity-40"
+              title="الصفحة السابقة"
+            >
+              <ChevronRight size={15} />
+              <span>السابق</span>
+            </button>
+
+            {/* Quick page numbers */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, idx) => {
+                  let p = idx + 1;
+                  if (pagination.totalPages > 5 && pagination.page > 3) {
+                    p = pagination.page - 2 + idx;
+                    if (p > pagination.totalPages) p = pagination.totalPages - (4 - idx);
+                  }
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => fetchStudents(p, pageSize)}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                        pagination.page === p
+                          ? 'bg-sky-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              onClick={() => fetchStudents(pagination.page + 1, pageSize)}
+              disabled={pagination.page >= pagination.totalPages}
+              className="atlas-btn atlas-btn-ghost text-xs flex items-center gap-1 disabled:opacity-40"
+              title="الصفحة التالية"
+            >
+              <span>التالي</span>
+              <ChevronLeft size={15} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Add Single Student Modal */}

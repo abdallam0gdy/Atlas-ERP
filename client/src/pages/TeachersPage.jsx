@@ -8,13 +8,16 @@ import {
   Search, Plus, Phone, GraduationCap, Users,
   Loader2, BookOpen, Percent, Coins, Edit2,
   ToggleLeft, ToggleRight, Download, Printer, Filter,
-  RefreshCw, X, LayoutGrid, Table as TableIcon, Upload
+  RefreshCw, X, LayoutGrid, Table as TableIcon, Upload,
+  ChevronRight, ChevronLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function TeachersPage() {
   const navigate = useNavigate();
   const [teachers, setTeachers] = useState([]);
+  const [pageSize, setPageSize] = useState(25);
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 0 });
   const [search, setSearch] = useState('');
   const [selectedSplitType, setSelectedSplitType] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -37,10 +40,10 @@ export default function TeachersPage() {
     }
   };
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = async (page = 1, currentLimit = pageSize) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { page, limit: currentLimit };
       if (search) params.search = search;
       if (selectedSplitType) params.revenue_split_type = selectedSplitType;
       if (selectedStatus !== '') params.is_active = selectedStatus === 'active';
@@ -48,6 +51,7 @@ export default function TeachersPage() {
 
       const { data } = await api.get('/teachers', { params });
       setTeachers(data.data || []);
+      setPagination(data.pagination || { page, limit: currentLimit, total: data.data?.length || 0, totalPages: 1 });
     } catch (err) {
       console.error('Failed to load teachers:', err);
       toast.error('فشل تحميل قائمة المدرسين');
@@ -61,9 +65,9 @@ export default function TeachersPage() {
   }, []);
 
   useEffect(() => {
-    const debounce = setTimeout(() => fetchTeachers(), 300);
+    const debounce = setTimeout(() => fetchTeachers(1, pageSize), 300);
     return () => clearTimeout(debounce);
-  }, [search, selectedSplitType, selectedStatus, selectedSubject]);
+  }, [search, selectedSplitType, selectedStatus, selectedSubject, pageSize]);
 
   const hasActiveFilters = Boolean(search || selectedSplitType || selectedStatus || selectedSubject);
 
@@ -187,7 +191,7 @@ export default function TeachersPage() {
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" style={{ color: '#0C3C82' }}>
             <span>إدارة المدرسين</span>
             <span className="atlas-badge bg-sky-100 text-sky-800 text-xs">
-              {teachers.length} مدرس
+              {pagination.total || teachers.length} مدرس
             </span>
           </h1>
           <p className="text-xs sm:text-sm mt-1 text-slate-500">
@@ -572,6 +576,87 @@ export default function TeachersPage() {
           ))}
         </div>
       )}
+
+      {/* Pagination Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between p-4 border border-slate-200/80 rounded-2xl bg-white shadow-2xs gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-xs text-slate-500">
+            عرض <span className="font-bold text-slate-800">{teachers.length}</span> من أصل <span className="font-bold text-slate-800">{pagination.total}</span> مدرس
+            {pagination.totalPages > 1 && (
+              <span className="mr-1">
+                (صفحة <span className="font-bold text-slate-800">{pagination.page}</span> من <span className="font-bold text-slate-800">{pagination.totalPages}</span>)
+              </span>
+            )}
+          </p>
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 border-r border-slate-200 pr-3">
+            <span>الحد الأقصى بالصفحة:</span>
+            <select
+              id="teachers-page-size"
+              value={pageSize}
+              onChange={(e) => {
+                const newLimit = Number(e.target.value);
+                setPageSize(newLimit);
+                fetchTeachers(1, newLimit);
+              }}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs"
+            >
+              <option value={10}>10 مدرسين</option>
+              <option value={25}>25 مدرس</option>
+              <option value={50}>50 مدرس</option>
+              <option value={100}>100 مدرس</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => fetchTeachers(pagination.page - 1, pageSize)}
+            disabled={pagination.page <= 1}
+            className="atlas-btn atlas-btn-ghost text-xs flex items-center gap-1 disabled:opacity-40"
+            title="الصفحة السابقة"
+          >
+            <ChevronRight size={15} />
+            <span>السابق</span>
+          </button>
+
+          {/* Quick page numbers */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, idx) => {
+                let p = idx + 1;
+                if (pagination.totalPages > 5 && pagination.page > 3) {
+                  p = pagination.page - 2 + idx;
+                  if (p > pagination.totalPages) p = pagination.totalPages - (4 - idx);
+                }
+                return (
+                  <button
+                    key={p}
+                    onClick={() => fetchTeachers(p, pageSize)}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                      pagination.page === p
+                        ? 'bg-sky-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            onClick={() => fetchTeachers(pagination.page + 1, pageSize)}
+            disabled={pagination.page >= pagination.totalPages}
+            className="atlas-btn atlas-btn-ghost text-xs flex items-center gap-1 disabled:opacity-40"
+            title="الصفحة التالية"
+          >
+            <span>التالي</span>
+            <ChevronLeft size={15} />
+          </button>
+        </div>
+      </div>
 
       {/* Teacher Modal */}
       <TeacherModal

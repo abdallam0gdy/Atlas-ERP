@@ -7,7 +7,7 @@ const { NotFoundError } = require('../utils/errors');
  */
 const listTeachers = async (req, res, next) => {
   try {
-    const { search, is_active, subject_id, revenue_split_type } = req.query;
+    const { search, is_active, subject_id, revenue_split_type, page, limit } = req.query;
 
     let whereClause = 'WHERE 1=1';
     const params = [];
@@ -37,6 +37,33 @@ const listTeachers = async (req, res, next) => {
       paramIndex++;
     }
 
+    // Pagination support
+    let pagination = null;
+    let limitClause = '';
+
+    if (page || limit) {
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(200, Math.max(1, parseInt(limit, 10) || 25));
+      const offset = (pageNum - 1) * limitNum;
+
+      const countResult = await db.query(
+        `SELECT COUNT(*) as total FROM teachers t ${whereClause}`,
+        params
+      );
+      const total = parseInt(countResult.rows[0].total, 10);
+      const totalPages = Math.ceil(total / limitNum);
+
+      pagination = {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+      };
+
+      limitClause = ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limitNum, offset);
+    }
+
     const result = await db.query(
       `SELECT t.*,
               COALESCE(
@@ -59,13 +86,15 @@ const listTeachers = async (req, res, next) => {
                WHERE g.teacher_id = t.id AND ge.is_active = true) as total_students
        FROM teachers t
        ${whereClause}
-       ORDER BY t.full_name ASC`,
+       ORDER BY t.full_name ASC
+       ${limitClause}`,
       params
     );
 
     res.json({
       success: true,
       data: result.rows,
+      pagination,
     });
   } catch (err) {
     next(err);

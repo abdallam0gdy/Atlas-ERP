@@ -178,11 +178,73 @@ class AttendanceService {
       const existingScanMap = new Map();
       existingScans.rows.forEach((r) => existingScanMap.set(r.group_id, r));
 
-      // 4. Process check-in for active sessions
+      // 4. Intelligent Consecutive / Back-to-Back Sessions Detection
+      // Sort active sessions by start time
+      activeTodaysSessions.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+      const parseTimeToMinutes = (tStr) => {
+        if (!tStr) return 0;
+        const [h, m] = tStr.split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+      };
+
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // Determine which sessions belong to current arrival block:
+      // Consecutive back-to-back sessions (gap <= 75 mins) are automatically processed
+      // together upon initial gate check-in so students never need to exit to scan again!
+      let targetSessionsToProcess = [];
+
+      if (activeTodaysSessions.length <= 1) {
+        targetSessionsToProcess = activeTodaysSessions;
+      } else {
+        let allConsecutive = true;
+        for (let i = 0; i < activeTodaysSessions.length - 1; i++) {
+          const s1End = parseTimeToMinutes(activeTodaysSessions[i].endTime || activeTodaysSessions[i].startTime);
+          const s2Start = parseTimeToMinutes(activeTodaysSessions[i + 1].startTime);
+          if (s2Start - s1End > 75) {
+            allConsecutive = false;
+            break;
+          }
+        }
+
+        if (allConsecutive) {
+          targetSessionsToProcess = activeTodaysSessions;
+        } else {
+          // If sessions have a large gap (e.g. morning vs evening), process the current block + any consecutive session
+          const matchedBlock = [];
+          for (let i = 0; i < activeTodaysSessions.length; i++) {
+            const s = activeTodaysSessions[i];
+            const sStart = parseTimeToMinutes(s.startTime);
+            const sEnd = parseTimeToMinutes(s.endTime || s.startTime);
+
+            const isNearNow = (currentMinutes >= sStart - 90 && currentMinutes <= sEnd + 60);
+
+            if (isNearNow || matchedBlock.length > 0) {
+              matchedBlock.push(s);
+              // Check if next session is consecutive to this one
+              if (i < activeTodaysSessions.length - 1) {
+                const nextS = activeTodaysSessions[i + 1];
+                const nextStart = parseTimeToMinutes(nextS.startTime);
+                if (nextStart - sEnd <= 75) {
+                  matchedBlock.push(nextS);
+                  i++;
+                }
+              }
+              break;
+            }
+          }
+
+          targetSessionsToProcess = matchedBlock.length > 0 ? matchedBlock : activeTodaysSessions;
+        }
+      }
+
+      // Process check-in for target sessions
       const checkedInSessions = [];
       let hadConvertedAbsence = false;
 
-      for (const session of activeTodaysSessions) {
+      for (const session of targetSessionsToProcess) {
         const existing = existingScanMap.get(session.group_id);
 
         if (existing) {
@@ -324,9 +386,10 @@ class AttendanceService {
       if (hadConvertedAbsence) {
         msg = `✅ ${student.full_name} — تم تأكيد الحضور (تم إلغاء الغياب واعتماد الحضور)`;
       } else if (isMultiSession) {
+        const sessionNames = checkedInSessions.map((s) => `${s.subjectName || s.groupName}${s.startTime ? ` (${s.startTime})` : ''}`).join(' + ');
         msg = hasPaymentPending
-          ? `⚠️ ${student.full_name} — تم تسجيل ${checkedInSessions.length} حصص (يرجى التوجه للخزينة لسداد المستحقات)`
-          : `✅ ${student.full_name} — تم تسجيل ${checkedInSessions.length} حصص`;
+          ? `⚠️ ${student.full_name} — تم تسجيل حضور ${checkedInSessions.length} حصص متتالية: [${sessionNames}] (يرجى التوجه للخزينة لسداد المستحقات)`
+          : `✅ ${student.full_name} — تم تسجيل حضور ${checkedInSessions.length} حصص متتالية اليوم: [${sessionNames}]`;
       } else {
         msg = hasPaymentPending
           ? `⚠️ ${student.full_name} — تم تسجيل الحضور (يرجى التوجه للخزينة لتجديد الاشتراك)`
