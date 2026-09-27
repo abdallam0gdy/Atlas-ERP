@@ -143,8 +143,19 @@ export default function CancelSessionModal({ isOpen, onClose, onSessionCancelled
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in" style={{ direction: 'rtl' }}>
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in"
+      style={{ direction: 'rtl' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+      >
         {/* Header */}
         <div className="p-5 sm:p-6 bg-gradient-to-l from-rose-500/10 via-amber-500/10 to-transparent border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">

@@ -50,6 +50,23 @@ export default function GatePage() {
 
   // Maintain focus based on current mode
   const maintainFocus = useCallback(() => {
+    // If any modal is open, NEVER steal focus!
+    if (isPrintModalOpen || isCancelModalOpen) return;
+
+    // Check if active element is an input, select, textarea, or inside any dialog/modal
+    const active = document.activeElement;
+    if (active) {
+      const tag = active.tagName?.toUpperCase();
+      if ((tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') &&
+          active !== inputRef.current &&
+          active !== manualInputRef.current) {
+        return;
+      }
+      if (active.closest && active.closest('[role="dialog"], .modal, .fixed')) {
+        return;
+      }
+    }
+
     if (mode === 'scanner') {
       if (inputRef.current && document.activeElement !== inputRef.current) {
         inputRef.current.focus();
@@ -59,16 +76,23 @@ export default function GatePage() {
         manualInputRef.current.focus();
       }
     }
-  }, [mode, lookedUpStudent]);
+  }, [mode, lookedUpStudent, isPrintModalOpen, isCancelModalOpen]);
 
   useEffect(() => {
     maintainFocus();
 
-    const handleActivity = () => setTimeout(maintainFocus, 100);
+    const handleActivity = (e) => {
+      if (isPrintModalOpen || isCancelModalOpen) return;
+      if (e?.target?.closest && e.target.closest('[role="dialog"], select, option, input, textarea, button, .modal, .fixed')) {
+        return;
+      }
+      setTimeout(maintainFocus, 100);
+    };
     document.addEventListener('click', handleActivity);
 
     // Global shortcut: F2 toggles mode
     const handleGlobalKey = (e) => {
+      if (isPrintModalOpen || isCancelModalOpen) return;
       if (e.key === 'F2') {
         e.preventDefault();
         setMode((prev) => (prev === 'scanner' ? 'manual' : 'scanner'));
@@ -91,7 +115,7 @@ export default function GatePage() {
       document.removeEventListener('keydown', handleGlobalKey);
       clearInterval(interval);
     };
-  }, [maintainFocus, mode]);
+  }, [maintainFocus, mode, isPrintModalOpen, isCancelModalOpen]);
 
   const loadTodayLog = async () => {
     try {
