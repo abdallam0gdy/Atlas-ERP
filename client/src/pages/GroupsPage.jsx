@@ -4,10 +4,11 @@ import api from '../lib/api';
 import { formatTime12h, formatEGP } from '../lib/formatters';
 import GroupModal from '../components/GroupModal';
 import PrintReportModal from '../components/PrintReportModal';
+import CancelSessionModal from '../components/CancelSessionModal';
 import {
   Search, Plus, BookOpen, Users, Calendar,
   Loader2, GraduationCap, MapPin, Edit2,
-  Filter, Printer, Download, RefreshCw, X
+  Filter, Printer, Download, RefreshCw, X, CalendarX
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,7 @@ export default function GroupsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   // Filters
   const [grades, setGrades] = useState([]);
@@ -163,6 +165,15 @@ export default function GroupsPage() {
           >
             <Plus size={16} />
             <span>إنشاء مجموعة جديدة</span>
+          </button>
+
+          <button
+            onClick={() => setIsCancelModalOpen(true)}
+            className="atlas-btn text-xs sm:text-sm flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 font-semibold transition-all shadow-sm"
+            title="إلغاء حصة أسبوعية بسبب اعتذار المدرس حتى لا تُحتسب على الطلاب"
+          >
+            <CalendarX size={16} className="text-amber-600" />
+            <span>إلغاء حصة (اعتذار مدرس)</span>
           </button>
 
           <button
@@ -369,6 +380,13 @@ export default function GroupsPage() {
           selectedTeacher ? `المدرس: ${teachers.find((t) => t.id === selectedTeacher)?.full_name || ''}` : '',
           search ? `بحث: "${search}"` : ''
         ].filter(Boolean)}
+      />
+
+      {/* Cancel Session Modal */}
+      <CancelSessionModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSessionCancelled={fetchGroups}
       />
     </div>
   );

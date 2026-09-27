@@ -122,6 +122,52 @@ class AttendanceService {
         };
       }
 
+      // Check for cancelled sessions today
+      const cancelledRes = await client.query(
+        `SELECT group_id, reason FROM cancelled_sessions WHERE session_date = $1`,
+        [todayDate]
+      );
+      const cancelledMap = new Map();
+      cancelledRes.rows.forEach((r) => cancelledMap.set(r.group_id, r.reason));
+
+      const activeTodaysSessions = todaysSessions.filter((s) => !cancelledMap.has(s.group_id));
+      const cancelledTodaysSessions = todaysSessions.filter((s) => cancelledMap.has(s.group_id));
+
+      if (activeTodaysSessions.length === 0) {
+        await client.query('ROLLBACK');
+        if (cancelledTodaysSessions.length > 0) {
+          const reason = cancelledMap.get(cancelledTodaysSessions[0].group_id) || 'اعتذار المدرس';
+          return {
+            success: false,
+            type: 'SESSION_CANCELLED',
+            message: `⚠️ تنبيه: حصة ${student.full_name} ملغاة اليوم (${reason}) — لن يتم احتساب أي غياب أو خصم`,
+            student: {
+              id: student.id,
+              fullName: student.full_name,
+              gradeName: student.grade_name,
+              photoUrl: student.photo_url,
+            },
+            cancelledSessions: cancelledTodaysSessions.map((s) => ({
+              groupName: s.group_name_ar || s.group_name,
+              subjectName: s.subject_name,
+              reason: cancelledMap.get(s.group_id),
+            })),
+          };
+        }
+
+        return {
+          success: false,
+          type: 'NO_SESSION',
+          message: `${student.full_name} ليس لديه حصص مجدولة اليوم`,
+          student: {
+            id: student.id,
+            fullName: student.full_name,
+            gradeName: student.grade_name,
+            photoUrl: student.photo_url,
+          },
+        };
+      }
+
       // 3. Check for already-scanned or pre-recorded sessions today (e.g. absences)
       const existingScans = await client.query(
         `SELECT id, group_id, status, payment_status, subscription_id
@@ -132,11 +178,11 @@ class AttendanceService {
       const existingScanMap = new Map();
       existingScans.rows.forEach((r) => existingScanMap.set(r.group_id, r));
 
-      // 4. Process check-in for sessions
+      // 4. Process check-in for active sessions
       const checkedInSessions = [];
       let hadConvertedAbsence = false;
 
-      for (const session of todaysSessions) {
+      for (const session of activeTodaysSessions) {
         const existing = existingScanMap.get(session.group_id);
 
         if (existing) {
@@ -412,12 +458,24 @@ class AttendanceService {
 
     const groupsResult = await db.query(groupQuery, params);
 
+    // Fetch all cancelled sessions for targetDate to ensure no absences are processed for them
+    const cancelledRes = await db.query(
+      `SELECT group_id FROM cancelled_sessions WHERE session_date = $1`,
+      [targetDate]
+    );
+    const cancelledGroupIds = new Set(cancelledRes.rows.map((r) => r.group_id));
+
     const processedDetails = [];
     let deductedCount = 0;
     let pendingCount = 0;
     let freeCount = 0;
 
     for (const group of groupsResult.rows) {
+      // Skip group if its session is cancelled on targetDate (e.g. teacher apologized)
+      if (cancelledGroupIds.has(group.group_id)) {
+        continue;
+      }
+
       const schedule = group.schedule || [];
       const daySlots = schedule.filter((s) => s.day === targetDayName);
 
@@ -651,6 +709,221 @@ class AttendanceService {
   }
 
   /**
+   * Cancel a specific group's session on a given date (e.g. teacher apologized or holiday).
+   * Automatically refunds any deducted sessions and removes attendance logs for that date.
+   * Ensures no absences will be counted against students.
+   */
+  static async cancelSession({ groupId, sessionDate, reason = 'اعتذار المدرس', cancelledByUserId }) {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+
+      // Verify group exists
+      const groupRes = await client.query(
+        `SELECT g.id, g.name, g.name_ar, g.teacher_id, t.full_name as teacher_name
+         FROM groups g
+         LEFT JOIN teachers t ON g.teacher_id = t.id
+         WHERE g.id = $1`,
+        [groupId]
+      );
+      if (groupRes.rows.length === 0) {
+        throw new Error('المجموعة المحددة غير موجودة');
+      }
+      const group = groupRes.rows[0];
+
+      // 1. Insert or update cancelled_sessions
+      const cancelRes = await client.query(
+        `INSERT INTO cancelled_sessions (group_id, session_date, reason, cancelled_by)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (group_id, session_date) DO UPDATE
+           SET reason = EXCLUDED.reason,
+               cancelled_by = EXCLUDED.cancelled_by,
+               created_at = NOW()
+         RETURNING *`,
+        [groupId, sessionDate, (reason || '').trim() || 'اعتذار المدرس', cancelledByUserId || null]
+      );
+
+      // 2. Check if any attendance or absence records were already recorded for this group on this date
+      const existingLogs = await client.query(
+        `SELECT id, student_id, subscription_id, status, payment_status
+         FROM attendance_logs
+         WHERE group_id = $1 AND session_date = $2`,
+        [groupId, sessionDate]
+      );
+
+      let refundedCount = 0;
+      for (const log of existingLogs.rows) {
+        // If a subscription session was deducted, refund it immediately!
+        if (log.subscription_id) {
+          await client.query(
+            `UPDATE student_subscriptions
+             SET used_sessions = GREATEST(0, used_sessions - 1),
+                 status = 'active',
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [log.subscription_id]
+          );
+          refundedCount++;
+        }
+      }
+
+      // 3. Remove attendance logs for the cancelled session so it does not count on anyone
+      if (existingLogs.rows.length > 0) {
+        await client.query(
+          `DELETE FROM attendance_logs
+           WHERE group_id = $1 AND session_date = $2`,
+          [groupId, sessionDate]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      return {
+        success: true,
+        message: `تم إلغاء حصة (${group.name_ar || group.name}) لتاريخ ${sessionDate} بنجاح — لن يتم احتساب أي غياب على الطلاب${refundedCount > 0 ? ` (تم استرداد الحصة المخصومة لـ ${refundedCount} طالب)` : ''}`,
+        cancelledSession: cancelRes.rows[0],
+        refundedCount,
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Cancel all sessions of a teacher on a specific date (e.g. teacher apologized for the entire day).
+   */
+  static async cancelTeacherSessions({ teacherId, sessionDate, reason = 'اعتذار المدرس', cancelledByUserId }) {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const targetDayIndex = new Date(sessionDate + 'T12:00:00').getDay();
+    const targetDayName = days[targetDayIndex];
+
+    const groupsRes = await db.query(
+      `SELECT g.id, g.name, g.name_ar, g.schedule, t.full_name as teacher_name
+       FROM groups g
+       JOIN teachers t ON g.teacher_id = t.id
+       WHERE g.teacher_id = $1 AND g.status = 'active'`,
+      [teacherId]
+    );
+
+    if (groupsRes.rows.length === 0) {
+      throw new Error('لا توجد مجموعات نشطة مسجلة لهذا المدرس');
+    }
+
+    const teacherName = groupsRes.rows[0].teacher_name;
+
+    const matchingGroups = groupsRes.rows.filter((g) => {
+      const schedule = g.schedule || [];
+      return schedule.some((slot) => slot.day === targetDayName);
+    });
+
+    if (matchingGroups.length === 0) {
+      return {
+        success: true,
+        cancelledCount: 0,
+        refundedCount: 0,
+        message: `المدرس ${teacherName} ليس لديه حصص مجدولة في يوم (${targetDayName}) لتاريخ ${sessionDate}`,
+        details: []
+      };
+    }
+
+    const results = [];
+    let totalRefunded = 0;
+
+    for (const group of matchingGroups) {
+      const res = await AttendanceService.cancelSession({
+        groupId: group.id,
+        sessionDate,
+        reason,
+        cancelledByUserId,
+      });
+      results.push(res);
+      totalRefunded += res.refundedCount || 0;
+    }
+
+    return {
+      success: true,
+      cancelledCount: matchingGroups.length,
+      refundedCount: totalRefunded,
+      message: `تم إلغاء ${matchingGroups.length} مجموعات للمدرس (${teacherName}) لتاريخ ${sessionDate} بنجاح${totalRefunded > 0 ? ` (تم استرداد الحصة لـ ${totalRefunded} طالب)` : ''}`,
+      details: results,
+    };
+  }
+
+  /**
+   * Uncancel/Restore a session (making it active and scheduled again)
+   */
+  static async uncancelSession(cancelledSessionId) {
+    const res = await db.query(
+      `DELETE FROM cancelled_sessions WHERE id = $1 RETURNING *`,
+      [cancelledSessionId]
+    );
+    if (res.rows.length === 0) {
+      throw new Error('سجل الإلغاء غير موجود أو تم حذفه مسبقاً');
+    }
+    return {
+      success: true,
+      message: 'تم التراجع عن إلغاء الحصة واستئناف جدولها بنجاح',
+      restoredSession: res.rows[0],
+    };
+  }
+
+  /**
+   * Get list of cancelled sessions with filters
+   */
+  static async getCancelledSessions(options = {}) {
+    const { date, startDate, endDate, groupId, teacherId } = options;
+
+    let query = `
+      SELECT cs.id, cs.group_id, cs.session_date, cs.reason, cs.created_at,
+             g.name as group_name, g.name_ar as group_name_ar, g.schedule,
+             t.id as teacher_id, t.full_name as teacher_name,
+             sub.name_ar as subject_name, sub.color as subject_color,
+             ag.name_ar as grade_name,
+             u.full_name as cancelled_by_name
+      FROM cancelled_sessions cs
+      JOIN groups g ON cs.group_id = g.id
+      LEFT JOIN teachers t ON g.teacher_id = t.id
+      LEFT JOIN subjects sub ON g.subject_id = sub.id
+      LEFT JOIN academic_grades ag ON g.grade_id = ag.id
+      LEFT JOIN users u ON cs.cancelled_by = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (date) {
+      params.push(date);
+      query += ` AND cs.session_date = $${params.length}`;
+    } else {
+      if (startDate) {
+        params.push(startDate);
+        query += ` AND cs.session_date >= $${params.length}`;
+      }
+      if (endDate) {
+        params.push(endDate);
+        query += ` AND cs.session_date <= $${params.length}`;
+      }
+    }
+
+    if (groupId) {
+      params.push(groupId);
+      query += ` AND cs.group_id = $${params.length}`;
+    }
+
+    if (teacherId) {
+      params.push(teacherId);
+      query += ` AND g.teacher_id = $${params.length}`;
+    }
+
+    query += ` ORDER BY cs.session_date DESC, cs.created_at DESC`;
+
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  /**
    * Look up a student by center code, barcode, or phone without recording attendance
    * @param {string|number} identifier
    * @returns {Object} Student preview with today's scheduled sessions and attendance status
@@ -754,18 +1027,31 @@ class AttendanceService {
     const scanStatusMap = new Map();
     existingScans.rows.forEach((r) => scanStatusMap.set(r.group_id, r.status));
 
+    // Check cancelled sessions for today
+    const cancelledRes = await db.query(
+      `SELECT group_id, reason FROM cancelled_sessions WHERE session_date = $1`,
+      [todayDate]
+    );
+    const cancelledMap = new Map();
+    cancelledRes.rows.forEach((r) => cancelledMap.set(r.group_id, r.reason));
+
     const markedSessions = todaysSessions.map((s) => {
       const status = scanStatusMap.get(s.groupId);
+      const isCancelled = cancelledMap.has(s.groupId);
+      const cancelReason = cancelledMap.get(s.groupId);
       return {
         ...s,
         status: status || null,
+        isCancelled,
+        cancelReason: cancelReason || null,
         isAttended: status === 'present' || status === 'late',
         isAbsent: status === 'absent',
         isExcused: status === 'excused',
       };
     });
 
-    const allAttended = markedSessions.length > 0 && markedSessions.every((s) => s.isAttended);
+    const activeSessions = markedSessions.filter((s) => !s.isCancelled);
+    const allAttended = activeSessions.length > 0 && activeSessions.every((s) => s.isAttended);
 
     return {
       success: true,
@@ -789,7 +1075,7 @@ class AttendanceService {
         ? 'تم تسجيل الحضور لجميع حصص اليوم مسبقاً'
         : markedSessions.length === 0
           ? 'لا توجد حصص مجدولة لهذا الطالب اليوم'
-          : `جاهز لتسجيل الحضور (${markedSessions.filter((s) => !s.isAttended).length} حصة متبقية)`,
+          : `جاهز لتسجيل الحضور (${activeSessions.filter((s) => !s.isAttended).length} حصة متبقية)`,
     };
   }
 }

@@ -9,6 +9,10 @@ const {
   lookupStudent,
   processAbsences,
   excuseAbsence,
+  cancelSession,
+  cancelTeacherSessions,
+  uncancelSession,
+  getCancelledSessions,
 } = require('../controllers/attendance.controller');
 
 router.use(authenticate);
@@ -36,6 +40,27 @@ router.post('/process-absences',
 router.post('/:id/excuse',
   authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER'),
   excuseAbsence
+);
+
+// 🚫 Session Cancellation System (إلغاء حصة / اعتذار مدرس)
+router.post('/cancel-session',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
+  cancelSession
+);
+
+router.post('/cancel-teacher-sessions',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
+  cancelTeacherSessions
+);
+
+router.delete('/cancelled-sessions/:id',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER'),
+  uncancelSession
+);
+
+router.get('/cancelled-sessions',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
+  getCancelledSessions
 );
 
 // GET /api/attendance/today — Today's attendance log

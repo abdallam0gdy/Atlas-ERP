@@ -2,11 +2,13 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import PrintReportModal from '../components/PrintReportModal';
+import CancelSessionModal from '../components/CancelSessionModal';
 import {
   DoorOpen, QrCode, Volume2, VolumeX, Clock,
   CheckCircle2, XCircle, AlertTriangle, User, BookOpen,
   Search, Hash, Keyboard, RefreshCw, ArrowRight, Camera,
-  Printer, Download, LayoutDashboard, Filter, Check, List
+  Printer, Download, LayoutDashboard, Filter, Check, List,
+  CalendarX
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -38,6 +40,7 @@ export default function GatePage() {
 
   // Modals & Filters
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'present' | 'absent' | 'paid' | 'pending'
   const [mobileTab, setMobileTab] = useState('terminal'); // 'terminal' | 'logs'
 
@@ -449,6 +452,15 @@ export default function GatePage() {
               <Clock size={15} className="text-rose-400" />
             )}
             <span className="hidden sm:inline">فحص وحساب الغياب</span>
+          </button>
+
+          <button
+            onClick={() => setIsCancelModalOpen(true)}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white transition-all text-xs flex items-center gap-1.5 font-bold border border-amber-500/40 cursor-pointer shadow-sm"
+            title="إلغاء حصة أسبوعية بسبب اعتذار المدرس حتى لا تُحتسب على الطلاب"
+          >
+            <CalendarX size={15} className="text-amber-400" />
+            <span className="hidden sm:inline">إلغاء حصة (اعتذار مدرس)</span>
           </button>
 
           <button
@@ -953,6 +965,13 @@ export default function GatePage() {
         columns={printColumns}
         data={todayLogs}
         filtersSummary={[`إجمالي الحضور: ${todayStats.total_scans}`, `الطلاب الفريدون: ${todayStats.unique_students}`]}
+      />
+
+      {/* Cancel Session Modal */}
+      <CancelSessionModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSessionCancelled={loadTodayLog}
       />
     </div>
   );

@@ -109,10 +109,113 @@ const excuseAbsence = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/attendance/cancel-session
+ * Cancel a specific group's session on a date
+ */
+const cancelSession = async (req, res, next) => {
+  try {
+    const { group_id, session_date, reason } = req.body;
+    if (!group_id || !session_date) {
+      return res.status(400).json({ success: false, message: 'يرجى تحديد المجموعة وتاريخ الحصة' });
+    }
+
+    const result = await AttendanceService.cancelSession({
+      groupId: group_id,
+      sessionDate: session_date,
+      reason,
+      cancelledByUserId: req.user?.id,
+    });
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/attendance/cancel-teacher-sessions
+ * Cancel all sessions for a teacher on a specific date
+ */
+const cancelTeacherSessions = async (req, res, next) => {
+  try {
+    const { teacher_id, session_date, reason } = req.body;
+    if (!teacher_id || !session_date) {
+      return res.status(400).json({ success: false, message: 'يرجى تحديد المدرس وتاريخ الإلغاء' });
+    }
+
+    const result = await AttendanceService.cancelTeacherSessions({
+      teacherId: teacher_id,
+      sessionDate: session_date,
+      reason,
+      cancelledByUserId: req.user?.id,
+    });
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/attendance/cancelled-sessions/:id
+ * Restore / Uncancel a session
+ */
+const uncancelSession = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await AttendanceService.uncancelSession(id);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/attendance/cancelled-sessions
+ * List cancelled sessions with optional filters
+ */
+const getCancelledSessions = async (req, res, next) => {
+  try {
+    const { date, start_date, end_date, group_id, teacher_id } = req.query;
+    const result = await AttendanceService.getCancelledSessions({
+      date,
+      startDate: start_date,
+      endDate: end_date,
+      groupId: group_id,
+      teacherId: teacher_id,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   scanAttendance,
   getTodayAttendance,
   lookupStudent,
   processAbsences,
   excuseAbsence,
+  cancelSession,
+  cancelTeacherSessions,
+  uncancelSession,
+  getCancelledSessions,
 };
