@@ -151,6 +151,8 @@ app.use((err, req, res, next) => {
 // SERVER STARTUP
 // ============================================================
 
+const AttendanceService = require('./services/attendance.service');
+
 const startServer = async () => {
   try {
     // Test database connection
@@ -167,6 +169,22 @@ const startServer = async () => {
       console.log(`   💚 Health: http://localhost:${PORT}/api/health`);
       console.log('═══════════════════════════════════════════════');
       console.log('');
+
+      // Background Worker: Scan passed sessions and deduct absences automatically
+      const runAbsenceWorker = async () => {
+        try {
+          const res = await AttendanceService.processAbsencesForPassedSessions();
+          if (res.processedCount > 0) {
+            console.log(`[Smart Gate Worker] ⏱️ تم فحص الحصص المنتهية: تم احتساب غياب ${res.processedCount} طالب (تم خصم ${res.deductedCount} حصة من الاشتراكات)`);
+          }
+        } catch (workerErr) {
+          console.error('[Smart Gate Worker] خطأ في فحص الغياب التلقائي:', workerErr.message);
+        }
+      };
+
+      // Run initial check 10 seconds after boot, then every 5 minutes
+      setTimeout(runAbsenceWorker, 10000);
+      setInterval(runAbsenceWorker, 5 * 60 * 1000);
     });
   } catch (err) {
     console.error('❌ Failed to start server:', err);

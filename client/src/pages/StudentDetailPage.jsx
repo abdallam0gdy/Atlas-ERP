@@ -41,6 +41,18 @@ export default function StudentDetailPage() {
     fetchStudentData();
   }, [id]);
 
+  const handleExcuseAttendance = async (logId, studentName) => {
+    const reason = window.prompt(`أدخل سبب قبول العذر للطالب ${studentName || ''}:`, 'ظرف طارئ / عذر مقبول');
+    if (reason === null) return;
+    try {
+      const { data } = await api.post(`/attendance/${logId}/excuse`, { reason: reason.trim() || 'عذر مقبول' });
+      toast.success(data.message || 'تم قبول العذر واسترداد الحصة المخصومة بنجاح');
+      fetchStudentData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'فشل قبول العذر');
+    }
+  };
+
   const formatSchedule = (schedule) => {
     if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return 'بدون موعد محدد';
     const dayMap = {
@@ -354,32 +366,62 @@ export default function StudentDetailPage() {
               {attendance.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/60 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      log.status === 'absent' ? 'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.5)]' :
+                      log.status === 'excused' ? 'bg-purple-500' :
                       log.payment_status === 'paid' ? 'bg-emerald-500' :
                       log.payment_status === 'free' ? 'bg-cyan-500' : 'bg-amber-500'
                     }`} />
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">
-                        {log.subject_name || log.group_name}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {log.subject_name || log.group_name_ar || log.group_name}
                       </p>
-                      <p className="text-[11px] text-slate-500">
-                        {log.teacher_name} • {new Date(log.session_date).toLocaleDateString('ar-EG')}
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {log.teacher_name && `${log.teacher_name} • `}{new Date(log.session_date).toLocaleDateString('ar-EG')}
                       </p>
+                      {log.notes && (
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs" title={log.notes}>
+                          {log.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="text-left">
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                      log.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
-                      log.payment_status === 'free' ? 'bg-cyan-100 text-cyan-800' :
-                      'bg-amber-100 text-amber-800'
-                    }`}>
-                      {log.payment_status === 'paid' ? '✅ مدفوع' :
-                       log.payment_status === 'free' ? '🎁 مجاني' : '⚠️ معلق'}
-                    </span>
+                  <div className="text-left shrink-0 flex flex-col items-end">
+                    {log.status === 'absent' ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                          log.payment_status === 'paid'
+                            ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                            : 'bg-amber-100 text-amber-800 border border-amber-200'
+                        }`}>
+                          {log.payment_status === 'paid' ? '❌ غائب (مخصومة)' : '⚠️ غائب (غير مسدد)'}
+                        </span>
+                        <button
+                          onClick={() => handleExcuseAttendance(log.id, student?.full_name)}
+                          className="text-[10px] text-amber-700 hover:text-amber-800 underline font-semibold cursor-pointer"
+                          title="قبول عذر الطالب واسترداد الحصة المخصومة"
+                        >
+                          قبول عذر واسترداد
+                        </button>
+                      </div>
+                    ) : log.status === 'excused' ? (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                        🕊️ معذور (مستردة)
+                      </span>
+                    ) : (
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        log.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                        log.payment_status === 'free' ? 'bg-cyan-100 text-cyan-800' :
+                        'bg-amber-100 text-amber-800'
+                      }`}>
+                        {log.payment_status === 'paid' ? '✅ حاضر (مدفوع)' :
+                         log.payment_status === 'free' ? '🎁 مجاني' : '⚠️ معلق'}
+                      </span>
+                    )}
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                       {new Date(log.scan_timestamp).toLocaleTimeString('ar-EG', {
                         hour: '2-digit', minute: '2-digit',

@@ -3,7 +3,13 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 const { validate, attendanceScanSchema } = require('../utils/validators');
-const { scanAttendance, getTodayAttendance, lookupStudent } = require('../controllers/attendance.controller');
+const {
+  scanAttendance,
+  getTodayAttendance,
+  lookupStudent,
+  processAbsences,
+  excuseAbsence,
+} = require('../controllers/attendance.controller');
 
 router.use(authenticate);
 
@@ -18,6 +24,18 @@ router.post('/scan',
   authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
   validate(attendanceScanSchema),
   scanAttendance
+);
+
+// POST /api/attendance/process-absences — Trigger absence deduction for passed classes
+router.post('/process-absences',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
+  processAbsences
+);
+
+// POST /api/attendance/:id/excuse — Excuse an absent session and restore deducted session
+router.post('/:id/excuse',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'CASHIER'),
+  excuseAbsence
 );
 
 // GET /api/attendance/today — Today's attendance log

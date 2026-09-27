@@ -63,4 +63,56 @@ const lookupStudent = async (req, res, next) => {
   }
 };
 
-module.exports = { scanAttendance, getTodayAttendance, lookupStudent };
+/**
+ * POST /api/attendance/process-absences
+ * Process absences for sessions that have ended, counting against absent students
+ * and deducting sessions from active subscriptions.
+ */
+const processAbsences = async (req, res, next) => {
+  try {
+    const { date, group_id } = req.body;
+    const result = await AttendanceService.processAbsencesForPassedSessions({
+      targetDate: date,
+      groupId: group_id,
+    });
+
+    res.json({
+      success: true,
+      message: result.processedCount > 0
+        ? `تم تسجيل غياب ${result.processedCount} طالب بنجاح (تم خصم ${result.deductedCount} حصة من الاشتراكات)`
+        : 'تم فحص الحصص — لا يوجد غياب غير مسجل للحصص المنتهية',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/attendance/:id/excuse
+ * Excuse an absent session and refund the deducted session back to subscription
+ */
+const excuseAbsence = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const result = await AttendanceService.excuseAbsence(id, req.user?.id, reason);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  scanAttendance,
+  getTodayAttendance,
+  lookupStudent,
+  processAbsences,
+  excuseAbsence,
+};

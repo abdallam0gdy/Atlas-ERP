@@ -119,7 +119,14 @@ const getStudentAccount = async (req, res, next) => {
         totalAmountPaid += parseFloat(g.amount_paid || 0);
       });
 
+      totalAmountDue = Math.round(totalAmountDue * 100) / 100;
+      totalAmountPaid = Math.round(totalAmountPaid * 100) / 100;
+
       const netPrice = parseFloat(spe.total_price || 0);
+      if (totalAmountDue <= 0.01 && totalAmountPaid > 0) {
+        totalAmountPaid = netPrice;
+      }
+
       const effectiveSessionPrice = totalSessions > 0 ? (netPrice / totalSessions) : 0;
       const remainingValue = Math.round(remainingSessions * effectiveSessionPrice);
       const refundableAmount = Math.max(0, remainingValue - totalAmountDue);
@@ -162,6 +169,9 @@ const getStudentAccount = async (req, res, next) => {
       totalDue += parseFloat(grp.amount_due || 0);
       totalRemainingSessions += parseInt(grp.remaining_sessions || 0, 10);
     });
+
+    totalPaid = Math.round(totalPaid * 100) / 100;
+    totalDue = Math.round(totalDue * 100) / 100;
 
     res.json({
       success: true,
@@ -230,6 +240,15 @@ const renewSubscription = async (req, res, next) => {
       `SELECT id, is_active, enrollment_type, discount_type, discount_value FROM group_enrollments WHERE student_id = $1 AND group_id = $2`,
       [student_id, group_id]
     );
+
+    // Business rule: Disallow renewing a single subject if enrolled as PACKAGE
+    if (
+      finalEnrollmentType === 'PACKAGE' ||
+      (enrollCheck.rows.length > 0 && enrollCheck.rows[0].enrollment_type === 'PACKAGE')
+    ) {
+      throw new BadRequestError('لا يمكن تجديد مادة منفردة تابعة للباكدج. يجب تصفية الباكدج بالكامل أولاً ثم إعادة الاشتراك في الباكدج من جديد.');
+    }
+
     if (enrollCheck.rows.length === 0) {
       await client.query(
         `INSERT INTO group_enrollments (student_id, group_id, enrollment_type, discount_type, discount_value, is_active) VALUES ($1, $2, $3, $4, $5, true)`,

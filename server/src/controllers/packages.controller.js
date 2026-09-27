@@ -329,6 +329,23 @@ const enrollStudentInPackage = async (req, res, next) => {
     }
     const student = studentRes.rows[0];
 
+    // Validation: Package must match student's grade
+    if (pkg.grade_id && student.grade_id && pkg.grade_id !== student.grade_id) {
+      throw new BadRequestError('لا يمكن قيد الطالب في باكدج لمرحلة دراسية مختلفة عن مرحلة الطالب');
+    }
+
+    // Validation: Package must match student's education type (عربي / لغات)
+    if (pkg.education_type && student.education_type && pkg.education_type !== student.education_type) {
+      const studentTypeAr = student.education_type === 'LANGUAGES' ? 'لغات / تجريبي' : 'عربي / حكومي';
+      const pkgTypeAr = pkg.education_type === 'LANGUAGES' ? 'لغات / تجريبي' : 'عربي / حكومي';
+      throw new BadRequestError(`لا يمكن قيد الطالب في باكدج (${pkgTypeAr})؛ نظراً لأن الطالب مقيد بمسار (${studentTypeAr}). يرجى اختيار الباكدج المتوافق مع مسار الطالب.`);
+    }
+
+    // If student did not have education_type set, initialize it with package education_type
+    if (pkg.education_type && !student.education_type) {
+      await client.query('UPDATE students SET education_type = $1 WHERE id = $2', [pkg.education_type, student_id]);
+    }
+
     // 3. Get all groups belonging to this package
     const pkgGroupsRes = await client.query(
       `SELECT g.id, g.name, g.subject_id, s.name_ar as subject_name, g.price_per_month
@@ -413,10 +430,22 @@ const enrollStudentInPackage = async (req, res, next) => {
     const packageEnrollmentId = enrollRes.rows[0].id;
 
     // 8. Enroll student in each selected group & create student_subscriptions
-    const perGroupPaid = (paidNum / actualGroupIds.length).toFixed(2);
-    const perGroupDue = (dueNum / actualGroupIds.length).toFixed(2);
+    let remainingPaidCents = Math.round(paidNum * 100);
+    let remainingDueCents = Math.round(dueNum * 100);
 
-    for (const groupId of actualGroupIds) {
+    for (let i = 0; i < actualGroupIds.length; i++) {
+      const groupId = actualGroupIds[i];
+      const countLeft = actualGroupIds.length - i;
+
+      const groupPaidCents = Math.round(remainingPaidCents / countLeft);
+      const groupDueCents = Math.round(remainingDueCents / countLeft);
+
+      remainingPaidCents -= groupPaidCents;
+      remainingDueCents -= groupDueCents;
+
+      const perGroupPaid = (groupPaidCents / 100).toFixed(2);
+      const perGroupDue = (groupDueCents / 100).toFixed(2);
+
       // Upsert group_enrollments with persistent discount
       await client.query(
         `INSERT INTO group_enrollments (student_id, group_id, is_active, enrollment_type, discount_type, discount_value)

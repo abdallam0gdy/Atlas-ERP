@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import EnrollPackageModal from '../components/EnrollPackageModal';
 import ClearPackageRefundModal from '../components/ClearPackageRefundModal';
+import { formatEGP } from '../lib/formatters';
 
 export default function StudentSubscriptionsPage() {
   // Navigation & view states
@@ -139,6 +140,10 @@ export default function StudentSubscriptionsPage() {
 
   // Open renew modal for a specific group
   const handleOpenRenew = (group) => {
+    if (group.enrollment_type === 'PACKAGE') {
+      toast.error('⚠️ لا يمكن تجديد مادة منفردة تابعة للباكدج. يجب تصفية الباكدج بالكامل أولاً ثم إعادة الاشتراك من جديد.');
+      return;
+    }
     setSelectedGroupForRenew(group);
     setRenewModalOpen(true);
   };
@@ -376,12 +381,12 @@ export default function StudentSubscriptionsPage() {
                   </div>
                   <div className="bg-white/5 rounded-xl p-2.5 border border-white/10">
                     <p className="text-[11px] text-white/60">إجمالي المسدد</p>
-                    <p className="text-lg font-black text-white mt-0.5">{studentAccount.summary.totalPaid} ج.م</p>
+                    <p className="text-lg font-black text-white mt-0.5">{formatEGP(studentAccount.summary.totalPaid)}</p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-2.5 border border-white/10">
                     <p className="text-[11px] text-white/60">المديونية المتبقية</p>
                     <p className={`text-lg font-black mt-0.5 ${studentAccount.summary.totalDue > 0 ? 'text-amber-300' : 'text-emerald-300'}`}>
-                      {studentAccount.summary.totalDue} ج.م
+                      {formatEGP(studentAccount.summary.totalDue)}
                     </p>
                   </div>
                 </div>
@@ -439,12 +444,12 @@ export default function StudentSubscriptionsPage() {
                                 <p className="text-xs text-slate-600 mt-1 flex items-center gap-2 flex-wrap">
                                   <span>تاريخ التسجيل: <strong>{new Date(pkg.enrolled_at).toLocaleDateString('ar-EG')}</strong></span>
                                   <span>•</span>
-                                  <span>إجمالي قيمة الباكدج: <strong className="text-[#0C3C82]">{pkgPrice} ج.م</strong></span>
+                                  <span>إجمالي قيمة الباكدج: <strong className="text-[#0C3C82]">{formatEGP(pkgPrice)}</strong></span>
                                   <span>•</span>
-                                  <span>المسدد: <strong className="text-emerald-700">{pkgPaid} ج.م</strong></span>
+                                  <span>المسدد: <strong className="text-emerald-700">{formatEGP(pkgPaid)}</strong></span>
                                   {pkgDue > 0 && (
                                     <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                                      مديونية: {pkgDue} ج.م
+                                      مديونية: {formatEGP(pkgDue)}
                                     </span>
                                   )}
                                 </p>
@@ -507,7 +512,7 @@ export default function StudentSubscriptionsPage() {
                               />
                             </div>
                             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                              <span>قيمة الرصيد المتبقي: <strong className="text-emerald-700">{refundEst} ج.م</strong></span>
+                              <span>قيمة الرصيد المتبقي: <strong className="text-emerald-700">{formatEGP(refundEst)}</strong></span>
                               <span className="text-slate-400">محسوب بسعر الباكدج العادل وليس البرايفت</span>
                             </div>
                           </div>
@@ -747,16 +752,16 @@ export default function StudentSubscriptionsPage() {
                                       </span>
                                     )}
                                   </span>
-                                  <span>سعر الشهر: <strong>{group.price_per_month || 0} ج.م</strong></span>
+                                  <span>سعر الشهر: <strong>{formatEGP(group.price_per_month || 0)}</strong></span>
                                 </div>
                               </div>
 
                               {/* Financial status for this group */}
                               <div className="flex items-center justify-between text-xs font-semibold px-1 py-1 text-slate-600">
-                                <span>المسدد: <strong className="text-emerald-700">{group.amount_paid || 0} ج.م</strong></span>
+                                <span>المسدد: <strong className="text-emerald-700">{formatEGP(group.amount_paid || 0)}</strong></span>
                                 {hasDebt ? (
                                   <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                                    مديونية متبقية: {group.amount_due} ج.م
+                                    مديونية متبقية: {formatEGP(group.amount_due)}
                                   </span>
                                 ) : (
                                   <span className="text-emerald-600 font-bold flex items-center gap-1">
@@ -785,32 +790,42 @@ export default function StudentSubscriptionsPage() {
                                   </button>
                                 )}
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenRenew(group)}
-                                  className="atlas-btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-sm"
-                                >
-                                  <Coins size={14} />
-                                  شحن وتجديد
-                                </button>
-
                                 {group.enrollment_type === 'PRIVATE' ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenClearance(group)}
-                                    className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-all flex items-center gap-1.5 shadow-xs"
-                                    title="تصفية رصيد الحصص المتبقي للطالب في هذه المجموعة وإلغاء قيده منها"
-                                  >
-                                    <LogOut size={13} />
-                                    تصفية واسترداد
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenRenew(group)}
+                                      className="atlas-btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-sm"
+                                    >
+                                      <Coins size={14} />
+                                      شحن وتجديد
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenClearance(group)}
+                                      className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-all flex items-center gap-1.5 shadow-xs"
+                                      title="تصفية رصيد الحصص المتبقي للطالب في هذه المجموعة وإلغاء قيده منها"
+                                    >
+                                      <LogOut size={13} />
+                                      تصفية واسترداد
+                                    </button>
+                                  </>
                                 ) : (
-                                  <span
-                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-900 text-[11px] font-bold border border-amber-200 flex items-center gap-1 shadow-2xs"
-                                    title="هذه المجموعة تابعة للباكدج، وتتم تصفيتها حصراً مع الباكدج بالكامل من بطاقة الباكدج بالأعلى"
-                                  >
-                                    📦 تصفية مع الباكدج بالأعلى
-                                  </span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200 flex items-center gap-1"
+                                      title="لا يمكن تجديد مادة منفردة بالباكدج. يجب تصفية الباكدج بالكامل أولاً ثم إعادة الاشتراك من جديد"
+                                    >
+                                      🔒 التجديد بإعادة حجز الباكدج
+                                    </span>
+                                    <span
+                                      className="px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-900 text-[11px] font-bold border border-amber-200 flex items-center gap-1 shadow-2xs"
+                                      title="هذه المجموعة تابعة للباكدج، وتتم تصفيتها حصراً مع الباكدج بالكامل من بطاقة الباكدج بالأعلى"
+                                    >
+                                      📦 تصفية مع الباكدج بالأعلى
+                                    </span>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1258,6 +1273,10 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (group.enrollment_type === 'PACKAGE') {
+      toast.error('⚠️ لا يمكن تجديد مادة منفردة تابعة للباكدج. يجب تصفية الباكدج بالكامل أولاً ثم إعادة الاشتراك من جديد.');
+      return;
+    }
     if (!sessionsCount || sessionsCount <= 0) {
       toast.error('يرجى تحديد عدد الحصص');
       return;
@@ -1826,10 +1845,13 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
             </div>
             <div>
               <h3 className="text-base font-black">تسجيل وقيد الطالب في مجموعة خاصة (برايفت)</h3>
-              <p className="text-xs text-white/80 mt-0.5">
-                الطالب: <strong>{student?.full_name_ar || student?.full_name}</strong> {student?.student_code ? `(#${student.student_code})` : ''} 
-                {student?.grade_name && <span className="mr-2 text-white/90">• {student.grade_name}</span>}
-                <span className="mr-2 text-amber-300 font-bold">• مجموعات مستقلة خارج الباكدجات</span>
+              <p className="text-xs text-white/80 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span>الطالب: <strong>{student?.full_name_ar || student?.full_name}</strong> {student?.student_code ? `(#${student.student_code})` : ''}</span>
+                {student?.grade_name && <span>• <strong>{student.grade_name}</strong></span>}
+                <span className="px-2 py-0.5 rounded-md bg-white/20 text-white font-bold text-[11px]">
+                  {student?.education_type === 'LANGUAGES' ? '🌐 لغات / تجريبي' : '🏛️ حكومي / عربي'}
+                </span>
+                <span className="text-amber-300 font-bold">• مجموعات خاصة خارج الباكدج</span>
               </p>
             </div>
           </div>

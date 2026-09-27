@@ -262,7 +262,7 @@ async function importScheduleFromDataTxt() {
         await client.query(
           `UPDATE groups
            SET name = $1, name_ar = $1, schedule = $2::jsonb, classroom_id = COALESCE(classroom_id, $3),
-               is_in_package = true, is_private = false, status = 'active'
+               status = 'active'
            WHERE id = $4`,
           [groupName, scheduleJson, classroomId, groupId]
         );
@@ -272,9 +272,8 @@ async function importScheduleFromDataTxt() {
           `INSERT INTO groups (
             grade_id, subject_id, teacher_id, classroom_id,
             name, name_ar, schedule, max_students,
-            price_per_month, price_per_session, status,
-            is_in_package, is_private
-          ) VALUES ($1, $2, $3, $4, $5, $5, $6::jsonb, 40, 120.00, 35.00, 'active', true, false)
+            price_per_month, price_per_session, status
+          ) VALUES ($1, $2, $3, $4, $5, $5, $6::jsonb, 40, 120.00, 35.00, 'active')
           RETURNING id`,
           [gradeId, subjectId, teacherId, classroomId, groupName, scheduleJson]
         );
@@ -338,7 +337,7 @@ async function importScheduleFromDataTxt() {
         [oldCombinedIds]
       );
       await client.query(
-        `UPDATE groups SET status = 'archived', is_in_package = false WHERE id = ANY($1::uuid[])`,
+        `UPDATE groups SET status = 'archived' WHERE id = ANY($1::uuid[])`,
         [oldCombinedIds]
       );
       console.log(`🧹 Cleaned up and archived ${oldCombinedIds.length} old combined-teacher groups.`);

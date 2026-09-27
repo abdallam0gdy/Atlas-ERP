@@ -4,13 +4,26 @@ import toast from 'react-hot-toast';
 import {
   Package, BookOpen, User, Calendar, Clock, CheckCircle2,
   AlertCircle, DollarSign, Wallet, Percent, Coins, X,
-  Layers, Lock, Sparkles, Loader2, ArrowRight, ChevronDown
+  Layers, Lock, Sparkles, Loader2, ArrowRight, ChevronDown,
+  GraduationCap, Edit3
 } from 'lucide-react';
 
 export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess }) {
   const [packages, setPackages] = useState([]);
   const [selectedPackageId, setSelectedPackageId] = useState('');
   const [loadingPackages, setLoadingPackages] = useState(false);
+
+  // Student Education Type (PUBLIC = عربي / حكومي, LANGUAGES = لغات / تجريبي)
+  const [studentEduType, setStudentEduType] = useState(student?.education_type || 'PUBLIC');
+  const [isChangingEduType, setIsChangingEduType] = useState(false);
+  const [updatingEduType, setUpdatingEduType] = useState(false);
+
+  // Sync education_type whenever student prop updates
+  useEffect(() => {
+    if (student?.education_type) {
+      setStudentEduType(student.education_type);
+    }
+  }, [student]);
 
   // Groups linked to selected package
   const [packageGroups, setPackageGroups] = useState([]);
@@ -28,19 +41,42 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Load packages for student's grade when modal opens
+  // Switch student education type and persist to DB
+  const handleSwitchEducationType = async (newType) => {
+    if (newType === studentEduType) {
+      setIsChangingEduType(false);
+      return;
+    }
+    setUpdatingEduType(true);
+    try {
+      await api.put(`/students/${student.id}`, { education_type: newType });
+      setStudentEduType(newType);
+      setIsChangingEduType(false);
+      toast.success(`تم تحديث مسار الطالب إلى: ${newType === 'LANGUAGES' ? '🌐 لغات / تجريبي' : '🏛️ حكومي / عربي'}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'تعذر تعديل نوع التعليم للطالب');
+    } finally {
+      setUpdatingEduType(false);
+    }
+  };
+
+  // Load packages matching student's grade AND education_type
   useEffect(() => {
     if (!isOpen || !student?.grade_id) return;
     const fetchPackages = async () => {
       setLoadingPackages(true);
       try {
         const { data } = await api.get('/packages');
-        const gradePkgs = (data.data || []).filter(
-          (p) => p.grade_id === student.grade_id && p.is_active !== false
+        const matchingPkgs = (data.data || []).filter(
+          (p) => p.grade_id === student.grade_id &&
+                 p.is_active !== false &&
+                 (p.education_type === studentEduType || (!p.education_type && studentEduType === 'PUBLIC'))
         );
-        setPackages(gradePkgs);
-        if (gradePkgs.length > 0) {
-          setSelectedPackageId(gradePkgs[0].id);
+        setPackages(matchingPkgs);
+        if (matchingPkgs.length > 0) {
+          setSelectedPackageId(matchingPkgs[0].id);
+        } else {
+          setSelectedPackageId('');
         }
       } catch (err) {
         console.error('Failed to load packages:', err);
@@ -50,7 +86,7 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
       }
     };
     fetchPackages();
-  }, [isOpen, student?.grade_id]);
+  }, [isOpen, student?.grade_id, studentEduType]);
 
   // Load package groups when selectedPackageId changes
   useEffect(() => {
@@ -226,7 +262,7 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
       <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="p-5 text-white flex items-center justify-between" style={{ background: '#0C3C82' }}>
+        <div className="p-4 sm:p-5 text-white flex items-center justify-between" style={{ background: '#0C3C82' }}>
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/15 rounded-xl shadow-inner">
               <Package size={24} />
@@ -235,9 +271,12 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
               <h3 className="text-base sm:text-lg font-black tracking-tight">
                 إضافة الطالب لباكدج ومواد السنتر
               </h3>
-              <p className="text-xs text-white/80 mt-0.5">
-                الطالب: <strong>{student?.full_name_ar || student?.full_name}</strong> {student?.student_code ? `(#${student.student_code})` : ''}
-                {student?.grade_name && <span className="mr-2 text-white/90">• {student.grade_name}</span>}
+              <p className="text-xs text-white/80 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span>الطالب: <strong>{student?.full_name_ar || student?.full_name}</strong> {student?.student_code ? `(#${student.student_code})` : ''}</span>
+                {student?.grade_name && <span>• <strong>{student.grade_name}</strong></span>}
+                <span className="px-2 py-0.5 rounded-lg bg-white/20 text-white font-bold text-[11px] border border-white/20">
+                  {studentEduType === 'LANGUAGES' ? '🌐 لغات / تجريبي' : '🏛️ حكومي / عربي'}
+                </span>
               </p>
             </div>
           </div>
@@ -252,36 +291,105 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
         {/* Scrollable Body */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
-            {/* Top Row: Package Select & Locked Grade */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-              {/* Locked Grade */}
+            {/* Top Row: Locked Grade, Locked Education Type, and Matched Package */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              {/* 1. Locked Grade */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
+                  <GraduationCap size={13} className="text-[#0C3C82]" />
                   <span>المرحلة الدراسية للطالب:</span>
                 </label>
                 <div className="atlas-input text-xs py-2 bg-blue-50/70 border-blue-200 text-slate-800 font-bold flex items-center justify-between cursor-not-allowed select-none">
                   <span className="truncate text-[#0C3C82]">{student?.grade_name || 'مرحلة الطالب'}</span>
-                  <span className="text-[10px] bg-white border border-blue-200 text-slate-600 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                  <span className="text-[10px] bg-white border border-blue-200 text-slate-600 px-1.5 py-0.5 rounded font-bold flex items-center gap-1 shadow-2xs">
                     <Lock size={10} className="text-amber-600" />
                     <span>مثبت</span>
                   </span>
                 </div>
               </div>
 
-              {/* Package Selector */}
+              {/* 2. Locked Education Type (عربي / لغات) */}
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <BookOpen size={13} className="text-emerald-700" />
+                    <span>نوع التعليم / المسار:</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingEduType(!isChangingEduType)}
+                    className="text-[10px] text-blue-700 hover:text-blue-900 font-bold underline flex items-center gap-0.5"
+                    title="تعديل مسار الطالب بين عربي ولغات"
+                  >
+                    <Edit3 size={10} />
+                    <span>{isChangingEduType ? 'إلغاء' : 'تعديل؟'}</span>
+                  </button>
+                </div>
+
+                {isChangingEduType ? (
+                  <div className="flex items-center gap-1.5 animate-fade-in">
+                    <button
+                      type="button"
+                      disabled={updatingEduType}
+                      onClick={() => handleSwitchEducationType('PUBLIC')}
+                      className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-all ${
+                        studentEduType === 'PUBLIC'
+                          ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      🏛️ عربي / حكومي
+                    </button>
+                    <button
+                      type="button"
+                      disabled={updatingEduType}
+                      onClick={() => handleSwitchEducationType('LANGUAGES')}
+                      className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-all ${
+                        studentEduType === 'LANGUAGES'
+                          ? 'bg-cyan-600 text-white border-cyan-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      🌐 لغات / تجريبي
+                    </button>
+                  </div>
+                ) : (
+                  <div className="atlas-input text-xs py-2 bg-emerald-50/70 border-emerald-200 text-slate-800 font-bold flex items-center justify-between cursor-not-allowed select-none">
+                    <span className="truncate text-emerald-900 font-black flex items-center gap-1">
+                      {studentEduType === 'LANGUAGES' ? '🌐 لغات / تجريبي' : '🏛️ حكومي / عربي'}
+                    </span>
+                    <span className="text-[10px] bg-white border border-emerald-300 text-emerald-800 px-1.5 py-0.5 rounded font-bold flex items-center gap-1 shadow-2xs">
+                      <Lock size={10} className="text-emerald-600" />
+                      <span>مثبت</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Matched Package */}
+              <div className="sm:col-span-2 lg:col-span-1">
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
                   <Package size={13} className="text-[#0C3C82]" />
-                  <span>اختر الباكدج التابع للمرحلة:</span>
+                  <span>الباكدج المطابق للطالب:</span>
                 </label>
                 {loadingPackages ? (
                   <div className="atlas-input text-xs py-2 flex items-center justify-center text-slate-400">
                     <Loader2 size={14} className="animate-spin ml-2" />
-                    جاري جلب الباكدجات...
+                    جاري جلب الباكدج...
                   </div>
                 ) : packages.length === 0 ? (
                   <div className="atlas-input text-xs py-2 text-rose-500 bg-rose-50 border-rose-200 font-bold">
-                    لا توجد باكدجات مسجلة لهذه المرحلة
+                    لا يوجد باكدج مسجل لمسار ({studentEduType === 'LANGUAGES' ? 'لغات' : 'عربي'}) لهذه المرحلة
+                  </div>
+                ) : packages.length === 1 ? (
+                  <div className="atlas-input text-xs py-2 bg-amber-50/80 border-amber-300 text-slate-900 font-bold flex items-center justify-between cursor-not-allowed select-none shadow-2xs">
+                    <span className="truncate text-amber-950 font-black">
+                      {packages[0].name} ({packages[0].package_price} ج.م)
+                    </span>
+                    <span className="text-[10px] bg-white border border-amber-300 text-amber-900 px-1.5 py-0.5 rounded font-bold flex items-center gap-1 whitespace-nowrap shadow-2xs">
+                      <Lock size={10} className="text-amber-600" />
+                      <span>مثبت تلقائياً</span>
+                    </span>
                   </div>
                 ) : (
                   <select
@@ -291,7 +399,7 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
                   >
                     {packages.map((pkg) => (
                       <option key={pkg.id} value={pkg.id}>
-                        {pkg.name} ({pkg.education_type === 'PUBLIC' ? 'عربي / حكومي' : 'لغات / تجريبي'}) — باكدج: {pkg.package_price} ج.م | مادة السنتر: {pkg.single_subject_price} ج.م
+                        {pkg.name} — باكدج: {pkg.package_price} ج.م | مادة السنتر: {pkg.single_subject_price} ج.م
                       </option>
                     ))}
                   </select>

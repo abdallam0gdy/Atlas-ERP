@@ -16,7 +16,16 @@ export default function GatePage() {
   const [scanResult, setScanResult] = useState(null);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [todayStats, setTodayStats] = useState({ total_scans: 0, unique_students: 0, paid_count: 0, pending_count: 0 });
+  const [isProcessingAbsences, setIsProcessingAbsences] = useState(false);
+  const [todayStats, setTodayStats] = useState({
+    total_scans: 0,
+    unique_students: 0,
+    paid_count: 0,
+    pending_count: 0,
+    absent_count: 0,
+    present_count: 0,
+    excused_count: 0,
+  });
   const [todayLogs, setTodayLogs] = useState([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [lastScanTime, setLastScanTime] = useState(null);
@@ -29,7 +38,7 @@ export default function GatePage() {
 
   // Modals & Filters
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [logFilter, setLogFilter] = useState('all'); // 'all' | 'paid' | 'pending'
+  const [logFilter, setLogFilter] = useState('all'); // 'all' | 'present' | 'absent' | 'paid' | 'pending'
   const [mobileTab, setMobileTab] = useState('terminal'); // 'terminal' | 'logs'
 
   const inputRef = useRef(null);
@@ -247,9 +256,11 @@ export default function GatePage() {
       'المجموعة',
       'المادة',
       'المدرس',
+      'الحالة',
       'توقيت الحضور',
       'حالة الدفع',
-      'المسؤول'
+      'المسؤول',
+      'ملاحظات'
     ];
 
     const rows = todayLogs.map((log) => [
@@ -258,9 +269,11 @@ export default function GatePage() {
       log.group_name_ar || log.group_name || '',
       log.subject_name || '',
       log.teacher_name || '',
+      log.status === 'absent' ? 'غائب' : log.status === 'excused' ? 'معذور' : 'حاضر',
       new Date(log.scan_timestamp).toLocaleTimeString('ar-EG'),
       log.payment_status === 'paid' ? 'مدفوع' : log.payment_status === 'free' ? 'مجاني' : 'ينتظر الدفع',
-      log.scanned_by_name || ''
+      log.scanned_by_name || 'تلقائي',
+      log.notes || ''
     ]);
 
     const csvContent =
@@ -288,9 +301,42 @@ export default function GatePage() {
     toast.success('تم تصدير كشف الحضور بنجاح');
   };
 
+  // Process absences on demand for ended classes
+  const handleProcessAbsences = async () => {
+    try {
+      setIsProcessingAbsences(true);
+      const { data } = await api.post('/attendance/process-absences');
+      if (data.data?.processedCount > 0) {
+        toast.success(`تم احتساب غياب ${data.data.processedCount} طالب بنجاح (تم خصم ${data.data.deductedCount} حصة من الاشتراكات)`, { duration: 6000 });
+      } else {
+        toast.success('تم فحص الحصص — لا يوجد غياب جديد غير مسجل للحصص المنتهية');
+      }
+      await loadTodayLog();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'حدث خطأ أثناء فحص الحصص واحتساب الغياب');
+    } finally {
+      setIsProcessingAbsences(false);
+    }
+  };
+
+  // Excuse an absent record and refund deducted session
+  const handleExcuseAbsence = async (log) => {
+    const reason = window.prompt(`أدخل سبب قبول العذر للطالب ${log.student_name}:`, 'ظرف طارئ / عذر مقبول');
+    if (reason === null) return;
+    try {
+      const { data } = await api.post(`/attendance/${log.id}/excuse`, { reason: reason.trim() || 'عذر مقبول' });
+      toast.success(data.message || 'تم قبول العذر واسترداد الحصة المخصومة بنجاح');
+      await loadTodayLog();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'فشل قبول العذر');
+    }
+  };
+
   // Filtered logs for display
   const filteredLogs = useMemo(() => {
     return todayLogs.filter((log) => {
+      if (logFilter === 'present') return log.status === 'present' || log.status === 'late';
+      if (logFilter === 'absent') return log.status === 'absent';
       if (logFilter === 'paid') return log.payment_status === 'paid';
       if (logFilter === 'pending') return log.payment_status === 'pending';
       return true;
@@ -390,7 +436,21 @@ export default function GatePage() {
         </div>
 
         {/* Top Right Utilities & Clock */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={handleProcessAbsences}
+            disabled={isProcessingAbsences}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white transition-all text-xs flex items-center gap-1.5 font-bold border border-rose-500/40 disabled:opacity-50 cursor-pointer shadow-sm"
+            title="فحص الحصص التي انتهى وقتها اليوم واحتساب الغياب على الطلاب غير الحاضرين وخصم الحصة من رصيدهم"
+          >
+            {isProcessingAbsences ? (
+              <RefreshCw size={15} className="animate-spin text-rose-300" />
+            ) : (
+              <Clock size={15} className="text-rose-400" />
+            )}
+            <span className="hidden sm:inline">فحص وحساب الغياب</span>
+          </button>
+
           <button
             onClick={() => setIsPrintModalOpen(true)}
             className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors text-xs flex items-center gap-1 font-semibold"
@@ -701,10 +761,10 @@ export default function GatePage() {
           </div>
 
           {/* Quick Stats Footer */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mt-6">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-6">
             <div className="text-center min-w-[70px]">
               <p className="text-2xl sm:text-3xl font-extrabold text-white">
-                {todayStats.total_scans || 0}
+                {todayStats.present_count ?? todayStats.total_scans ?? 0}
               </p>
               <p className="text-white/50 text-xs">إجمالي الحضور</p>
             </div>
@@ -721,6 +781,13 @@ export default function GatePage() {
                 {todayStats.paid_count || 0}
               </p>
               <p className="text-white/50 text-xs">اشتراك مدفوع</p>
+            </div>
+            <div className="h-8 w-px bg-white/10" />
+            <div className="text-center min-w-[70px]">
+              <p className="text-2xl sm:text-3xl font-extrabold text-rose-400">
+                {todayStats.absent_count || 0}
+              </p>
+              <p className="text-rose-300/80 text-xs font-bold">غائب (مخصوم)</p>
             </div>
             <div className="h-8 w-px bg-white/10" />
             <div className="text-center min-w-[70px]">
@@ -752,7 +819,7 @@ export default function GatePage() {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex bg-black/30 p-0.5 rounded-lg text-xs">
+            <div className="flex bg-black/30 p-0.5 rounded-lg text-xs gap-0.5">
               <button
                 onClick={() => setLogFilter('all')}
                 className={`flex-1 py-1 rounded font-medium transition-all ${
@@ -762,9 +829,25 @@ export default function GatePage() {
                 الكل
               </button>
               <button
+                onClick={() => setLogFilter('present')}
+                className={`flex-1 py-1 rounded font-medium transition-all ${
+                  logFilter === 'present' ? 'bg-emerald-500/30 text-emerald-300 font-bold' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                حاضر
+              </button>
+              <button
+                onClick={() => setLogFilter('absent')}
+                className={`flex-1 py-1 rounded font-medium transition-all ${
+                  logFilter === 'absent' ? 'bg-rose-500/30 text-rose-300 font-bold' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                غائب ({todayStats.absent_count || 0})
+              </button>
+              <button
                 onClick={() => setLogFilter('paid')}
                 className={`flex-1 py-1 rounded font-medium transition-all ${
-                  logFilter === 'paid' ? 'bg-emerald-500/30 text-emerald-300 font-bold' : 'text-white/50 hover:text-white'
+                  logFilter === 'paid' ? 'bg-cyan-500/30 text-cyan-300 font-bold' : 'text-white/50 hover:text-white'
                 }`}
               >
                 مدفوع
@@ -775,7 +858,7 @@ export default function GatePage() {
                   logFilter === 'pending' ? 'bg-amber-500/30 text-amber-300 font-bold' : 'text-white/50 hover:text-white'
                 }`}
               >
-                ينتظر الدفع
+                معلق
               </button>
             </div>
           </div>
@@ -794,6 +877,8 @@ export default function GatePage() {
                   <div key={log.id} className="p-3 sm:p-3.5 hover:bg-white/5 transition-colors">
                     <div className="flex items-start gap-3">
                       <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
+                        log.status === 'absent' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' :
+                        log.status === 'excused' ? 'bg-purple-400' :
                         log.payment_status === 'paid' ? 'bg-emerald-400' :
                         log.payment_status === 'free' ? 'bg-cyan-400' :
                         'bg-amber-400'
@@ -806,21 +891,49 @@ export default function GatePage() {
                           {log.subject_name || log.group_name_ar || log.group_name}
                           {log.teacher_name && ` • ${log.teacher_name}`}
                         </p>
+                        {log.notes && (
+                          <p className="text-white/40 text-[10px] mt-0.5 truncate" title={log.notes}>
+                            {log.notes}
+                          </p>
+                        )}
                       </div>
-                      <div className="text-left shrink-0 text-xs">
+                      <div className="text-left shrink-0 text-xs flex flex-col items-end">
                         <p className="text-white/60 font-mono">
                           {new Date(log.scan_timestamp).toLocaleTimeString('ar-EG', {
                             hour: '2-digit', minute: '2-digit',
                           })}
                         </p>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          log.payment_status === 'paid' ? 'text-emerald-400 bg-emerald-500/10' :
-                          log.payment_status === 'free' ? 'text-cyan-400 bg-cyan-500/10' :
-                          'text-amber-400 bg-amber-500/10'
-                        }`}>
-                          {log.payment_status === 'paid' ? 'مدفوع' :
-                           log.payment_status === 'free' ? 'مجاني' : 'ينتظر الدفع'}
-                        </span>
+                        {log.status === 'absent' ? (
+                          <div className="mt-0.5 flex flex-col items-end gap-1">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              log.payment_status === 'paid'
+                                ? 'text-rose-300 bg-rose-500/20 border border-rose-500/30'
+                                : 'text-amber-300 bg-amber-500/20 border border-amber-500/30'
+                            }`}>
+                              {log.payment_status === 'paid' ? '❌ غائب (مخصومة)' : '⚠️ غائب (غير مسدد)'}
+                            </span>
+                            <button
+                              onClick={() => handleExcuseAbsence(log)}
+                              className="text-[10px] text-amber-300 hover:text-amber-200 underline font-semibold transition-colors cursor-pointer"
+                              title="تسجيل عذر للطالب واسترداد الحصة المخصومة"
+                            >
+                              قبول عذر واسترداد
+                            </button>
+                          </div>
+                        ) : log.status === 'excused' ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-purple-300 bg-purple-500/20 border border-purple-500/30 mt-0.5">
+                            🕊️ معذور (مستردة)
+                          </span>
+                        ) : (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${
+                            log.payment_status === 'paid' ? 'text-emerald-400 bg-emerald-500/10' :
+                            log.payment_status === 'free' ? 'text-cyan-400 bg-cyan-500/10' :
+                            'text-amber-400 bg-amber-500/10'
+                          }`}>
+                            {log.payment_status === 'paid' ? '✅ حاضر (مدفوع)' :
+                             log.payment_status === 'free' ? '🎁 مجاني' : '⚠️ ينتظر الدفع'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
