@@ -332,7 +332,7 @@ export default function GatePage() {
   const handleProcessAbsences = async () => {
     try {
       setIsProcessingAbsences(true);
-      const { data } = await api.post('/attendance/process-absences');
+      const { data } = await api.post('/attendance/process-absences', {});
       if (data.data?.processedCount > 0) {
         toast.success(`تم احتساب غياب ${data.data.processedCount} طالب بنجاح (تم خصم ${data.data.deductedCount} حصة من الاشتراكات)`, { duration: 6000 });
       } else {

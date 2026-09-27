@@ -70,7 +70,7 @@ const lookupStudent = async (req, res, next) => {
  */
 const processAbsences = async (req, res, next) => {
   try {
-    const { date, group_id } = req.body;
+    const { date, group_id } = req.body || {};
     const result = await AttendanceService.processAbsencesForPassedSessions({
       targetDate: date,
       groupId: group_id,
@@ -95,7 +95,7 @@ const processAbsences = async (req, res, next) => {
 const excuseAbsence = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const { reason } = req.body || {};
 
     const result = await AttendanceService.excuseAbsence(id, req.user?.id, reason);
 
@@ -115,7 +115,7 @@ const excuseAbsence = async (req, res, next) => {
  */
 const cancelSession = async (req, res, next) => {
   try {
-    const { group_id, session_date, reason } = req.body;
+    const { group_id, session_date, reason } = req.body || {};
     if (!group_id || !session_date) {
       return res.status(400).json({ success: false, message: 'يرجى تحديد المجموعة وتاريخ الحصة' });
     }
@@ -143,7 +143,7 @@ const cancelSession = async (req, res, next) => {
  */
 const cancelTeacherSessions = async (req, res, next) => {
   try {
-    const { teacher_id, session_date, reason } = req.body;
+    const { teacher_id, session_date, reason } = req.body || {};
     if (!teacher_id || !session_date) {
       return res.status(400).json({ success: false, message: 'يرجى تحديد المدرس وتاريخ الإلغاء' });
     }
