@@ -8,7 +8,7 @@
 
 set -e
 
-BACKUP_DIR="${BACKUP_DIR:-/var/backups/atlas_erp}"
+BACKUP_DIR="${BACKUP_DIR:-/home/atlas/backups}"
 mkdir -p "$BACKUP_DIR"
 
 TIMESTAMP=$(date +"%Y_%m_%d_%H%M%S")

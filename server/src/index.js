@@ -20,9 +20,13 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
-// CORS — allow React dev server
+// CORS — allow React dev server or proxy
+const allowedOrigin = (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*') 
+  ? true 
+  : process.env.CORS_ORIGIN;
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: allowedOrigin,
   credentials: true,
 }));
 
