@@ -21,6 +21,7 @@ import ProfilePage from './pages/ProfilePage';
 import StudentSubscriptionsPage from './pages/StudentSubscriptionsPage';
 import PackagesPage from './pages/PackagesPage';
 import UsersManagementPage from './pages/UsersManagementPage';
+import SettingsPage from './pages/SettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,6 +109,7 @@ function App() {
             {/* Users Management - Strictly SUPER_ADMIN_OWNER */}
             <Route element={<ProtectedRoute adminOnly />}>
               <Route path="/users" element={<UsersManagementPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
 

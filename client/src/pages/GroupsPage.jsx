@@ -5,10 +5,12 @@ import { formatTime12h, formatEGP } from '../lib/formatters';
 import GroupModal from '../components/GroupModal';
 import PrintReportModal from '../components/PrintReportModal';
 import CancelSessionModal from '../components/CancelSessionModal';
+import GroupSettingsModal from '../components/GroupSettingsModal';
 import {
   Search, Plus, BookOpen, Users, Calendar,
   Loader2, GraduationCap, MapPin, Edit2,
-  Filter, Printer, Download, RefreshCw, X, CalendarX
+  Filter, Printer, Download, RefreshCw, X, CalendarX,
+  Settings
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,6 +25,7 @@ export default function GroupsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -168,8 +171,17 @@ export default function GroupsPage() {
           </button>
 
           <button
+            onClick={() => setIsSettingsModalOpen(true)}
+            className="atlas-btn text-xs sm:text-sm flex items-center gap-1.5 bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 font-semibold transition-all shadow-sm cursor-pointer"
+            title="تعديل مواعيد وفترات الحضور، فاصل الحصص المتتالية، وإدارة القاعات الدراسية"
+          >
+            <Settings size={16} className="text-sky-600" />
+            <span>إعدادات الحصص والقاعات</span>
+          </button>
+
+          <button
             onClick={() => setIsCancelModalOpen(true)}
-            className="atlas-btn text-xs sm:text-sm flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 font-semibold transition-all shadow-sm"
+            className="atlas-btn text-xs sm:text-sm flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 font-semibold transition-all shadow-sm cursor-pointer"
             title="إلغاء حصة أسبوعية بسبب اعتذار المدرس حتى لا تُحتسب على الطلاب"
           >
             <CalendarX size={16} className="text-amber-600" />
@@ -388,7 +400,15 @@ export default function GroupsPage() {
         onClose={() => setIsCancelModalOpen(false)}
         onSessionCancelled={fetchGroups}
       />
+
+      {/* Group & Classroom Settings Modal */}
+      <GroupSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSettingsSaved={fetchGroups}
+      />
     </div>
   );
 }
+
 

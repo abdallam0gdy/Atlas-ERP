@@ -178,9 +178,19 @@ class AttendanceService {
       const existingScanMap = new Map();
       existingScans.rows.forEach((r) => existingScanMap.set(r.group_id, r));
 
-      // 4. Intelligent Consecutive / Back-to-Back Sessions Detection
-      // Sort active sessions by start time
-      activeTodaysSessions.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+      // 4. Intelligent Consecutive / Back-to-Back Sessions Detection & Time Window Allowance
+      // Load dynamic settings from system_settings
+      const settingsRes = await client.query(
+        `SELECT key, value FROM system_settings 
+         WHERE key IN ('multi_session_gap_minutes', 'attendance_early_allowance_minutes', 'attendance_late_allowance_minutes', 'session_duration_minutes')`
+      );
+      const settingsMap = new Map();
+      settingsRes.rows.forEach((r) => settingsMap.set(r.key, r.value));
+
+      const multiSessionGap = parseInt(settingsMap.get('multi_session_gap_minutes') || '60', 10);
+      const earlyAllowance = parseInt(settingsMap.get('attendance_early_allowance_minutes') || '30', 10);
+      const lateAllowance = parseInt(settingsMap.get('attendance_late_allowance_minutes') || '30', 10);
+      const defaultDuration = parseInt(settingsMap.get('session_duration_minutes') || '90', 10);
 
       const parseTimeToMinutes = (tStr) => {
         if (!tStr) return 0;
@@ -188,57 +198,122 @@ class AttendanceService {
         return (h || 0) * 60 + (m || 0);
       };
 
+      const formatMinutesTo12h = (mins) => {
+        const norm = ((mins % 1440) + 1440) % 1440;
+        const h24 = Math.floor(norm / 60);
+        const m = norm % 60;
+        const period = h24 >= 12 ? 'م' : 'ص';
+        const h12 = h24 % 12 || 12;
+        return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+      };
+
+      // Enrich active sessions with time calculations
+      for (const s of activeTodaysSessions) {
+        s.startMins = parseTimeToMinutes(s.startTime);
+        s.endMins = s.endTime ? parseTimeToMinutes(s.endTime) : (s.startMins + defaultDuration);
+        s.earliestAllowed = s.startMins - earlyAllowance;
+        s.latestAllowed = s.endMins + lateAllowance;
+      }
+
+      // Sort active sessions by start time
+      activeTodaysSessions.sort((a, b) => a.startMins - b.startMins);
+
+      // Group consecutive sessions into chains (gap <= multiSessionGap)
+      const clusters = [];
+      let curCluster = [];
+      for (let i = 0; i < activeTodaysSessions.length; i++) {
+        const s = activeTodaysSessions[i];
+        if (curCluster.length === 0) {
+          curCluster.push(s);
+        } else {
+          const prev = curCluster[curCluster.length - 1];
+          if (s.startMins - prev.endMins <= multiSessionGap && s.startMins >= prev.startMins) {
+            curCluster.push(s);
+          } else {
+            clusters.push(curCluster);
+            curCluster = [s];
+          }
+        }
+      }
+      if (curCluster.length > 0) {
+        clusters.push(curCluster);
+      }
+
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-      // Determine which sessions belong to current arrival block:
-      // Consecutive back-to-back sessions (gap <= 75 mins) are automatically processed
-      // together upon initial gate check-in so students never need to exit to scan again!
-      let targetSessionsToProcess = [];
+      // Check which cluster matches the student's arrival time window:
+      // Window = [clusterFirst.earliestAllowed, clusterLast.latestAllowed]
+      let targetSessionsToProcess = null;
 
-      if (activeTodaysSessions.length <= 1) {
-        targetSessionsToProcess = activeTodaysSessions;
-      } else {
-        let allConsecutive = true;
-        for (let i = 0; i < activeTodaysSessions.length - 1; i++) {
-          const s1End = parseTimeToMinutes(activeTodaysSessions[i].endTime || activeTodaysSessions[i].startTime);
-          const s2Start = parseTimeToMinutes(activeTodaysSessions[i + 1].startTime);
-          if (s2Start - s1End > 75) {
-            allConsecutive = false;
-            break;
-          }
-        }
+      for (const cluster of clusters) {
+        const clusterEarliest = cluster[0].earliestAllowed;
+        const clusterLatest = cluster[cluster.length - 1].latestAllowed;
 
-        if (allConsecutive) {
-          targetSessionsToProcess = activeTodaysSessions;
-        } else {
-          // If sessions have a large gap (e.g. morning vs evening), process the current block + any consecutive session
-          const matchedBlock = [];
-          for (let i = 0; i < activeTodaysSessions.length; i++) {
-            const s = activeTodaysSessions[i];
-            const sStart = parseTimeToMinutes(s.startTime);
-            const sEnd = parseTimeToMinutes(s.endTime || s.startTime);
-
-            const isNearNow = (currentMinutes >= sStart - 90 && currentMinutes <= sEnd + 60);
-
-            if (isNearNow || matchedBlock.length > 0) {
-              matchedBlock.push(s);
-              // Check if next session is consecutive to this one
-              if (i < activeTodaysSessions.length - 1) {
-                const nextS = activeTodaysSessions[i + 1];
-                const nextStart = parseTimeToMinutes(nextS.startTime);
-                if (nextStart - sEnd <= 75) {
-                  matchedBlock.push(nextS);
-                  i++;
-                }
-              }
-              break;
-            }
-          }
-
-          targetSessionsToProcess = matchedBlock.length > 0 ? matchedBlock : activeTodaysSessions;
+        if (currentMinutes >= clusterEarliest && currentMinutes <= clusterLatest) {
+          targetSessionsToProcess = cluster;
+          break;
         }
       }
+
+      // If no session window matches current arrival time:
+      if (!targetSessionsToProcess) {
+        await client.query('ROLLBACK');
+
+        // Check if student arrived early for an upcoming session today
+        const upcomingCluster = clusters.find((c) => currentMinutes < c[0].earliestAllowed);
+
+        if (upcomingCluster) {
+          const upcomingFirst = upcomingCluster[0];
+          const startTimeStr = formatMinutesTo12h(upcomingFirst.startMins);
+          const earliestTimeStr = formatMinutesTo12h(upcomingFirst.earliestAllowed);
+          const sessionTitle = upcomingFirst.subject_name || upcomingFirst.group_name_ar || upcomingFirst.group_name;
+
+          return {
+            success: false,
+            type: 'TOO_EARLY',
+            message: `⚠️ غير مسموح بالدخول مبكراً — الحصة (${sessionTitle}) تبدأ في (${startTimeStr}). يفتح باب تسجيل الحضور قبل الحصة بـ ${earlyAllowance} دقيقة (الساعة ${earliestTimeStr})`,
+            student: {
+              id: student.id,
+              fullName: student.full_name,
+              gradeName: student.grade_name,
+              photoUrl: student.photo_url,
+            },
+            sessions: activeTodaysSessions.map((s) => ({
+              groupName: s.group_name_ar || s.group_name,
+              subjectName: s.subject_name,
+              startTime: s.startTime,
+              endTime: s.endTime,
+            })),
+          };
+        }
+
+        // Otherwise all sessions have ended and exceeded the late grace period
+        const lastCluster = clusters[clusters.length - 1];
+        const lastSession = lastCluster[lastCluster.length - 1];
+        const endTimeStr = formatMinutesTo12h(lastSession.endMins);
+        const latestTimeStr = formatMinutesTo12h(lastSession.latestAllowed);
+        const sessionTitle = lastSession.subject_name || lastSession.group_name_ar || lastSession.group_name;
+
+        return {
+          success: false,
+          type: 'TOO_LATE',
+          message: `⚠️ انتهت فترة السماح بتسجيل الحضور — الحصة (${sessionTitle}) انتهت في (${endTimeStr}) وفترة السماح بعد الحصة (${lateAllowance} دقيقة) انتهت في (${latestTimeStr}) — الحصة مسجلة كغياب`,
+          student: {
+            id: student.id,
+            fullName: student.full_name,
+            gradeName: student.grade_name,
+            photoUrl: student.photo_url,
+          },
+          sessions: activeTodaysSessions.map((s) => ({
+            groupName: s.group_name_ar || s.group_name,
+            subjectName: s.subject_name,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          })),
+        };
+      }
+
 
       // Process check-in for target sessions
       const checkedInSessions = [];
@@ -339,6 +414,7 @@ class AttendanceService {
         );
 
         if (attendanceResult.rows.length > 0) {
+          const remainingAfter = subResult.rows.length > 0 ? Math.max(0, subResult.rows[0].total_sessions - (subResult.rows[0].used_sessions + 1)) : 0;
           checkedInSessions.push({
             attendanceId: attendanceResult.rows[0].id,
             groupName: session.group_name_ar || session.group_name,
@@ -350,6 +426,8 @@ class AttendanceService {
             endTime: session.endTime,
             paymentStatus,
             pricePerSession: session.price_per_session,
+            remainingSessions: remainingAfter,
+            hasSubscription: subResult.rows.length > 0,
           });
         }
       }
@@ -363,6 +441,8 @@ class AttendanceService {
           student: {
             id: student.id,
             fullName: student.full_name,
+            studentCode: student.student_code,
+            barcodeId: student.barcode_id,
             gradeName: student.grade_name,
             photoUrl: student.photo_url,
           },
@@ -404,11 +484,14 @@ class AttendanceService {
           id: student.id,
           fullName: student.full_name,
           fullNameAr: student.full_name_ar,
+          studentCode: student.student_code,
+          barcodeId: student.barcode_id,
+          phone: student.phone,
           gradeName: student.grade_name,
           photoUrl: student.photo_url,
           billingModel: student.billing_model,
           statusName: student.status_name,
-          discountPercent: student.discount_percent,
+          discountPercent: student.discount_percent || 0,
         },
         sessions: checkedInSessions,
         isMultiSession,
@@ -1098,10 +1181,67 @@ class AttendanceService {
     const cancelledMap = new Map();
     cancelledRes.rows.forEach((r) => cancelledMap.set(r.group_id, r.reason));
 
+    // Fetch settings for window calculations
+    const settingsRes = await db.query(
+      `SELECT key, value FROM system_settings 
+       WHERE key IN ('multi_session_gap_minutes', 'attendance_early_allowance_minutes', 'attendance_late_allowance_minutes', 'session_duration_minutes')`
+    );
+    const settingsMap = new Map();
+    settingsRes.rows.forEach((r) => settingsMap.set(r.key, r.value));
+
+    const earlyAllowance = parseInt(settingsMap.get('attendance_early_allowance_minutes') || '30', 10);
+    const lateAllowance = parseInt(settingsMap.get('attendance_late_allowance_minutes') || '30', 10);
+    const defaultDuration = parseInt(settingsMap.get('session_duration_minutes') || '90', 10);
+
+    const parseTimeToMinutes = (tStr) => {
+      if (!tStr) return 0;
+      const [h, m] = tStr.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+
+    const formatMinutesTo12h = (mins) => {
+      const norm = ((mins % 1440) + 1440) % 1440;
+      const h24 = Math.floor(norm / 60);
+      const m = norm % 60;
+      const period = h24 >= 12 ? 'م' : 'ص';
+      const h12 = h24 % 12 || 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+    };
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Fetch active subscriptions with remaining sessions
+    const subRes = await db.query(
+      `SELECT id, group_id, remaining_sessions, total_sessions, used_sessions
+       FROM student_subscriptions
+       WHERE student_id = $1 AND status = 'active' AND remaining_sessions > 0`,
+      [student.id]
+    );
+    const groupSubMap = new Map();
+    let generalSub = null;
+    subRes.rows.forEach((s) => {
+      if (s.group_id) groupSubMap.set(s.group_id, s);
+      else generalSub = s;
+    });
+
     const markedSessions = todaysSessions.map((s) => {
       const status = scanStatusMap.get(s.groupId);
       const isCancelled = cancelledMap.has(s.groupId);
       const cancelReason = cancelledMap.get(s.groupId);
+
+      const sStart = parseTimeToMinutes(s.startTime);
+      const sEnd = s.endTime ? parseTimeToMinutes(s.endTime) : (sStart + defaultDuration);
+      const earliestAllowed = sStart - earlyAllowance;
+      const latestAllowed = sEnd + lateAllowance;
+
+      const isOpen = currentMinutes >= earliestAllowed && currentMinutes <= latestAllowed;
+      const isTooEarly = currentMinutes < earliestAllowed;
+      const isTooLate = currentMinutes > latestAllowed;
+
+      const sub = groupSubMap.get(s.groupId) || generalSub;
+      const remainingSessions = sub ? sub.remaining_sessions : 0;
+
       return {
         ...s,
         status: status || null,
@@ -1110,6 +1250,15 @@ class AttendanceService {
         isAttended: status === 'present' || status === 'late',
         isAbsent: status === 'absent',
         isExcused: status === 'excused',
+        isOpenForCheckin: isOpen,
+        isTooEarly,
+        isTooLate,
+        earliestAllowedStr: formatMinutesTo12h(earliestAllowed),
+        latestAllowedStr: formatMinutesTo12h(latestAllowed),
+        startTimeStr: formatMinutesTo12h(sStart),
+        endTimeStr: formatMinutesTo12h(sEnd),
+        hasSubscription: Boolean(sub),
+        remainingSessions,
       };
     });
 
@@ -1129,16 +1278,18 @@ class AttendanceService {
         photoUrl: student.photo_url,
         billingModel: student.billing_model,
         statusName: student.status_name,
-        discountPercent: student.discount_percent,
+        discountPercent: student.discount_percent || 0,
       },
       sessions: markedSessions,
       allAttended,
       noSessions: markedSessions.length === 0,
+      earlyAllowance,
+      lateAllowance,
       message: allAttended
         ? 'تم تسجيل الحضور لجميع حصص اليوم مسبقاً'
         : markedSessions.length === 0
           ? 'لا توجد حصص مجدولة لهذا الطالب اليوم'
-          : `جاهز لتسجيل الحضور (${activeSessions.filter((s) => !s.isAttended).length} حصة متبقية)`,
+          : `جاهز لتسجيل الحضور (${activeSessions.filter((s) => !s.isAttended).length} حصة مجدولة)`,
     };
   }
 }

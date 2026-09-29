@@ -63,6 +63,7 @@ const PAGE_TITLES = {
   '/qrcode': 'إصدار وطباعة كروت الـ QR',
   '/barcodes': 'إصدار وطباعة كروت الـ QR',
   '/users': 'إدارة الحسابات والصلاحيات',
+  '/settings': 'إعدادات السنتر والنظام العام',
   '/profile': 'الملف الشخصي والحساب',
 };
 
@@ -93,6 +94,7 @@ export function MainLayout() {
     { path: '/booklets', pageId: 'booklets', icon: Library, label: 'مكتب الملازم والكتب' },
     { path: '/qrcode', pageId: 'qrcode', icon: QrCode, label: 'كروت الـ QR' },
     { path: '/users', pageId: 'users', icon: ShieldCheck, label: 'إدارة الحسابات والصلاحيات', adminOnly: true },
+    { path: '/settings', pageId: 'settings', icon: Settings, label: 'إعدادات السنتر', adminOnly: true },
     { path: '/profile', icon: User, label: 'الملف الشخصي', isPublic: true },
     { path: '/gate', pageId: 'gate', icon: DoorOpen, label: 'بوابة الحضور' },
   ];

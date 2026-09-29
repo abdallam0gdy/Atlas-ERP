@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, User, BookOpen,
   Search, Hash, Keyboard, RefreshCw, ArrowRight, Camera,
   Printer, Download, LayoutDashboard, Filter, Check, List,
-  CalendarX
+  CalendarX, Sparkles, ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -596,6 +596,10 @@ export default function GatePage() {
                         <CheckCircle2 size={54} className="text-emerald-400" />
                       ) : scanResult.type === 'ALREADY_SCANNED' ? (
                         <AlertTriangle size={54} className="text-amber-400" />
+                      ) : scanResult.type === 'TOO_EARLY' ? (
+                        <Clock size={54} className="text-amber-400 animate-pulse" />
+                      ) : scanResult.type === 'TOO_LATE' ? (
+                        <CalendarX size={54} className="text-rose-400" />
                       ) : (
                         <XCircle size={54} className="text-rose-400" />
                       )}
@@ -606,22 +610,43 @@ export default function GatePage() {
                       {scanResult.message}
                     </h2>
 
-                    {/* Student Info If Found */}
+                    {/* Student Info & Financial Status Badge If Found */}
                     {scanResult.data?.student && (
-                      <div className="mt-3 p-4 rounded-2xl bg-white/10 border border-white/10 text-right">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-300 font-bold text-lg flex items-center justify-center shrink-0">
-                            {scanResult.data.student.fullName?.[0] || 'ط'}
+                      <div className="mt-3 p-4 rounded-2xl bg-white/10 border border-white/10 text-right space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-300 font-bold text-lg flex items-center justify-center shrink-0">
+                              {scanResult.data.student.fullName?.[0] || 'ط'}
+                            </div>
+                            <div>
+                              <p className="text-white font-bold text-base">
+                                {scanResult.data.student.fullName}
+                              </p>
+                              <p className="text-white/60 text-xs mt-0.5">
+                                {scanResult.data.student.gradeName}
+                                {scanResult.data.student.studentCode && ` • كود: #${scanResult.data.student.studentCode}`}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-white font-bold text-base">
-                              {scanResult.data.student.fullName}
-                            </p>
-                            <p className="text-white/60 text-xs mt-0.5">
-                              {scanResult.data.student.gradeName}
-                            </p>
-                          </div>
+
+                          {/* Discount Status Pill */}
+                          {scanResult.data.student.discountPercent > 0 && (
+                            <span className="bg-purple-500/30 text-purple-200 border border-purple-400/40 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 shrink-0">
+                              <Sparkles size={13} className="text-purple-300" />
+                              <span>{scanResult.data.student.statusName || 'خصم'} ({scanResult.data.student.discountPercent}%)</span>
+                            </span>
+                          )}
                         </div>
+
+                        {/* Special Discount Notice Banner */}
+                        {scanResult.data.student.discountPercent > 0 && (
+                          <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-semibold flex items-center justify-between">
+                            <span>حالة الطالب بالنظام: {scanResult.data.student.statusName || 'حالة خاصة'}</span>
+                            <span className="font-bold text-purple-100 font-mono">
+                              {scanResult.data.student.discountPercent === 100 ? 'منحة مجانية بالكامل (100%)' : `تخفيض بنسبة ${scanResult.data.student.discountPercent}%`}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -631,7 +656,7 @@ export default function GatePage() {
                         {scanResult.data.sessions.length > 1 && (
                           <div className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold animate-pulse">
                             <CheckCircle2 size={16} className="text-cyan-300 shrink-0" />
-                            <span>تسجيل ذكي: تم إثبات حضور الحصص المتتالية معاً (لا داعي للخروج للمسح مرة أخرى)</span>
+                            <span>تسجيل ذكي: تم إثبات حضور الحصص المتتالية معاً بمسحة واحدة (لا داعي للخروج للمسح ثانية)</span>
                           </div>
                         )}
                         {scanResult.data.sessions.map((session, i) => (
@@ -650,6 +675,11 @@ export default function GatePage() {
                               </p>
                               <p className="text-white/50 text-xs mt-0.5">
                                 {session.teacherName} • {session.classroomName || 'القاعة المحددة'}
+                                {session.remainingSessions !== undefined && session.hasSubscription && (
+                                  <span className={`mr-2 font-mono ${session.remainingSessions <= 1 ? 'text-amber-300 font-bold' : 'text-emerald-300'}`}>
+                                    (المتبقي: {session.remainingSessions} حصص)
+                                  </span>
+                                )}
                               </p>
                             </div>
                             <span className={`text-xs font-bold ${session.paymentStatus === 'paid' ? 'text-emerald-400' : session.paymentStatus === 'free' ? 'text-cyan-400' : 'text-amber-400'}`}>
@@ -726,30 +756,49 @@ export default function GatePage() {
                 ) : (
                   <div className="animate-fade-in-up space-y-4">
                     {/* Student Info Card */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/10 border border-white/15">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 text-cyan-300 font-bold text-2xl flex items-center justify-center border border-cyan-400/30 shrink-0">
-                          {lookedUpStudent.student.fullName?.[0] || 'ط'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-lg sm:text-xl font-bold text-white truncate">
-                              {lookedUpStudent.student.fullName}
-                            </h3>
-                            <span className="bg-cyan-400/20 text-cyan-300 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold">
-                              #{lookedUpStudent.student.studentCode || lookedUpStudent.student.barcodeId}
-                            </span>
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/10 border border-white/15 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 text-cyan-300 font-bold text-2xl flex items-center justify-center border border-cyan-400/30 shrink-0">
+                            {lookedUpStudent.student.fullName?.[0] || 'ط'}
                           </div>
-                          <p className="text-white/70 text-xs sm:text-sm mt-0.5">
-                            {lookedUpStudent.student.gradeName}
-                            {lookedUpStudent.student.phone && ` • ${lookedUpStudent.student.phone}`}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-lg sm:text-xl font-bold text-white truncate">
+                                {lookedUpStudent.student.fullName}
+                              </h3>
+                              <span className="bg-cyan-400/20 text-cyan-300 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold">
+                                #{lookedUpStudent.student.studentCode || lookedUpStudent.student.barcodeId}
+                              </span>
+                            </div>
+                            <p className="text-white/70 text-xs sm:text-sm mt-0.5">
+                              {lookedUpStudent.student.gradeName}
+                              {lookedUpStudent.student.phone && ` • ${lookedUpStudent.student.phone}`}
+                            </p>
+                          </div>
                         </div>
+
+                        {lookedUpStudent.student.discountPercent > 0 && (
+                          <span className="bg-purple-500/30 text-purple-200 border border-purple-400/40 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1 shrink-0">
+                            <Sparkles size={14} className="text-purple-300" />
+                            <span>خصم {lookedUpStudent.student.discountPercent}%</span>
+                          </span>
+                        )}
                       </div>
+
+                      {/* Special Discount Notice Banner */}
+                      {lookedUpStudent.student.discountPercent > 0 && (
+                        <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-semibold flex items-center justify-between">
+                          <span>حالة الطالب: {lookedUpStudent.student.statusName || 'حالة خاصة'}</span>
+                          <span className="font-bold text-purple-100 font-mono">
+                            {lookedUpStudent.student.discountPercent === 100 ? 'منحة مجانية 100%' : `خصم استثنائي ${lookedUpStudent.student.discountPercent}%`}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Scheduled Sessions Today */}
                       <div className="mt-4 pt-3 border-t border-white/10">
-                        <p className="text-white/60 text-xs mb-2 font-medium">حصص ومجموعات اليوم:</p>
+                        <p className="text-white/60 text-xs mb-2 font-medium">حصص ومجموعات اليوم بالجدول:</p>
                         {lookedUpStudent.sessions?.length === 0 ? (
                           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium">
                             ⚠️ لا توجد حصص مجدولة لهذا الطالب اليوم في الجدول الدراسي
@@ -759,22 +808,56 @@ export default function GatePage() {
                             {lookedUpStudent.sessions.map((sess, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5"
+                                className="p-3 rounded-xl bg-black/20 border border-white/5 space-y-1.5"
                               >
-                                <div>
-                                  <p className="text-white font-semibold text-xs sm:text-sm">
-                                    {sess.subjectName || sess.groupName}
-                                  </p>
-                                  <p className="text-white/40 text-[11px] mt-0.5">
-                                    {sess.teacherName} • {sess.classroomName || 'القاعة'}
-                                  </p>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-white font-semibold text-xs sm:text-sm flex items-center gap-2">
+                                      <span>{sess.subjectName || sess.groupName}</span>
+                                      {sess.startTime && (
+                                        <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-cyan-300">
+                                          {sess.startTime} {sess.endTime ? `— ${sess.endTime}` : ''}
+                                        </span>
+                                      )}
+                                    </p>
+                                    <p className="text-white/40 text-[11px] mt-0.5">
+                                      {sess.teacherName} • {sess.classroomName || 'القاعة المحددة'}
+                                    </p>
+                                  </div>
+                                  <div className="text-left">
+                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                                      sess.isAttended
+                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                        : sess.isOpenForCheckin
+                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                          : sess.isTooEarly
+                                            ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                    }`}>
+                                      {sess.isAttended
+                                        ? '✅ تم الحضور'
+                                        : sess.isOpenForCheckin
+                                          ? '🟢 متاح للتسجيل الآن'
+                                          : sess.isTooEarly
+                                            ? `⏳ مبكر (يفتح ${sess.earliestAllowedStr || ''})`
+                                            : '❌ انتهت فترة السماح'}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-left">
-                                  <span className={`text-[11px] font-bold ${
-                                    sess.isAttended ? 'text-amber-400' : 'text-emerald-400'
-                                  }`}>
-                                    {sess.isAttended ? '✅ تم الحضور' : '⏳ جاهز للتسجيل'}
+
+                                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/5 text-white/50">
+                                  <span>
+                                    {sess.hasSubscription ? (
+                                      <span className={sess.remainingSessions <= 1 ? 'text-amber-300 font-bold' : 'text-emerald-300'}>
+                                        رصيد الاشتراك: {sess.remainingSessions} حصص متبقية
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-300 font-bold">
+                                        ⚠️ لا يوجد رصيد حصص كافي (مستحق للدفع)
+                                      </span>
+                                    )}
                                   </span>
+                                  <span>سعر الحصة: {sess.pricePerSession || 0} ج.م</span>
                                 </div>
                               </div>
                             ))}
