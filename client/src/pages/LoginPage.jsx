@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
-import { Eye, EyeOff, Loader2, User, Lock, Sparkles, QrCode, Printer, Users, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2, User, Lock, QrCode, Printer, Users, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState(() => localStorage.getItem('atlas_remember_user') || '');
@@ -31,10 +31,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillQuickDemo = (user, pass) => {
-    setUsername(user);
-    setPassword(pass);
-  };
 
   return (
     <div
@@ -194,16 +190,6 @@ export default function LoginPage() {
                 />
                 <span className="text-white/70 text-xs">تذكر اسم المستخدم</span>
               </label>
-
-              <button
-                type="button"
-                onClick={() => fillQuickDemo('admin', 'admin123')}
-                className="text-xs text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1 font-medium bg-sky-500/10 hover:bg-sky-500/20 px-2 py-1 rounded-lg border border-sky-500/20"
-                title="تعبئة تلقائية لحساب المدير"
-              >
-                <Sparkles size={12} />
-                <span>حساب تجريبي (admin)</span>
-              </button>
             </div>
 
             <button
