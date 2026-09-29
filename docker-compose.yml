@@ -10,10 +10,12 @@ services:
       POSTGRES_DB: ${DB_NAME:-atlas_erp_local}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
+      TZ: Africa/Cairo
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Initial database seed on fresh installation
       - ./server/backups/atlas_clean_initial.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -38,6 +40,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
+      TZ: Africa/Cairo
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-atlas_erp_local}
@@ -52,6 +55,7 @@ services:
     volumes:
       - ./server/uploads:/app/uploads
       - ./server/backups:/app/backups
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "5000:5000"
 
@@ -66,6 +70,10 @@ services:
     restart: unless-stopped
     depends_on:
       - server
+    environment:
+      TZ: Africa/Cairo
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "80:80"
 
