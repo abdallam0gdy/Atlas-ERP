@@ -22,7 +22,8 @@ import StudentSubscriptionsPage from './pages/StudentSubscriptionsPage';
 import PackagesPage from './pages/PackagesPage';
 import UsersManagementPage from './pages/UsersManagementPage';
 import SettingsPage from './pages/SettingsPage';
-import PortalLayout from './components/portal/PortalLayout';
+import StudentPortalLayout from './components/portal/StudentPortalLayout';
+import TeacherPortalLayout from './components/portal/TeacherPortalLayout';
 import StudentRegistrationPage from './pages/portal/StudentRegistrationPage';
 import TeacherRegistrationPage from './pages/portal/TeacherRegistrationPage';
 
@@ -41,14 +42,20 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
+          {/* Public Login Route */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Public Online Registration Portal */}
-          <Route path="/register" element={<PortalLayout />}>
-            <Route index element={<Navigate to="/register/student" replace />} />
-            <Route path="student" element={<StudentRegistrationPage />} />
-            <Route path="teacher" element={<TeacherRegistrationPage />} />
+          {/* Public Student Registration Portal */}
+          <Route element={<StudentPortalLayout />}>
+            <Route path="/register" element={<StudentRegistrationPage />} />
+            <Route path="/register/student" element={<Navigate to="/register" replace />} />
+            <Route path="/apply" element={<Navigate to="/register" replace />} />
+          </Route>
+
+          {/* Private & Obfuscated Teacher Onboarding Portal */}
+          <Route element={<TeacherPortalLayout />}>
+            <Route path="/faculty-onboarding-2026" element={<TeacherRegistrationPage />} />
+            <Route path="/staff-apply" element={<Navigate to="/faculty-onboarding-2026" replace />} />
           </Route>
 
           {/* Gate Terminal — Full Screen (No Sidebar) */}
