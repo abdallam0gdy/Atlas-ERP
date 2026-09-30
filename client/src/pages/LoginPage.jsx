@@ -63,9 +63,19 @@ export default function LoginPage() {
             style={{
               background: 'rgba(255, 255, 255, 0.96)',
               boxShadow: '0 12px 35px rgba(0,0,0,0.4), 0 0 30px rgba(14,165,233,0.3)',
+              width: '6.5rem',
+              height: '6.5rem',
+              maxWidth: '100%',
+              borderRadius: '1.5rem',
+              display: 'inline-flex',
             }}
           >
-            <img src="/atlas-logo.png" alt="سنتر أطلس التعليمي" className="w-full h-full object-contain" />
+            <img
+              src="/atlas-logo.png"
+              alt="سنتر أطلس التعليمي"
+              className="w-full h-full object-contain"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-wide flex items-center justify-center gap-2">
             <span>سنتر أطلس التعليمي</span>
