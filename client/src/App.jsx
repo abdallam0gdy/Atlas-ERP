@@ -22,6 +22,9 @@ import StudentSubscriptionsPage from './pages/StudentSubscriptionsPage';
 import PackagesPage from './pages/PackagesPage';
 import UsersManagementPage from './pages/UsersManagementPage';
 import SettingsPage from './pages/SettingsPage';
+import PortalLayout from './components/portal/PortalLayout';
+import StudentRegistrationPage from './pages/portal/StudentRegistrationPage';
+import TeacherRegistrationPage from './pages/portal/TeacherRegistrationPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +43,13 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
+
+          {/* Public Online Registration Portal */}
+          <Route path="/register" element={<PortalLayout />}>
+            <Route index element={<Navigate to="/register/student" replace />} />
+            <Route path="student" element={<StudentRegistrationPage />} />
+            <Route path="teacher" element={<TeacherRegistrationPage />} />
+          </Route>
 
           {/* Gate Terminal — Full Screen (No Sidebar) */}
           <Route element={<ProtectedRoute allowedRoles={[]} />}>
