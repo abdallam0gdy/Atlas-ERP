@@ -537,16 +537,21 @@ const deleteStudent = async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    // 1. Delete booklet reservations for this student (avoids ON DELETE RESTRICT failure)
+    // 1. Delete attendance logs for this student (avoids NO ACTION constraint failure)
+    await client.query('DELETE FROM attendance_logs WHERE student_id = $1', [id]);
+
+    // 2. Unassign barcode items assigned to this student (avoids NO ACTION constraint failure)
+    await client.query(
+      `UPDATE barcode_items 
+       SET assigned_to = NULL, status = 'unassigned', assigned_at = NULL 
+       WHERE assigned_to = $1`,
+      [id]
+    );
+
+    // 3. Delete booklet reservations for this student (avoids RESTRICT constraint failure)
     await client.query('DELETE FROM booklet_reservations WHERE student_id = $1', [id]);
 
-    // 2. Unlink any POS sales referencing this student
-    await client.query('UPDATE pos_sales SET student_id = NULL WHERE student_id = $1', [id]);
-
-    // 3. Unlink any QR cards assigned to this student
-    await client.query('UPDATE qr_cards SET assigned_to = NULL WHERE assigned_to = $1', [id]);
-
-    // 4. Delete the student record itself (cascades to enrollments, attendance, payments, etc.)
+    // 4. Delete the student record itself (cascades to enrollments, subscriptions, package enrollments, etc.)
     await client.query('DELETE FROM students WHERE id = $1', [id]);
 
     // 5. Write audit log
