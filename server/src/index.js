@@ -165,7 +165,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log('');
       console.log('═══════════════════════════════════════════════');
-      console.log('   🏛️  Atlas Educational ERP — سنتر أطلس');
+      console.log('   🏛️  Atlas Educational ERP — أكاديمية أطلس التعليمية');
       console.log('═══════════════════════════════════════════════');
       console.log(`   🚀 Server running on port ${PORT}`);
       console.log(`   🌍 Environment: ${process.env.NODE_ENV}`);

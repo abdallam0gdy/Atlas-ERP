@@ -15,8 +15,8 @@ export default function SettingsPage() {
 
   // Settings form
   const [settings, setSettings] = useState({
-    center_name: 'سنتر أطلس',
-    center_name_en: 'Atlas Center',
+    center_name: 'أكاديمية أطلس التعليمية',
+    center_name_en: 'Atlas Educational Academy',
     currency: 'EGP',
     default_package_sessions: '8',
     multi_session_gap_minutes: '60',

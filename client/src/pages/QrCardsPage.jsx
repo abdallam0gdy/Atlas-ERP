@@ -192,9 +192,9 @@ export default function QrCardsPage() {
                     </div>
                     <div>
                       <h4 className="text-xs font-black text-[#0C3C82] tracking-tight">
-                        سنتر أطلس التعليمي
+                        أكاديمية أطلس التعليمية
                       </h4>
-                      <p className="text-[9px] text-slate-400">Atlas Center Card</p>
+                      <p className="text-[9px] text-slate-400">Atlas Academy Card</p>
                     </div>
                   </div>
                   <span className="atlas-badge font-mono text-[11px] font-black bg-blue-50 text-[#0C3C82]">
@@ -339,7 +339,7 @@ export default function QrCardsPage() {
 
               <div className="relative z-10 flex items-center justify-between border-b pb-2">
                 <div>
-                  <h4 className="font-black text-sm text-[#0C3C82]">سنتر أطلس التعليمي</h4>
+                  <h4 className="font-black text-sm text-[#0C3C82]">أكاديمية أطلس التعليمية</h4>
                   <p className="text-[10px] text-slate-500">كارت الحضور الذكي</p>
                 </div>
                 <span className="font-mono font-black text-sm text-[#0C3C82] bg-blue-100/70 px-2 py-0.5 rounded">

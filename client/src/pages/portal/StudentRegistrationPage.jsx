@@ -144,10 +144,10 @@ export default function StudentRegistrationPage() {
         </span>
 
         <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">
-          أهلاً بك في سنتر أطلس التعليمي! 🎉
+          أهلاً بك في أكاديمية أطلس التعليمية! 🎉
         </h2>
         <p className="text-slate-500 text-xs sm:text-sm max-w-lg mx-auto mb-8">
-          تم تسجيل بياناتك بنجاح على النظام، وسيتم مراجعة الطلب من إدارة السنتر والتواصل معك فوراً لتأكيد المواعيد وتسليم كود الطالب.
+          تم تسجيل بياناتك بنجاح على النظام، وسيتم مراجعة الطلب من إدارة الأكاديمية والتواصل معك فوراً لتأكيد المواعيد وتسليم كود الطالب.
         </p>
 
         {/* Registration Summary Card */}
@@ -234,7 +234,7 @@ export default function StudentRegistrationPage() {
           استمارة تسجيل وحجز طالب جديد
         </h2>
         <p className="text-slate-500 text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
-          يرجى إدخال البيانات بدقة لضمان تسجيلك في المجموعات وحفظ مقعدك الدراسي في سنتر أطلس التعليمي
+          يرجى إدخال البيانات بدقة لضمان تسجيلك في المجموعات وحفظ مقعدك الدراسي في أكاديمية أطلس التعليمية
         </p>
       </div>
 

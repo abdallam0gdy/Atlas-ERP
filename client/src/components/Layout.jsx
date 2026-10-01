@@ -147,12 +147,12 @@ export function MainLayout() {
           <Link to="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
             <img
               src="/atlas-logo.png"
-              alt="شعار سنتر أطلس"
+              alt="شعار أكاديمية أطلس التعليمية"
               className="w-10 h-10 object-contain rounded-xl bg-white p-1 shadow-md flex-shrink-0"
             />
             {(sidebarOpen || mobileMenuOpen) && (
               <div className="animate-fade-in leading-tight">
-                <h1 className="text-white font-black text-base tracking-tight">سنتر أطلس</h1>
+                <h1 className="text-white font-black text-base tracking-tight">أكاديمية أطلس</h1>
                 <p className="text-white/60 text-[10px] font-medium tracking-wide">Atlas Educational ERP</p>
               </div>
             )}
@@ -321,7 +321,7 @@ export function MainLayout() {
         <footer className="border-t border-slate-200 bg-white/60 py-3.5 px-6 lg:px-8 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <img src="/atlas-logo.png" alt="Atlas" className="w-5 h-5 object-contain" />
-            <span className="font-bold text-slate-700">سنتر أطلس التعليمي</span>
+            <span className="font-bold text-slate-700">أكاديمية أطلس التعليمية</span>
             <span>—</span>
             <span>جميع الحقوق محفوظة © 2026 Atlas Educational ERP</span>
           </div>

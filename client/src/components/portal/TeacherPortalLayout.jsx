@@ -64,7 +64,7 @@ export default function TeacherPortalLayout() {
             >
               <img 
                 src="/atlas-logo.png" 
-                alt="سنتر أطلس التعليمي" 
+                alt="أكاديمية أطلس التعليمية" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -75,7 +75,7 @@ export default function TeacherPortalLayout() {
             <div>
               <div className="flex items-center justify-center sm:justify-start gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
-                  سنتر أطلس التعليمي
+                  أكاديمية أطلس التعليمية
                 </h1>
                 <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">
                   <Award size={10} />
@@ -122,7 +122,7 @@ export default function TeacherPortalLayout() {
                 <h3 className="font-bold text-white text-sm">شراكة تعليمية واعدة</h3>
               </div>
               <p className="text-white/60 text-xs leading-relaxed mb-3">
-                نحرص في سنتر أطلس على توفير أرقى بيئة عمل للسادة المعلمين، تشمل قاعات مكيفة ومجهزة بشاشات حديثة، وفريق سكرتارية محترف، ونظام حضور ذكي بالباركود.
+                نحرص في أكاديمية أطلس التعليمية على توفير أرقى بيئة عمل للسادة المعلمين، تشمل قاعات مكيفة ومجهزة بشاشات حديثة، وفريق سكرتارية محترف، ونظام حضور ذكي بالباركود.
               </p>
               <div className="flex items-center gap-1.5 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md w-fit">
                 <Award size={14} />
@@ -133,7 +133,7 @@ export default function TeacherPortalLayout() {
             {/* Teacher Privileges */}
             <div>
               <h4 className="font-bold text-white text-xs sm:text-sm mb-3 flex items-center gap-2">
-                <span>مزايا سنتر أطلس للمعلم</span>
+                <span>مزايا أكاديمية أطلس للمعلم</span>
                 <span className="w-6 h-0.5 bg-rose-500 rounded-full inline-block"></span>
               </h4>
               <ul className="space-y-1.5 text-xs text-white/70">
@@ -160,7 +160,7 @@ export default function TeacherPortalLayout() {
                 </div>
                 <div className="flex items-center gap-2">
                   <PhoneCall size={14} className="text-emerald-400 shrink-0" />
-                  <span>التواصل المباشر مع إدارة السنتر</span>
+                  <span>التواصل المباشر مع إدارة الأكاديمية</span>
                 </div>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function TeacherPortalLayout() {
           {/* Bottom Copyright */}
           <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-white/50 text-center sm:text-right">
             <p>
-              جميع الحقوق محفوظة © {new Date().getFullYear()} سنتر أطلس التعليمي — بوابة الكوادر التعليمية
+              جميع الحقوق محفوظة © {new Date().getFullYear()} أكاديمية أطلس التعليمية — بوابة الكوادر التعليمية
             </p>
             <div className="flex items-center gap-1.5 font-medium text-white/60 text-[11px]">
               <span>مدعوم بنظام</span>

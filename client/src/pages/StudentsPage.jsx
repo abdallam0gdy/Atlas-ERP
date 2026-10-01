@@ -376,7 +376,7 @@ export default function StudentsPage() {
               className="atlas-input text-xs sm:text-sm"
             >
               <option value="">نظام الطالب (الكل)</option>
-              <option value="PACKAGE">باقة سنتر أطلس</option>
+              <option value="PACKAGE">باقة أكاديمية أطلس</option>
               <option value="PRIVATE">طالب برايفت</option>
             </select>
           </div>

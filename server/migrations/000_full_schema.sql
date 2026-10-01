@@ -704,7 +704,7 @@ ON CONFLICT DO NOTHING;
 
 -- 5.9 Default System Settings
 INSERT INTO system_settings (key, value, value_type, category, label_ar, label_en) VALUES
-  ('center_name', 'سنتر أطلس', 'string', 'general', 'اسم السنتر', 'Center Name'),
+  ('center_name', 'أكاديمية أطلس التعليمية', 'string', 'general', 'اسم الأكاديمية / السنتر', 'Academy Name'),
   ('center_name_en', 'Atlas Center', 'string', 'general', 'اسم السنتر بالإنجليزية', 'Center Name (English)'),
   ('barcode_prefix', 'ATL', 'string', 'barcode', 'بادئة الباركود', 'Barcode Prefix'),
   ('barcode_pattern', 'ATL-G{grade}-{seq}', 'string', 'barcode', 'نمط الباركود', 'Barcode Pattern'),

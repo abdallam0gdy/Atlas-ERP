@@ -421,7 +421,7 @@ export default function GatePage() {
             <DoorOpen size={22} className="text-cyan-300" />
             <div>
               <h1 className="text-white font-bold text-base sm:text-lg">بوابة الحضور الذكي</h1>
-              <p className="text-white/40 text-[10px] sm:text-xs">Smart Attendance Gate — سنتر أطلس</p>
+              <p className="text-white/40 text-[10px] sm:text-xs">Smart Attendance Gate — أكاديمية أطلس التعليمية</p>
             </div>
           </div>
         </div>

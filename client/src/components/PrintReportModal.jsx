@@ -103,14 +103,14 @@ export default function PrintReportModal({
                 <div className="flex flex-col justify-center text-right">
                   <div className="flex items-center gap-2">
                     <h1 className="text-xl sm:text-2xl print:text-sm font-black tracking-normal text-[#0C3C82] leading-tight">
-                      سنتر أطلس التعليمي
+                      أكاديمية أطلس التعليمية
                     </h1>
                     <span className="hidden print:inline-block text-[8px] font-bold text-slate-500 font-mono tracking-wider" dir="ltr">
-                      ATLAS EDUCATIONAL CENTER
+                      ATLAS EDUCATIONAL ACADEMY
                     </span>
                   </div>
                   <div className="text-[11px] print:hidden font-bold text-slate-500 font-mono tracking-widest uppercase" dir="ltr">
-                    ATLAS EDUCATIONAL CENTER
+                    ATLAS EDUCATIONAL ACADEMY
                   </div>
                   <p className="text-xs print:text-[8px] font-semibold text-slate-700 leading-tight print:mt-0.5">
                     المنظومة الإدارية والتعليمية المتكاملة لإدارة المراحل والدروس
@@ -238,7 +238,7 @@ export default function PrintReportModal({
 
             {/* Document Bottom Security Notice */}
             <div className="pt-2 print:pt-0.5 text-center text-[10px] print:text-[7px] text-slate-400 flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 print:text-slate-600 gap-1">
-              <span>* مستند رسمي صادر إلكترونياً ومعتمد من سنتر أطلس التعليمي. أي تعديل أو شطب يلغي صحة البيانات.</span>
+              <span>* مستند رسمي صادر إلكترونياً ومعتمد من أكاديمية أطلس التعليمية. أي تعديل أو شطب يلغي صحة البيانات.</span>
               <span className="font-mono">نظام أطلس ERP v2.5.0</span>
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function PrintReportModal({
         {/* Modal Bottom Bar - hidden when printing */}
         <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50/90 flex items-center justify-between print:hidden">
           <span className="text-xs text-slate-500">
-            جاهز للطباعة على ورق المقاس القياسي A4 ومزود بعلامة مائية واضحة وموسعة لشعار السنتر
+            جاهز للطباعة على ورق المقاس القياسي A4 ومزود بعلامة مائية واضحة وموسعة لشعار الأكاديمية
           </span>
           <button
             onClick={onClose}

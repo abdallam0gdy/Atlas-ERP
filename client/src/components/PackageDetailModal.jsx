@@ -668,7 +668,7 @@ export default function PackageDetailModal({ isOpen, onClose, pkg, onUpdated }) 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 border-t border-slate-100 bg-white flex items-center justify-between text-xs">
           <span className="text-slate-500">
-            📦 نظام باكدجات المراحل التعليمية • سنتر أطلس التعليمي
+            📦 نظام باكدجات المراحل التعليمية • أكاديمية أطلس التعليمية
           </span>
           <button
             onClick={onClose}

@@ -62,7 +62,7 @@ export default function StudentPortalLayout() {
             >
               <img 
                 src="/atlas-logo.png" 
-                alt="سنتر أطلس التعليمي" 
+                alt="أكاديمية أطلس التعليمية" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -73,7 +73,7 @@ export default function StudentPortalLayout() {
             <div>
               <div className="flex items-center justify-center sm:justify-start gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
-                  سنتر أطلس التعليمي
+                  أكاديمية أطلس التعليمية
                 </h1>
                 <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">
                   <Sparkles size={10} />
@@ -117,7 +117,7 @@ export default function StudentPortalLayout() {
                 <div className="w-7 h-7 rounded-lg bg-white p-1 flex items-center justify-center shrink-0">
                   <img src="/atlas-logo.png" alt="Atlas" className="w-full h-full object-contain" />
                 </div>
-                <h3 className="font-bold text-white text-sm">سنتر أطلس التعليمي</h3>
+                <h3 className="font-bold text-white text-sm">أكاديمية أطلس التعليمية</h3>
               </div>
               <p className="text-white/60 text-xs leading-relaxed mb-3">
                 صرح تعليمي متكامل يوفر نخبة من كبار الأساتذة مع منظومة متابعة إلكترونية دقيقة لحضور وغياب وتفوق الطلاب.
@@ -150,7 +150,7 @@ export default function StudentPortalLayout() {
               <div className="space-y-2 text-xs text-white/70">
                 <div className="flex items-center gap-2">
                   <MapPin size={14} className="text-rose-400 shrink-0" />
-                  <span>سنتر أطلس التعليمي — المقر الرئيسي</span>
+                  <span>أكاديمية أطلس التعليمية — المقر الرئيسي</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-sky-400 shrink-0" />
@@ -158,7 +158,7 @@ export default function StudentPortalLayout() {
                 </div>
                 <div className="flex items-center gap-2">
                   <PhoneCall size={14} className="text-emerald-400 shrink-0" />
-                  <span>استقبال السنتر متاح طوال ساعات العمل</span>
+                  <span>استقبال الأكاديمية متاح طوال ساعات العمل</span>
                 </div>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function StudentPortalLayout() {
           {/* Bottom Copyright */}
           <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-white/50 text-center sm:text-right">
             <p>
-              جميع الحقوق محفوظة © {new Date().getFullYear()} سنتر أطلس التعليمي
+              جميع الحقوق محفوظة © {new Date().getFullYear()} أكاديمية أطلس التعليمية
             </p>
             <div className="flex items-center gap-1.5 font-medium text-white/60 text-[11px]">
               <span>مدعوم بنظام</span>

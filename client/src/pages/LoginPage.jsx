@@ -72,17 +72,17 @@ export default function LoginPage() {
           >
             <img
               src="/atlas-logo.png"
-              alt="سنتر أطلس التعليمي"
+              alt="أكاديمية أطلس التعليمية"
               className="w-full h-full object-contain"
               style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-wide flex items-center justify-center gap-2">
-            <span>سنتر أطلس التعليمي</span>
+            <span>أكاديمية أطلس التعليمية</span>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse inline-block" title="نظام متصل" />
           </h1>
           <p className="text-sky-200/70 text-xs sm:text-sm mt-1.5 font-medium tracking-wider">
-            ATLAS EDUCATIONAL CENTER — ERP ENTERPRISE
+            ATLAS EDUCATIONAL ACADEMY — ERP ENTERPRISE
           </p>
         </div>
 
@@ -243,7 +243,7 @@ export default function LoginPage() {
 
           <div className="mt-4 text-center">
             <p className="text-white/40 text-[11px]">
-              نظام إدارة سنتر أطلس التعليمي المتكامل © {new Date().getFullYear()}
+              نظام إدارة أكاديمية أطلس التعليمية المتكامل © {new Date().getFullYear()}
             </p>
           </div>
         </div>

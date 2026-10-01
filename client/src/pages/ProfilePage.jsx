@@ -142,7 +142,7 @@ export default function ProfilePage() {
             </div>
             <p className="text-xs text-slate-500 mt-1 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
               <Building size={14} className="text-slate-400" />
-              <span>سنتر أطلس التعليمي — الفرع الرئيسي</span>
+              <span>أكاديمية أطلس التعليمية — المقر الرئيسي</span>
             </p>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3 text-xs text-slate-600">
               <span className="flex items-center gap-1">
@@ -162,11 +162,11 @@ export default function ProfilePage() {
         <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 z-10">
           <img
             src="/atlas-logo.png"
-            alt="سنتر أطلس"
+            alt="أكاديمية أطلس التعليمية"
             className="w-16 h-16 object-contain drop-shadow-sm"
           />
           <div>
-            <p className="text-xs font-bold text-[#0C3C82]">سنتر أطلس التعليمي</p>
+            <p className="text-xs font-bold text-[#0C3C82]">أكاديمية أطلس التعليمية</p>
             <p className="text-[11px] text-slate-500">Atlas Educational ERP</p>
             <span className="inline-block mt-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
               نظام معتمد وفعال

@@ -491,7 +491,7 @@ export default function PosPage() {
           <div className="atlas-card w-full max-w-sm p-6 space-y-4 bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b pb-2">
               <h3 className="text-sm font-bold text-slate-800">
-                إيصال استلام - سنتر أطلس
+                إيصال استلام - أكاديمية أطلس
               </h3>
               <button
                 onClick={() => setCompletedSale(null)}
@@ -508,10 +508,10 @@ export default function PosPage() {
             >
               <div className="text-center pb-2 border-b border-dashed border-slate-300">
                 <h2 className="text-base font-black tracking-tight">
-                  سنتر أطلس التعليمي
+                  أكاديمية أطلس التعليمية
                 </h2>
                 <p className="text-[10px] text-slate-500">
-                  Atlas Educational Center
+                  Atlas Educational Academy
                 </p>
                 <p className="text-[10px] mt-1">فاتورة مبيعات نقدية</p>
                 <p className="text-[11px] font-bold text-[#0C3C82]">
@@ -572,7 +572,7 @@ export default function PosPage() {
               </div>
 
               <div className="text-center pt-3 border-t border-dashed border-slate-300 text-[10px] text-slate-500">
-                <p>شكراً لزيارتكم سنتر أطلس ✨</p>
+                <p>شكراً لزيارتكم أكاديمية أطلس ✨</p>
                 <p>نتمنى لأبنائنا الطلاب دوام التوفيق والنجاح</p>
               </div>
             </div>
