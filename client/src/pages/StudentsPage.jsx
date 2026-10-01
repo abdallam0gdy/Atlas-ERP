@@ -7,7 +7,8 @@ import PrintReportModal from '../components/PrintReportModal';
 import {
   Search, Plus, Filter, ChevronLeft, ChevronRight,
   Phone, ScanBarcode, GraduationCap, Loader2, Users,
-  Download, Printer, RefreshCw, Upload, Database, X, CheckCircle2, UserCheck
+  Download, Printer, RefreshCw, Upload, Database, X, CheckCircle2, UserCheck,
+  Trash2, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -31,7 +32,27 @@ export default function StudentsPage() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
 
+  // Delete Student State
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [pageSize, setPageSize] = useState(25);
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setIsDeleting(true);
+    try {
+      const { data } = await api.delete(`/students/${studentToDelete.id}`);
+      toast.success(data.message || `تم حذف الطالب (${studentToDelete.full_name}) بنجاح`);
+      setStudentToDelete(null);
+      fetchStudents(pagination.page, pageSize);
+    } catch (err) {
+      console.error('Delete student error:', err);
+      toast.error(err.response?.data?.message || 'فشل حذف الطالب');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const fetchStudents = async (page = 1, currentLimit = pageSize) => {
     setLoading(true);
@@ -457,6 +478,7 @@ export default function StudentsPage() {
                   <th className="text-white text-xs font-semibold py-3 px-4">النظام والتعليم</th>
                   <th className="text-white text-xs font-semibold py-3 px-4">المجموعات</th>
                   <th className="text-white text-xs font-semibold py-3 px-4">الحالة</th>
+                  <th className="text-white text-xs font-semibold py-3 px-4 text-center">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -551,6 +573,19 @@ export default function StudentsPage() {
                         <span className={`w-1.5 h-1.5 rounded-full ${student.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                         {student.is_active ? 'نشط' : 'معطل'}
                       </span>
+                    </td>
+                    <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStudentToDelete(student);
+                        }}
+                        className="p-1.5 rounded-lg text-rose-600 hover:text-white hover:bg-rose-600 transition-all border border-rose-200 hover:border-rose-600 shadow-xs inline-flex items-center justify-center cursor-pointer"
+                        title={`حذف الطالب ${student.full_name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -668,6 +703,91 @@ export default function StudentsPage() {
         data={students}
         filtersSummary={activeFiltersList}
       />
+
+      {/* Delete Student Confirmation Modal */}
+      {studentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-scale-up">
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={30} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">
+                تأكيد حذف الطالب نهائياً
+              </h3>
+              <p className="text-slate-500 text-xs mb-4">
+                هل أنت متأكد من رغبتك في حذف هذا الطالب؟ لا يمكن التراجع عن هذه الخطوة.
+              </p>
+
+              {/* Student info box */}
+              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 text-right mb-4 space-y-1.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">اسم الطالب:</span>
+                  <span className="font-bold text-slate-800">{studentToDelete.full_name}</span>
+                </div>
+                {studentToDelete.student_code && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">كود الطالب:</span>
+                    <span className="font-mono font-bold text-sky-700">#{studentToDelete.student_code}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">باركود البطاقة:</span>
+                  <span className="font-mono text-slate-700">{studentToDelete.barcode_id}</span>
+                </div>
+                {studentToDelete.grade_name && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">المرحلة الدراسية:</span>
+                    <span className="text-slate-700">{studentToDelete.grade_name}</span>
+                  </div>
+                )}
+                {studentToDelete.phone && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">رقم الموبايل:</span>
+                    <span className="font-mono text-slate-700">{studentToDelete.phone}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs text-right leading-relaxed mb-5 flex items-start gap-2">
+                <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                <span>
+                  <strong>تنبيه هام:</strong> سيتم حذف كافة اشتراكات الطالب، سجلات الحضور، والمدفوعات المرتبطة به من قاعدة البيانات.
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleDeleteStudent}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 px-4 rounded-xl font-bold text-white text-sm bg-rose-600 hover:bg-rose-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md shadow-rose-600/20 cursor-pointer"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>جاري الحذف...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      <span>تأكيد الحذف</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStudentToDelete(null)}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-xl font-semibold text-slate-700 text-sm bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

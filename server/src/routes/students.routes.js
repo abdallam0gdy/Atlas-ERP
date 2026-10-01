@@ -5,7 +5,7 @@ const { authorize, requirePageAccess } = require('../middleware/rbac');
 const { validate, createStudentSchema, updateStudentSchema, paginationSchema } = require('../utils/validators');
 const {
   listStudents, getStudent, createStudent, updateStudent,
-  bulkImportStudents, exportAllStudents,
+  bulkImportStudents, exportAllStudents, deleteStudent,
 } = require('../controllers/students.controller');
 const { printSticker } = require('../controllers/barcode.controller');
 
@@ -58,4 +58,11 @@ router.put('/:id',
   updateStudent
 );
 
+// DELETE /api/students/:id — Delete student
+router.delete('/:id',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER'),
+  deleteStudent
+);
+
 module.exports = router;
+

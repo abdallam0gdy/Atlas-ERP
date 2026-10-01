@@ -511,6 +511,66 @@ const exportAllStudents = async (req, res, next) => {
   }
 };
 
+/**
+ * DELETE /api/students/:id
+ * Permanently delete student and associated cascade records (with audit log)
+ */
+const deleteStudent = async (req, res, next) => {
+  const client = await db.getClient();
+  try {
+    const { id } = req.params;
+
+    // Check student existence
+    const studentCheck = await client.query(
+      `SELECT s.id, s.full_name, s.student_code, s.barcode_id, g.name_ar as grade_name
+       FROM students s
+       LEFT JOIN academic_grades g ON s.grade_id = g.id
+       WHERE s.id = $1`,
+      [id]
+    );
+
+    if (studentCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'الطالب غير موجود أو تم حذفه مسبقاً' });
+    }
+
+    const student = studentCheck.rows[0];
+
+    await client.query('BEGIN');
+
+    // 1. Delete booklet reservations for this student (avoids ON DELETE RESTRICT failure)
+    await client.query('DELETE FROM booklet_reservations WHERE student_id = $1', [id]);
+
+    // 2. Unlink any POS sales referencing this student
+    await client.query('UPDATE pos_sales SET student_id = NULL WHERE student_id = $1', [id]);
+
+    // 3. Unlink any QR cards assigned to this student
+    await client.query('UPDATE qr_cards SET assigned_to = NULL WHERE assigned_to = $1', [id]);
+
+    // 4. Delete the student record itself (cascades to enrollments, attendance, payments, etc.)
+    await client.query('DELETE FROM students WHERE id = $1', [id]);
+
+    // 5. Write audit log
+    await client.query(
+      `INSERT INTO audit_log (user_id, action, entity_type, entity_id, old_data)
+       VALUES ($1, 'DELETE', 'student', $2, $3)`,
+      [req.user.id, id, JSON.stringify(student)]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `تم حذف الطالب (${student.full_name}) نهائياً من المنظومة بنجاح`,
+      data: { id, student_code: student.student_code, full_name: student.full_name },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listStudents,
   getStudent,
@@ -518,4 +578,6 @@ module.exports = {
   updateStudent,
   bulkImportStudents,
   exportAllStudents,
+  deleteStudent,
 };
+
