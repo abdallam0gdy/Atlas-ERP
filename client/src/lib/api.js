@@ -23,9 +23,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('atlas_token');
       localStorage.removeItem('atlas_user');
-      // Redirect to login if not already there
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      // Redirect to admin login if not already there
+      if (window.location.pathname !== '/atlas-admin') {
+        window.location.href = '/atlas-admin';
       }
     }
     return Promise.reject(error);

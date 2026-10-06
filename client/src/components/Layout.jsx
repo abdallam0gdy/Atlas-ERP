@@ -34,7 +34,7 @@ export function ProtectedRoute({ allowedRoles, pageId, adminOnly }) {
   }, [isAuthenticated, isDenied, isDeniedAdmin, isDeniedPage, isDeniedRole]);
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/atlas-admin" replace />;
   }
 
   if (isSuperAdmin) {
@@ -79,7 +79,7 @@ export function MainLayout() {
   }, [location.pathname]);
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/atlas-admin" replace />;
   }
 
   const navItems = [

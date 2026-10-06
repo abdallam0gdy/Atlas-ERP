@@ -32,17 +32,14 @@ export default function StudentPortalLayout() {
           </div>
 
           <div className="flex items-center gap-3 text-white/70 text-[11px] sm:text-xs">
-            <span className="hidden md:flex items-center gap-1.5">
+            <span className="hidden sm:flex items-center gap-1.5">
               <Clock size={12} className="text-sky-400" />
               <span>مواعيد العمل: 9:00 ص - 10:00 م</span>
             </span>
-            <Link 
-              to="/login" 
-              className="flex items-center gap-1 text-sky-300 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10"
-            >
-              <Lock size={11} />
-              <span>دخول الإدارة</span>
-            </Link>
+            <span className="flex items-center gap-1.5 text-sky-300 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>التسجيل متاح</span>
+            </span>
           </div>
         </div>
       </header>

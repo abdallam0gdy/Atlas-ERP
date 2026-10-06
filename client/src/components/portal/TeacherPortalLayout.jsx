@@ -34,17 +34,10 @@ export default function TeacherPortalLayout() {
           </div>
 
           <div className="flex items-center gap-3 text-white/70 text-[11px] sm:text-xs">
-            <span className="flex items-center gap-1.5 text-amber-300">
+            <span className="flex items-center gap-1.5 text-amber-300 bg-amber-500/10 border border-amber-400/20 px-2.5 py-1 rounded-full">
               <ShieldCheck size={13} />
               <span>استمارة سرية ومحمية</span>
             </span>
-            <Link 
-              to="/login" 
-              className="flex items-center gap-1 text-white/80 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10"
-            >
-              <Lock size={11} />
-              <span>دخول الإدارة</span>
-            </Link>
           </div>
         </div>
       </header>

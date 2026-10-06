@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { MainLayout, ProtectedRoute } from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import ComingSoonPage from './pages/ComingSoonPage';
 import DashboardPage from './pages/DashboardPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentDetailPage from './pages/StudentDetailPage';
@@ -42,8 +43,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Public Login Route */}
-          <Route path="/login" element={<LoginPage />} />
+          {/* Public Root Landing / Coming Soon Page */}
+          <Route path="/" element={<ComingSoonPage />} />
+
+          {/* Dedicated Administration Login Portal */}
+          <Route path="/atlas-admin" element={<LoginPage />} />
+
+          {/* Legacy /login route redirects to root */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
 
           {/* Public Student Registration Portal */}
           <Route element={<StudentPortalLayout />}>
@@ -130,9 +137,8 @@ function App() {
             </Route>
           </Route>
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Default catch-all redirect to public Coming Soon page */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
 
