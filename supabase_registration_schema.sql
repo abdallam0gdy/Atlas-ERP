@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS public.online_students (
     phone TEXT NOT NULL,                                         -- رقم هاتف الطالب
     gender TEXT CHECK (gender IN ('male', 'female')),             -- النوع (ذكر / أنثى)
     birth_date DATE,                                             -- تاريخ الميلاد
-    national_id TEXT,                                            -- الرقم القومي (اختياري)
+    national_id TEXT,                                            -- الرقم القومي (إجباري)
+    photo_url TEXT,                                              -- رابط الصورة الشخصية للطالب بخلفية بيضاء (ImgBB)
     address TEXT,                                                -- العنوان / المنطقة السكنية
     
     -- بيانات التواصل مع ولي الأمر
@@ -52,28 +53,33 @@ CREATE INDEX IF NOT EXISTS idx_online_students_created ON public.online_students
 CREATE TABLE IF NOT EXISTS public.online_teachers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
-    -- البيانات الشخصية والمهنية
+    -- البيانات الشخصية والمهنية (إلزامية)
     full_name TEXT NOT NULL,                                     -- اسم المعلم بالكامل
-    nickname TEXT,                                               -- اللقب / الشهرة (مثال: مستر أحمد)
+    nickname TEXT NOT NULL,                                      -- اللقب / الشهرة (مثال: مستر أحمد)
     phone TEXT NOT NULL,                                         -- رقم الهاتف الشخصي
-    whatsapp_phone TEXT,                                         -- رقم الواتساب
-    national_id TEXT,                                            -- الرقم القومي
+    whatsapp_phone TEXT NOT NULL,                                -- رقم الواتساب للتواصل
+    national_id TEXT NOT NULL,                                   -- الرقم القومي (14 رقماً)
+    photo_url TEXT NOT NULL,                                     -- رابط الصورة الشخصية للمعلم (ImgBB)
+    logo_url TEXT,                                               -- رابط لوجو أو شعار المعلم (ImgBB إن وجد)
     
-    -- المادة والصفوف
-    specialization TEXT NOT NULL,                                -- المادة التعليمية (لغة عربية، فيزياء...)
-    target_grades TEXT,                                          -- المراحل المستهدفة (ثانوي، إعدادي...)
-    expected_students_count INTEGER,                             -- العدد المتوقع للطلاب
+    -- المادة والصفوف (إلزامية)
+    specialization TEXT NOT NULL,                                -- المواد التعليمية (مفصولة بفواصل)
+    target_grades TEXT NOT NULL,                                 -- المراحل والصفوف الدراسية
     
     -- فريق العمل وإدارة الحجز (السكرتارية)
-    assistant_name TEXT,                                         -- اسم السكرتير أو المساعد
-    assistant_phone TEXT,                                        -- هاتف السكرتير
+    assistant_name TEXT,                                         -- اسم السكرتير الرئيسي (أو إدارة شخصية)
+    assistant_phone TEXT,                                        -- هاتف السكرتير الرئيسي
+    assistants_data JSONB,                                       -- بيانات المساعدين كاملة (بدون حد أقصى للعدد)
     
-    -- السيرة والمنصات
-    bio TEXT,                                                    -- نبذة تعريفية وخبرات سابقة
-    facebook_link TEXT,                                          -- رابط صفحة الفيسبوك
-    youtube_link TEXT,                                           -- رابط قناة اليوتيوب
-    telegram_link TEXT,                                          -- رابط قناة التليجرام
-    notes TEXT,                                                  -- متطلبات القاعات أو المواعيد المفضلة
+    -- المجموعات ومواعيد الحصص المقترحة (إلزامية)
+    groups_data JSONB NOT NULL,                                  -- بيانات المجموعات والأيام والأوقات
+    
+    -- السيرة والمنصات (النبذة إلزامية)
+    bio TEXT NOT NULL,                                           -- نبذة تعريفية وخبرات سابقة
+    facebook_link TEXT,                                          -- رابط صفحة الفيسبوك (اختياري)
+    youtube_link TEXT,                                           -- رابط قناة اليوتيوب (اختياري)
+    telegram_link TEXT,                                          -- رابط قناة التليجرام (اختياري)
+    notes TEXT,                                                  -- متطلبات القاعات أو الملاحظات (اختياري)
     
     -- حقول الإدارة
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
@@ -81,6 +87,16 @@ CREATE TABLE IF NOT EXISTS public.online_teachers (
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- تحديثات الأعمدة في حال كانت الجداول منشأة مسبقاً (Idempotent Migrations)
+ALTER TABLE public.online_students ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.online_teachers ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.online_teachers ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE public.online_teachers ADD COLUMN IF NOT EXISTS assistants_data JSONB;
+ALTER TABLE public.online_teachers ADD COLUMN IF NOT EXISTS groups_data JSONB;
+ALTER TABLE public.online_teachers ALTER COLUMN full_name SET NOT NULL;
+ALTER TABLE public.online_teachers ALTER COLUMN phone SET NOT NULL;
+ALTER TABLE public.online_teachers ALTER COLUMN specialization SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_online_teachers_phone ON public.online_teachers(phone);
 CREATE INDEX IF NOT EXISTS idx_online_teachers_status ON public.online_teachers(status);
