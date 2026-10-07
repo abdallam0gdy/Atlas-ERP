@@ -21,7 +21,15 @@ import {
   Calendar,
   Layers,
   Fingerprint,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Check,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  CheckCircle,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import ImageUploadField from '../../components/portal/ImageUploadField';
 
@@ -40,50 +48,48 @@ const AVAILABLE_SUBJECTS = [
   'الجغرافيا',
   'الفلسفة والمنطق',
   'علم النفس والاجتماع',
+  'الدراسات الاجتماعية',
   'العلوم المتكاملة',
+  'التربية الدينية',
   'الحاسب الآلي وتكنولوجيا المعلومات',
-  'دراسات اجتماعية',
-  'العلوم',
 ];
 
 const ALL_GRADES = [
-  'الصف الأول الابتدائي',
-  'الصف الثاني الابتدائي',
-  'الصف الثالث الابتدائي',
+  'الصف الأول الثانوي',
+  'الصف الثاني الثانوي',
+  'الصف الثالث الثانوي (شهادة)',
+  'الصف الأول الإعدادي',
+  'الصف الثاني الإعدادي',
+  'الصف الثالث الإعدادي (شهادة)',
   'الصف الرابع الابتدائي',
   'الصف الخامس الابتدائي',
   'الصف السادس الابتدائي',
-  'الصف الأول الإعدادي',
-  'الصف الثاني الإعدادي',
-  'الصف الثالث الإعدادي',
-  'الصف الأول الثانوي',
-  'الصف الثاني الثانوي',
-  'الصف الثالث الثانوي',
 ];
 
 const DAYS_OF_WEEK = [
   'السبت',
   'الأحد',
-  'الإثنين',
+  'الاثنين',
   'الثلاثاء',
   'الأربعاء',
   'الخميس',
   'الجمعة',
 ];
 
-/**
- * تحويل الأرقام العربية المشرقية (٠١٢٣٤٥٦٧٨٩) إلى أرقام قياسية
- */
+const STEPS = [
+  { id: 1, title: 'البيانات الشخصية والمهنية', subtitle: 'الاسم، الهواتف، الصورة واللوجو', icon: User },
+  { id: 2, title: 'المواد والمراحل الدراسية', subtitle: 'التخصصات والصفوف التعليمية', icon: BookOpen },
+  { id: 3, title: 'فريق العمل والسكرتارية', subtitle: 'إدارة المساعدين (غير محدد بعدد)', icon: Users },
+  { id: 4, title: 'المجموعات ومواعيد الحصص', subtitle: 'جدول وأوقات الحصص المقترحة', icon: Clock },
+  { id: 5, title: 'السيرة الذاتية والمراجعة', subtitle: 'النبذة، المنصات، وتأكيد الاستمارة', icon: FileText },
+];
+
 function normalizeArabicNumbers(str) {
   if (!str) return '';
   const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
   return String(str).replace(/[٠-٩]/g, (w) => arabicNumerals.indexOf(w));
 }
 
-/**
- * التحقق من صحة رقم الموبايل المصري
- * (010, 011, 012, 015 متبوعة بـ 8 أرقام)
- */
 function isValidEgyptianPhone(phone) {
   if (!phone) return false;
   const clean = normalizeArabicNumbers(String(phone).replace(/[\s\-\+]/g, ''));
@@ -99,9 +105,6 @@ function cleanEgyptianPhone(phone) {
   return clean;
 }
 
-/**
- * دالة استنتاج تاريخ الميلاد والنوع من الرقم القومي المصري (14 رقماً)
- */
 function parseEgyptianNationalId(nid) {
   if (!nid) return null;
   const clean = normalizeArabicNumbers(String(nid).trim());
@@ -136,9 +139,6 @@ function parseEgyptianNationalId(nid) {
   };
 }
 
-/**
- * التحقق من منطقية مواعيد الحصة (وقت البداية ووقت النهاية)
- */
 function validateGroupTimes(startTime, endTime) {
   if (!startTime || !endTime) {
     return { valid: false, message: 'يرجى تحديد وقت البداية ووقت النهاية للحصة' };
@@ -172,10 +172,27 @@ function validateGroupTimes(startTime, endTime) {
     };
   }
   
-  return { valid: true, duration };
+  const hours = Math.floor(duration / 60);
+  const mins = duration % 60;
+  let durationArabic = '';
+  if (hours > 0 && mins > 0) {
+    durationArabic = `${hours} ساعة و ${mins} دقيقة`;
+  } else if (hours === 1) {
+    durationArabic = 'ساعة واحدة';
+  } else if (hours === 2) {
+    durationArabic = 'ساعتان';
+  } else if (hours > 2) {
+    durationArabic = `${hours} ساعات`;
+  } else {
+    durationArabic = `${mins} دقيقة`;
+  }
+
+  return { valid: true, duration, durationArabic };
 }
 
 export default function TeacherRegistrationPage() {
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [formData, setFormData] = useState({
     full_name: '',
     nickname: '',
@@ -184,8 +201,8 @@ export default function TeacherRegistrationPage() {
     national_id: '',
     photo_url: '',
     logo_url: '',
-    specializations: ['اللغة العربية'], // مصفوفة لاختيار أكثر من مادة
-    target_grades: ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي'], // مصفوفة لاختيار المراحل
+    specializations: ['اللغة العربية'],
+    target_grades: ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي (شهادة)'],
     bio: '',
     facebook_link: '',
     youtube_link: '',
@@ -193,15 +210,11 @@ export default function TeacherRegistrationPage() {
     notes: '',
   });
 
-  // حالة إدارة الحجز الذاتية بدون سكرتارية
   const [hasNoAssistant, setHasNoAssistant] = useState(false);
-
-  // فريق العمل والسكرتارية (الحد الأقصى 3 مساعدين)
   const [assistants, setAssistants] = useState([
     { id: 1, name: '', phone: '' }
   ]);
 
-  // المجموعات ومواعيد الحصص (مجموعة واحدة مبدئياً)
   const [groups, setGroups] = useState([
     {
       id: 1,
@@ -213,11 +226,9 @@ export default function TeacherRegistrationPage() {
     }
   ]);
 
-  // تتبع حالة رفع الصور لمنع الإرسال أثناء الرفع
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
   const [isLogoUploading, setIsLogoUploading] = useState(false);
 
-  // حقل إضافة مادة مخصصة غير موجودة بالقائمة
   const [customSubjectInput, setCustomSubjectInput] = useState('');
   const [showCustomSubjectField, setShowCustomSubjectField] = useState(false);
 
@@ -225,7 +236,6 @@ export default function TeacherRegistrationPage() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [submittedData, setSubmittedData] = useState(null);
 
-  // استنتاج تاريخ الميلاد والسن للمعلم من الرقم القومي
   const parsedTeacherNid = useMemo(() => {
     return parseEgyptianNationalId(formData.national_id);
   }, [formData.national_id]);
@@ -235,7 +245,6 @@ export default function TeacherRegistrationPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // تبديل اختيار المادة (Multi-select)
   const toggleSubject = (subject) => {
     setFormData((prev) => {
       const exists = prev.specializations.includes(subject);
@@ -246,7 +255,6 @@ export default function TeacherRegistrationPage() {
     });
   };
 
-  // إضافة مادة مخصصة
   const handleAddCustomSubject = (e) => {
     e.preventDefault();
     const trimmed = customSubjectInput.trim();
@@ -261,7 +269,6 @@ export default function TeacherRegistrationPage() {
     setShowCustomSubjectField(false);
   };
 
-  // تبديل اختيار الصف / المرحلة الدراسية (Multi-select)
   const toggleGrade = (grade) => {
     setFormData((prev) => {
       const exists = prev.target_grades.includes(grade);
@@ -272,7 +279,6 @@ export default function TeacherRegistrationPage() {
     });
   };
 
-  // أزرار تحديد مرحلة كاملة بضغطة زر
   const selectStageCluster = (stagePrefix) => {
     const stageGrades = ALL_GRADES.filter((g) => g.includes(stagePrefix));
     setFormData((prev) => {
@@ -284,7 +290,7 @@ export default function TeacherRegistrationPage() {
     });
   };
 
-  // إدارة المساعدين والسكرتارية (غير محدد بعدد)
+  // مساعدين غير محدودين
   const handleAssistantChange = (index, field, value) => {
     setAssistants((prev) => {
       const updated = [...prev];
@@ -298,154 +304,216 @@ export default function TeacherRegistrationPage() {
   };
 
   const removeAssistant = (index) => {
-    setAssistants((prev) => prev.filter((_, i) => i !== index));
+    if (assistants.length <= 1) return;
+    setAssistants((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // إدارة المجموعات
+  // المجموعات
+  const handleGroupChange = (id, field, value) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, [field]: value } : g))
+    );
+  };
+
   const addGroup = () => {
-    const defaultSubject = formData.specializations.length === 1 
-      ? formData.specializations[0] 
-      : (formData.specializations[0] || 'المادة الأساسية');
-
-    const defaultGrade = formData.target_grades[0] || ALL_GRADES[9]; // أولى ثانوي افتراضياً
-
+    const nextSubject = formData.specializations[0] || '';
+    const nextGrade = formData.target_grades[0] || 'الصف الأول الثانوي';
     setGroups((prev) => [
       ...prev,
       {
         id: Date.now(),
-        day: 'السبت',
-        start_time: '14:00',
-        end_time: '16:00',
-        grade: defaultGrade,
-        subject: defaultSubject,
-      },
+        day: 'الأحد',
+        start_time: '16:00',
+        end_time: '18:00',
+        grade: nextGrade,
+        subject: nextSubject,
+      }
     ]);
   };
 
-  const handleGroupChange = (id, field, value) => {
-    setGroups((prev) =>
-      prev.map((grp) => (grp.id === id ? { ...grp, [field]: value } : grp))
-    );
-  };
-
   const removeGroup = (id) => {
-    if (groups.length <= 1) {
-      setErrorMessage('يلزم الإبقاء على مجموعة وموعد حصة واحد على الأقل في الاستمارة');
-      return;
-    }
-    setGroups((prev) => prev.filter((grp) => grp.id !== id));
+    if (groups.length <= 1) return;
+    setGroups((prev) => prev.filter((g) => g.id !== id));
   };
 
-  // إرسال الاستمارة مع التحقق الصارم من كافة البيانات الإجبارية
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // التحقق من صحة بيانات الخطوة الحالية
+  const validateStep = (step) => {
     setErrorMessage(null);
 
-    // 0. التحقق من اكتمال رفع الصور
-    if (isPhotoUploading || isLogoUploading) {
-      setErrorMessage('جاري رفع الصور حالياً، يرجى الانتظار ثوانٍ معدودة حتى يكتمل الرفع إلى الخادم');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (step === 1) {
+      if (!formData.full_name.trim() || formData.full_name.trim().length < 3) {
+        setErrorMessage('يرجى إدخال اسم المعلم بالكامل ثلاثي أو رباعي (3 أحرف على الأقل)');
+        return false;
+      }
+      if (!formData.nickname.trim() || formData.nickname.trim().length < 2) {
+        setErrorMessage('يرجى إدخال اسم الشهرة أو اللقب للطلاب (مثال: مستر / أحمد عبد الله)');
+        return false;
+      }
+      const cleanPhone = cleanEgyptianPhone(formData.phone);
+      if (!isValidEgyptianPhone(cleanPhone)) {
+        setErrorMessage('يرجى إدخال رقم هاتف شخصي مصري صحيح (010, 011, 012, 015)');
+        return false;
+      }
+      const cleanWhatsapp = cleanEgyptianPhone(formData.whatsapp_phone);
+      if (!isValidEgyptianPhone(cleanWhatsapp)) {
+        setErrorMessage('يرجى إدخال رقم واتساب مصري صحيح للتواصل وإرسال الجداول');
+        return false;
+      }
+      const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
+      if (!parseEgyptianNationalId(cleanNid)) {
+        setErrorMessage('يرجى إدخال رقم قومي مصري صحيح مكون من 14 رقماً ويبدأ بـ 2 أو 3');
+        return false;
+      }
+      if (!formData.photo_url) {
+        setErrorMessage('يرجى رفع الصورة الشخصية للمعلم لاعتماد الملف التعريفي');
+        return false;
+      }
+      return true;
     }
 
-    // 1. الاسم بالكامل (ثلاثي أو رباعي)
-    const nameParts = formData.full_name.trim().split(/\s+/).filter(Boolean);
-    if (nameParts.length < 3) {
-      setErrorMessage('يرجى كتابة اسم المعلم ثلاثي أو رباعي بالكامل (3 كلمات على الأقل)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (step === 2) {
+      if (formData.specializations.length === 0) {
+        setErrorMessage('يرجى اختيار مادة تعليمية واحدة على الأقل تدرسها بالأكاديمية');
+        return false;
+      }
+      if (formData.target_grades.length === 0) {
+        setErrorMessage('يرجى اختيار مرحلة أو صف دراسي واحد على الأقل');
+        return false;
+      }
+      return true;
     }
 
-    // 2. اسم الشهرة أو اللقب
-    if (!formData.nickname.trim()) {
-      setErrorMessage('يرجى كتابة اسم الشهرة أو اللقب (كما يظهر للطلاب، مثل: مستر / أحمد عبد الله)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (step === 3) {
+      if (!hasNoAssistant) {
+        if (assistants.length === 0) {
+          setErrorMessage('يرجى إضافة بيانات مساعد واحد على الأقل، أو تحديد خيار "أدير الحجز بنفسي"');
+          return false;
+        }
+        for (let i = 0; i < assistants.length; i++) {
+          const a = assistants[i];
+          const aName = (a.name || '').trim();
+          const aPhone = cleanEgyptianPhone(a.phone);
+          if (i === 0) {
+            if (!aName) {
+              setErrorMessage('يرجى إدخال اسم المساعد الأول / السكرتير الرئيسي');
+              return false;
+            }
+            if (!isValidEgyptianPhone(aPhone)) {
+              setErrorMessage('يرجى إدخال رقم هاتف محمول مصري صحيح للمساعد الأول');
+              return false;
+            }
+          } else {
+            if (aName && !isValidEgyptianPhone(aPhone)) {
+              setErrorMessage(`يرجى إدخال رقم هاتف مصري صحيح للمساعد رقم ${i + 1}`);
+              return false;
+            }
+            if (!aName && aPhone) {
+              setErrorMessage(`يرجى إدخال اسم المساعد رقم ${i + 1}`);
+              return false;
+            }
+          }
+        }
+      }
+      return true;
     }
 
-    // 3. رقم الهاتف الشخصي
-    const cleanPhone = cleanEgyptianPhone(formData.phone);
-    if (!isValidEgyptianPhone(cleanPhone)) {
-      setErrorMessage('يرجى إدخال رقم هاتف محمول صحيح للمعلم (11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (step === 4) {
+      if (groups.length === 0) {
+        setErrorMessage('يرجى إضافة مجموعة وموعد حصة واحد على الأقل');
+        return false;
+      }
+      for (let i = 0; i < groups.length; i++) {
+        const grp = groups[i];
+        if (!grp.day) {
+          setErrorMessage(`يرجى تحديد يوم الأسبوع للمجموعة رقم ${i + 1}`);
+          return false;
+        }
+        const timeVal = validateGroupTimes(grp.start_time, grp.end_time);
+        if (!timeVal.valid) {
+          setErrorMessage(`خطأ في توقيت المجموعة رقم ${i + 1}: ${timeVal.message}`);
+          return false;
+        }
+        if (!grp.grade) {
+          setErrorMessage(`يرجى تحديد الصف الدراسي للمجموعة رقم ${i + 1}`);
+          return false;
+        }
+        const effSubj = formData.specializations.length === 1 
+          ? formData.specializations[0] 
+          : (grp.subject || '').trim();
+        if (!effSubj) {
+          setErrorMessage(`يرجى تحديد مادة المجموعة رقم ${i + 1}`);
+          return false;
+        }
+      }
+      return true;
     }
 
-    // 4. رقم الواتساب
-    const cleanWhatsapp = cleanEgyptianPhone(formData.whatsapp_phone);
-    if (!isValidEgyptianPhone(cleanWhatsapp)) {
-      setErrorMessage('يرجى إدخال رقم واتساب صحيح للتواصل (11 رقماً يبدأ بـ 01)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (step === 5) {
+      if (formData.bio.trim().length < 10) {
+        setErrorMessage('يرجى كتابة نبذة تعريفية وخبراتك السابقة (10 أحرف على الأقل)');
+        return false;
+      }
+      return true;
     }
 
-    // 5. الرقم القومي للمعلم
-    const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
-    if (!/^[23]\d{13}$/.test(cleanNid)) {
-      setErrorMessage('الرقم القومي للمعلم مطلوب ويجب أن يتكون من 14 رقماً ويبدأ بـ 2 أو 3');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+    return true;
+  };
 
-    const nidInfo = parseEgyptianNationalId(cleanNid);
-    if (!nidInfo) {
-      setErrorMessage('الرقم القومي غير صالح، يرجى مراجعة الأرقام (تاريخ الميلاد غير مطابق)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      setErrorMessage(null);
+      setCurrentStep((prev) => Math.min(5, prev + 1));
+      window.scrollTo({ top: 100, behavior: 'smooth' });
     }
+  };
 
-    if (nidInfo.age < 20) {
-      setErrorMessage(`الرقم القومي المدخل يشير إلى عمر (${nidInfo.age} سنة)، يجب أن يكون المعلم بعمر 20 سنة فأكثر`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+  const handlePrevStep = () => {
+    setErrorMessage(null);
+    setCurrentStep((prev) => Math.max(1, prev - 1));
+    window.scrollTo({ top: 100, behavior: 'smooth' });
+  };
+
+  const handleStepJump = (targetStep) => {
+    if (targetStep < currentStep) {
+      setErrorMessage(null);
+      setCurrentStep(targetStep);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+    } else if (targetStep > currentStep) {
+      for (let s = currentStep; s < targetStep; s++) {
+        if (!validateStep(s)) {
+          return;
+        }
+      }
+      setErrorMessage(null);
+      setCurrentStep(targetStep);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
     }
+  };
 
-    // 6. الصورة الشخصية للمعلم
-    if (!formData.photo_url) {
-      setErrorMessage('يرجى رفع الصورة الشخصية للمعلم (إجبارية لإتمام التسجيل)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+  // إرسال الاستمارة
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    // 7. المواد التي يقوم بتدريسها
-    if (formData.specializations.length === 0) {
-      setErrorMessage('يرجى اختيار مادة واحدة على الأقل من قائمة المواد');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    // 8. المراحل والصفوف الدراسية
-    if (formData.target_grades.length === 0) {
-      setErrorMessage('يرجى اختيار صف دراسي واحد على الأقل من قائمة المراحل');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    // 9. فريق العمل والسكرتارية
-    let validAssistants = [];
-    if (!hasNoAssistant) {
-      if (assistants.length === 0 || (!assistants[0].name.trim() && !assistants[0].phone.trim())) {
-        setErrorMessage('يرجى إدخال بيانات السكرتير/المساعد الأول، أو تحديد خيار (أدير الحجز والتواصل بنفسي)');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // التحقق من كافة الخطوات
+    for (let s = 1; s <= 5; s++) {
+      if (!validateStep(s)) {
+        setCurrentStep(s);
+        window.scrollTo({ top: 100, behavior: 'smooth' });
         return;
       }
+    }
 
+    const cleanPhone = cleanEgyptianPhone(formData.phone);
+    const cleanWhatsapp = cleanEgyptianPhone(formData.whatsapp_phone);
+    const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
+
+    let validAssistants = [];
+    if (!hasNoAssistant) {
       for (let i = 0; i < assistants.length; i++) {
         const a = assistants[i];
-        const aName = a.name.trim();
+        const aName = (a.name || '').trim();
         const aPhone = cleanEgyptianPhone(a.phone);
-
-        if (i === 0 || aName || aPhone) {
-          if (!aName) {
-            setErrorMessage(`يرجى كتابة اسم المساعد رقم ${i + 1}`);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-          }
-          if (!isValidEgyptianPhone(aPhone)) {
-            setErrorMessage(`رقم هاتف المساعد رقم ${i + 1} غير صحيح (يجب أن يكون 11 رقماً يبدأ بـ 01)`);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-          }
+        if (aName && aPhone && isValidEgyptianPhone(aPhone)) {
           validAssistants.push({
             id: a.id || i + 1,
             name: aName,
@@ -455,60 +523,14 @@ export default function TeacherRegistrationPage() {
       }
     }
 
-    // 10. المجموعات ومواعيد الحصص
-    if (groups.length === 0) {
-      setErrorMessage('يرجى إضافة مجموعة وموعد حصة واحد على الأقل');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    for (let i = 0; i < groups.length; i++) {
-      const grp = groups[i];
-      if (!grp.day) {
-        setErrorMessage(`يرجى تحديد يوم الأسبوع للمجموعة رقم ${i + 1}`);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      const timeValidation = validateGroupTimes(grp.start_time, grp.end_time);
-      if (!timeValidation.valid) {
-        setErrorMessage(`خطأ في توقيت المجموعة رقم ${i + 1}: ${timeValidation.message}`);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      if (!grp.grade) {
-        setErrorMessage(`يرجى تحديد الصف الدراسي للمجموعة رقم ${i + 1}`);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      const effectiveSubject = formData.specializations.length === 1 
-        ? formData.specializations[0] 
-        : (grp.subject || '').trim();
-      if (!effectiveSubject) {
-        setErrorMessage(`يرجى تحديد مادة المجموعة رقم ${i + 1}`);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-    }
-
-    // 11. النبذة التعريفية وسنوات الخبرة
-    if (formData.bio.trim().length < 10) {
-      setErrorMessage('يرجى كتابة نبذة تعريفية وخبراتك السابقة (10 أحرف على الأقل)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // توليد معرف UUID فريد من جهة العميل لضمان العمل تحت صلاحيات RLS بأمان
       const teacherId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 
         : `tch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-      // تجهيز المواد كسلسلة نصية
       const specializationString = formData.specializations.join(' ، ');
-
-      // تجهيز المراحل كسلسلة نصية
       const targetGradesString = formData.target_grades.join(' ، ');
 
       const payload = {
@@ -539,7 +561,6 @@ export default function TeacherRegistrationPage() {
         .from('online_teachers')
         .insert([payload]);
 
-      // معالجة مرنة في حال كانت أعمدة الصور أو المجموعات غير موجودة بعد بسوبابيز
       if (error && (error.message?.includes('column') || error.message?.includes('schema cache'))) {
         const fallbackPayload = { ...payload };
         const extraNotes = [];
@@ -587,18 +608,16 @@ export default function TeacherRegistrationPage() {
       setErrorMessage(
         err.message || 'حدث خطأ أثناء إرسال الاستمارة — يرجى التأكد من الاتصال بالإنترنت والمحاولة مجدداً'
       );
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 100, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ============================================================
-  // SUCCESS SCREEN
-  // ============================================================
+  // شاشة النجاح
   if (submittedData) {
     return (
-      <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100 text-center animate-fade-in-up">
+      <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100 text-center animate-fade-in-up max-w-4xl mx-auto">
         {submittedData.photo_url ? (
           <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-rose-500 p-1 bg-white shadow-lg mx-auto mb-5">
             <img 
@@ -681,6 +700,7 @@ export default function TeacherRegistrationPage() {
             type="button"
             onClick={() => {
               setSubmittedData(null);
+              setCurrentStep(1);
               setFormData({
                 full_name: '',
                 nickname: '',
@@ -690,7 +710,7 @@ export default function TeacherRegistrationPage() {
                 photo_url: '',
                 logo_url: '',
                 specializations: ['اللغة العربية'],
-                target_grades: ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي'],
+                target_grades: ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي (شهادة)'],
                 bio: '',
                 facebook_link: '',
                 youtube_link: '',
@@ -698,7 +718,16 @@ export default function TeacherRegistrationPage() {
                 notes: '',
               });
               setAssistants([{ id: 1, name: '', phone: '' }]);
-              setGroups([]);
+              setGroups([
+                {
+                  id: 1,
+                  day: 'السبت',
+                  start_time: '14:00',
+                  end_time: '16:00',
+                  grade: 'الصف الأول الثانوي',
+                  subject: 'اللغة العربية',
+                }
+              ]);
             }}
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
           >
@@ -710,707 +739,839 @@ export default function TeacherRegistrationPage() {
     );
   }
 
-  // ============================================================
-  // FORM SCREEN
-  // ============================================================
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl border border-slate-100">
+    <div className="max-w-7xl mx-auto">
       
-      {/* Title & Introduction */}
-      <div className="text-center pb-6 mb-8 border-b border-slate-100">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 mb-3">
-          <UserCheck size={28} />
+      {/* Mobile Top Stepper (< lg) */}
+      <div className="lg:hidden mb-6 bg-white rounded-3xl p-4 sm:p-5 shadow-lg border border-slate-100">
+        <div className="flex items-center justify-between text-xs font-bold mb-2">
+          <span className="text-rose-600">الخطوة {currentStep} من {STEPS.length}</span>
+          <span className="text-slate-800 font-extrabold">{STEPS[currentStep - 1].title}</span>
         </div>
-        <h2 className="text-xl sm:text-2xl font-black text-slate-800">
-          استمارة انضمام عضو هيئة تدريس
-        </h2>
-        <p className="text-slate-500 text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
-          انضم لنخبة أساتذة ومعلمي أكاديمية أطلس التعليمية (كافة البيانات بالاستمارة إجبارية لاعتماد الملف التعريفي وجدول الحصص)
-        </p>
+        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-300"
+            style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+          />
+        </div>
+        {/* Step Circles */}
+        <div className="flex justify-between mt-3 px-1">
+          {STEPS.map((step) => {
+            const isDone = currentStep > step.id;
+            const isCurrent = currentStep === step.id;
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => handleStepJump(step.id)}
+                className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
+                  isDone 
+                    ? 'bg-emerald-500 text-white' 
+                    : isCurrent 
+                    ? 'bg-rose-600 text-white ring-4 ring-rose-100' 
+                    : 'bg-slate-100 text-slate-400'
+                }`}
+              >
+                {isDone ? '✓' : step.id}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {errorMessage && (
-        <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-3 animate-shake">
-          <AlertCircle size={20} className="shrink-0 text-rose-500" />
-          <span className="font-medium">{errorMessage}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-          
-          {/* ============================================================
-              RIGHT COLUMN (lg:col-span-7): PERSONAL, SUBJECTS, GRADES
-              ============================================================ */}
-          <div className="lg:col-span-7 space-y-7">
-            
-            {/* SECTION 1: PERSONAL & PROFESSIONAL INFO (MANDATORY) */}
-            <div className="p-5 sm:p-7 rounded-3xl bg-slate-50/70 border border-slate-200/90 shadow-2xs">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                <User size={18} className="text-rose-600" />
-                <h3 className="text-sm sm:text-base font-bold text-slate-800">1. البيانات الشخصية والمهنية <span className="text-rose-500">*</span></h3>
+        {/* DESKTOP SIDEBAR STEPPER (lg:col-span-4) - STICKY */}
+        <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-6 space-y-5">
+          <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+            <div className="flex items-center gap-3 pb-5 mb-5 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-inner">
+                <UserCheck size={24} />
               </div>
+              <div>
+                <span className="text-[11px] font-bold text-rose-600 tracking-wider">استمارة الكادر التعليمي</span>
+                <h3 className="text-base font-black text-slate-800">خطوات الانضمام والاعتماد</h3>
+              </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    الاسم بالكامل ثلاثي أو رباعي <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="full_name"
-                    value={formData.full_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="مثال: أحمد عبد الله محمود"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
-                  />
-                </div>
+            {/* Progress bar */}
+            <div className="mb-6">
+              <div className="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
+                <span>نسبة إنجاز الاستمارة</span>
+                <span className="font-mono text-rose-600 font-bold">{Math.round((currentStep / STEPS.length) * 100)}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                <div 
+                  className="h-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+                />
+              </div>
+            </div>
 
-                {/* Nickname / Title */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    اسم الشهرة أو اللقب (للطلاب) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="nickname"
-                    value={formData.nickname}
-                    onChange={handleChange}
-                    required
-                    placeholder="مثال: مستر / أحمد عبد الله"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
-                  />
-                </div>
+            {/* Step List Items */}
+            <nav className="space-y-2">
+              {STEPS.map((step) => {
+                const isDone = currentStep > step.id;
+                const isCurrent = currentStep === step.id;
+                const StepIcon = step.icon;
 
-                {/* Phone */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    رقم الهاتف الشخصي (موبايل) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    placeholder="010xxxxxxxx"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
-                  />
-                </div>
-
-                {/* WhatsApp */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    رقم الواتساب للتواصل وإرسال الجداول <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="whatsapp_phone"
-                    value={formData.whatsapp_phone}
-                    onChange={handleChange}
-                    required
-                    placeholder="010xxxxxxxx"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
-                  />
-                </div>
-
-                {/* National ID */}
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    الرقم القومي للمعلم (14 رقماً) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="national_id"
-                    value={formData.national_id}
-                    onChange={handleChange}
-                    maxLength={14}
-                    required
-                    placeholder="14 رقماً يبدأ بـ 2 أو 3"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
-                  />
-
-                  {/* Decoded National ID info preview */}
-                  {parsedTeacherNid && (
-                    <div className="mt-2.5 p-3 rounded-xl bg-rose-50/70 border border-rose-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2 text-rose-800 font-bold">
-                        <Fingerprint size={16} className="text-rose-600" />
-                        <span>تاريخ الميلاد المستنتج:</span>
-                        <span className="font-mono text-rose-900 bg-white px-2 py-0.5 rounded border border-rose-200">
-                          {parsedTeacherNid.formattedArabic}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600 font-medium">السن التقديري:</span>
-                        <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-rose-200">
-                          {parsedTeacherNid.age} سنة
-                        </span>
-                        <span className="text-slate-600 font-medium">النوع:</span>
-                        <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-rose-200">
-                          {parsedTeacherNid.inferredGender === 'male' ? 'ذكر' : 'أنثى'}
-                        </span>
-                      </div>
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => handleStepJump(step.id)}
+                    className={`w-full text-right p-3.5 rounded-2xl transition-all flex items-center gap-3.5 cursor-pointer ${
+                      isCurrent 
+                        ? 'bg-gradient-to-r from-rose-50 to-amber-50/40 border border-rose-200 text-slate-900 shadow-sm'
+                        : isDone
+                        ? 'hover:bg-slate-50 text-slate-700'
+                        : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-all ${
+                      isDone 
+                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                        : isCurrent
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-200'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {isDone ? <Check size={16} /> : <StepIcon size={16} />}
                     </div>
-                  )}
-                </div>
 
-                {/* Photo & Logo Uploads */}
-                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  <div>
-                    <ImageUploadField
-                      label="الصورة الشخصية للمعلم"
-                      description="صورة شخصية رسمية واضحة للملف التعريفي وجدول الحصص"
-                      badgeText="مطلوبة *"
-                      value={formData.photo_url}
-                      onChange={(url) => setFormData((prev) => ({ ...prev, photo_url: url }))}
-                      onUploadingChange={setIsPhotoUploading}
-                      required={true}
-                    />
-                  </div>
-
-                  <div>
-                    <ImageUploadField
-                      label="شعار أو لوجو المعلم"
-                      description="الشعار أو الهوية البصرية الخاصة بكم لوضعها على المذكرات"
-                      badgeText="إن وجد"
-                      value={formData.logo_url}
-                      onChange={(url) => setFormData((prev) => ({ ...prev, logo_url: url }))}
-                      onUploadingChange={setIsLogoUploading}
-                      required={false}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 2: SUBJECTS (MULTI-SELECT CHIPS) */}
-            <div className="p-5 sm:p-7 rounded-3xl bg-slate-50/70 border border-slate-200/90 shadow-2xs">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  <BookOpen size={18} className="text-sky-600" />
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">
-                    2. المواد التي تقوم بتدريسها <span className="text-rose-500">*</span>
-                  </h3>
-                </div>
-                <span className="text-xs font-semibold text-slate-500">
-                  المحدد: <strong className="text-rose-600">{formData.specializations.length}</strong> مادة
-                </span>
-              </div>
-
-              <p className="text-xs text-slate-500 mb-3.5">
-                اضغط على اسم المادة لتحديدها (تضيء المادة باللون الأحمر عند اختيارها):
-              </p>
-
-              {/* Subjects Chips Grid */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {AVAILABLE_SUBJECTS.map((subject) => {
-                  const isSelected = formData.specializations.includes(subject);
-                  return (
-                    <button
-                      key={subject}
-                      type="button"
-                      onClick={() => toggleSubject(subject)}
-                      className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-600/30 ring-2 ring-rose-200'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {isSelected && <span className="ml-1.5 font-bold">✓</span>}
-                      <span>{subject}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Custom Subject Addition */}
-              {!showCustomSubjectField ? (
-                <button
-                  type="button"
-                  onClick={() => setShowCustomSubjectField(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 hover:text-sky-800 py-1.5 px-3 rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 transition-colors cursor-pointer"
-                >
-                  <Plus size={14} />
-                  <span>إضافة مادة أخرى غير مدرجة</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 max-w-sm mt-2">
-                  <input
-                    type="text"
-                    value={customSubjectInput}
-                    onChange={(e) => setCustomSubjectInput(e.target.value)}
-                    placeholder="اكتب اسم المادة هنا..."
-                    className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCustomSubject}
-                    className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                  >
-                    إضافة
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-bold truncate ${isCurrent ? 'text-rose-700 font-black' : isDone ? 'text-slate-800' : 'text-slate-500'}`}>
+                          {step.title}
+                        </span>
+                        {isDone && (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                            مكتمل
+                          </span>
+                        )}
+                        {isCurrent && (
+                          <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-md animate-pulse">
+                            الحالية
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                        {step.subtitle}
+                      </p>
+                    </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomSubjectField(false)}
-                    className="px-2.5 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-xs cursor-pointer"
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* SECTION 3: GRADES & STAGES (SELECT BOXES) */}
-            <div className="p-5 sm:p-7 rounded-3xl bg-slate-50/70 border border-slate-200/90 shadow-2xs">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  <GraduationCap size={18} className="text-emerald-600" />
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">
-                    3. المراحل والصفوف الدراسية <span className="text-rose-500">*</span>
-                  </h3>
-                </div>
-                <span className="text-xs font-semibold text-slate-500">
-                  المحدد: <strong className="text-emerald-600">{formData.target_grades.length}</strong> صف
-                </span>
-              </div>
-
-              {/* Quick Clusters */}
-              <div className="flex flex-wrap items-center gap-2 mb-3.5 text-xs">
-                <span className="text-slate-400 text-[11px]">تحديد سريع:</span>
-                <button
-                  type="button"
-                  onClick={() => selectStageCluster('الثانوي')}
-                  className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors cursor-pointer"
-                >
-                  كل المرحلة الثانوية
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectStageCluster('الإعدادي')}
-                  className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors cursor-pointer"
-                >
-                  كل المرحلة الإعدادية
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectStageCluster('الابتدائي')}
-                  className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors cursor-pointer"
-                >
-                  كل المرحلة الابتدائية
-                </button>
-              </div>
-
-              {/* Grades Chips Grid */}
-              <div className="flex flex-wrap gap-2">
-                {ALL_GRADES.map((grade) => {
-                  const isSelected = formData.target_grades.includes(grade);
-                  return (
-                    <button
-                      key={grade}
-                      type="button"
-                      onClick={() => toggleGrade(grade)}
-                      className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-sky-600 text-white border-sky-600 shadow-sm shadow-sky-600/30 ring-2 ring-sky-200'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {isSelected && <span className="ml-1.5 font-bold">✓</span>}
-                      <span>{grade}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
+                );
+              })}
+            </nav>
           </div>
 
-          {/* ============================================================
-              LEFT COLUMN (lg:col-span-5): ASSISTANTS, GROUPS, BIO, SUBMIT
-              ============================================================ */}
-          <div className="lg:col-span-5 space-y-7">
+          {/* Support Card */}
+          <div className="bg-gradient-to-br from-slate-900 to-[#1e1429] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
+            <div className="flex items-center gap-2 text-amber-300 font-bold">
+              <Sparkles size={16} />
+              <span>تحتاج مساعدة أو تنسيق مسبق؟</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed text-[11px]">
+              فريق إدارة شؤون هيئة التدريس متاح على مدار الساعة لتسهيل إجراءات التسجيل وتجهيز القاعات.
+            </p>
+            <div className="pt-1 flex items-center justify-between text-[11px] text-white/70 border-t border-white/10">
+              <span>هاتف الدعم: 01016083050</span>
+              <span className="font-mono text-emerald-400">متاح الآن</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* MAIN WORKSPACE FORM (lg:col-span-8) */}
+        <main className="lg:col-span-8">
+          <div className="bg-white rounded-3xl p-6 sm:p-9 shadow-xl border border-slate-100">
             
-            {/* SECTION 4: ASSISTANTS & TEAM (UNLIMITED ASSISTANTS) */}
-            <div className="p-5 sm:p-7 rounded-3xl bg-slate-50/70 border border-slate-200/90 shadow-2xs">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  <Users size={18} className="text-amber-600" />
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">
-                    4. فريق العمل والسكرتارية <span className="text-rose-500">*</span>
-                  </h3>
-                </div>
-                <span className="text-[11px] font-semibold text-slate-400">
-                  غير محدد بعدد معين
-                </span>
+            {/* Step Header */}
+            <div className="flex items-center gap-3.5 pb-6 mb-7 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-inner">
+                {(() => {
+                  const CurrentIcon = STEPS[currentStep - 1].icon;
+                  return <CurrentIcon size={24} />;
+                })()}
               </div>
-
-              {/* Checkbox for self-management */}
-              <div className="mb-4 p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/90 flex items-center justify-between">
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs sm:text-sm font-bold text-amber-950">
-                  <input
-                    type="checkbox"
-                    checked={hasNoAssistant}
-                    onChange={(e) => setHasNoAssistant(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                  />
-                  <span>لا يوجد فريق عمل أو سكرتارية (أدير الحجز بنفسي)</span>
-                </label>
+              <div>
+                <span className="text-xs font-bold text-rose-600">الخطوة {currentStep} من {STEPS.length}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-800">
+                  {STEPS[currentStep - 1].title}
+                </h2>
+                <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+                  {STEPS[currentStep - 1].subtitle}
+                </p>
               </div>
-
-              {!hasNoAssistant && (
-                <>
-                  <div className="space-y-3">
-                    {assistants.map((assistant, index) => (
-                      <div 
-                        key={assistant.id || index}
-                        className="p-4 rounded-2xl bg-white border border-slate-200/90 relative shadow-2xs"
-                      >
-                        <div className="flex items-center justify-between mb-2.5">
-                          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 text-[11px] flex items-center justify-center font-bold">
-                              {index + 1}
-                            </span>
-                            <span>المساعد / السكرتير {index + 1} {index === 0 && <span className="text-rose-500">*</span>}</span>
-                          </span>
-
-                          {assistants.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeAssistant(index)}
-                              className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 p-1 hover:bg-rose-50 rounded cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                              <span>حذف</span>
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="space-y-2.5">
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                              اسم المساعد {index === 0 && <span className="text-rose-500">*</span>}
-                            </label>
-                            <input
-                              type="text"
-                              value={assistant.name}
-                              onChange={(e) => handleAssistantChange(index, 'name', e.target.value)}
-                              placeholder="مثال: أ/ محمد هاني"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                              رقم هاتف المساعد {index === 0 && <span className="text-rose-500">*</span>}
-                            </label>
-                            <input
-                              type="tel"
-                              value={assistant.phone}
-                              onChange={(e) => handleAssistantChange(index, 'phone', e.target.value)}
-                              placeholder="011xxxxxxxx"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={addAssistant}
-                    className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer"
-                  >
-                    <Plus size={14} />
-                    <span>إضافة مساعد جديد</span>
-                  </button>
-                </>
-              )}
             </div>
 
-            {/* SECTION 5: GROUPS & SESSIONS SCHEDULING (MANDATORY) */}
-            <div className="p-5 sm:p-7 rounded-3xl bg-purple-50/40 border border-purple-200/80 shadow-2xs">
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-purple-200/70">
-                <div className="flex items-center gap-2">
-                  <Clock size={18} className="text-purple-600" />
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">
-                    5. المجموعات ومواعيد الحصص <span className="text-rose-500">*</span>
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={addGroup}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  <Plus size={14} />
-                  <span>إضافة مجموعة</span>
-                </button>
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-3 animate-shake">
+                <AlertCircle size={20} className="shrink-0 text-rose-500" />
+                <span className="font-semibold">{errorMessage}</span>
               </div>
+            )}
 
-              <div className="space-y-3.5">
-                {groups.map((group, idx) => (
-                  <div
-                    key={group.id}
-                    className="p-4 rounded-2xl bg-white border border-purple-200/90 relative text-right shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-800 text-[11px] flex items-center justify-center font-bold">
-                          {idx + 1}
+            <form onSubmit={handleSubmit}>
+              
+              {/* ============================================================
+                  STEP 1: PERSONAL & PROFESSIONAL INFO
+                  ============================================================ */}
+              {currentStep === 1 && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
+                        الاسم بالكامل ثلاثي أو رباعي <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="full_name"
+                        value={formData.full_name}
+                        onChange={handleChange}
+                        required
+                        placeholder="مثال: أحمد عبد الله محمود"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                      />
+                    </div>
+
+                    {/* Nickname / Title */}
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
+                        اسم الشهرة أو اللقب (للطلاب) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="nickname"
+                        value={formData.nickname}
+                        onChange={handleChange}
+                        required
+                        placeholder="مثال: مستر / أحمد عبد الله"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                      />
+                    </div>
+
+                    {/* Personal Phone */}
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
+                        رقم الهاتف الشخصي (موبايل) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        required
+                        placeholder="010xxxxxxxx"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                      />
+                    </div>
+
+                    {/* WhatsApp */}
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
+                        رقم الواتساب للتواصل وإرسال الجداول <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="whatsapp_phone"
+                        value={formData.whatsapp_phone}
+                        onChange={handleChange}
+                        required
+                        placeholder="010xxxxxxxx"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                      />
+                    </div>
+
+                    {/* National ID */}
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs sm:text-sm font-bold text-slate-700">
+                          الرقم القومي للمعلم (14 رقماً) <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <Fingerprint size={12} className="text-rose-600" />
+                          <span>14 رقماً يبدأ بـ 2 أو 3</span>
                         </span>
-                        <span>المجموعة رقم {idx + 1}</span>
-                      </span>
+                      </div>
+                      <input
+                        type="text"
+                        name="national_id"
+                        value={formData.national_id}
+                        onChange={handleChange}
+                        required
+                        maxLength={14}
+                        placeholder="مثال: 29001010101234"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                      />
 
-                      {groups.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeGroup(group.id)}
-                          className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 p-1 hover:bg-rose-50 rounded cursor-pointer"
-                        >
-                          <Trash2 size={13} />
-                          <span>حذف</span>
-                        </button>
+                      {parsedTeacherNid && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                          <Calendar size={14} className="text-emerald-600 shrink-0" />
+                          <span>
+                            تاريخ الميلاد المستنتج: <strong>{parsedTeacherNid.formattedArabic}</strong> — السن التقريبي: <strong>{parsedTeacherNid.age} سنة</strong>
+                          </span>
+                        </div>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* 1. Day of the week */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          اليوم في الأسبوع <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={group.day}
-                          onChange={(e) => handleGroupChange(group.id, 'day', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                        >
-                          {DAYS_OF_WEEK.map((d) => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-                      </div>
+                    {/* Teacher Photo */}
+                    <div className="sm:col-span-2">
+                      <ImageUploadField
+                        label="الصورة الشخصية للمعلم"
+                        description="يرجى رفع صورة شخصية واضحة ورسمية لإدراجها في الكارنيه والملف التعريفي للأكاديمية"
+                        badgeText="صورة رسمية مطلوبة"
+                        value={formData.photo_url}
+                        onChange={(url) => setFormData((prev) => ({ ...prev, photo_url: url }))}
+                        onUploadingChange={setIsPhotoUploading}
+                        required={true}
+                        isWhiteBackground={false}
+                      />
+                    </div>
 
-                      {/* 4. Grade / Stage */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          المرحلة / الصف <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={group.grade}
-                          onChange={(e) => handleGroupChange(group.id, 'grade', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                        >
-                          {(formData.target_grades.length > 0 ? formData.target_grades : ALL_GRADES).map((g) => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* 2. Start Time */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          وقت البداية <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="time"
-                          value={group.start_time}
-                          onChange={(e) => handleGroupChange(group.id, 'start_time', e.target.value)}
-                          required
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-center"
-                        />
-                      </div>
-
-                      {/* 3. End Time */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          وقت النهاية <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="time"
-                          value={group.end_time}
-                          onChange={(e) => handleGroupChange(group.id, 'end_time', e.target.value)}
-                          required
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-center"
-                        />
-                      </div>
-
-                      {/* 5. Subject */}
-                      <div className="sm:col-span-2 mt-1">
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          مادة المجموعة <span className="text-rose-500">*</span>
-                        </label>
-                        {formData.specializations.length === 1 ? (
-                          <div className="p-2 rounded-xl bg-purple-100/80 border border-purple-200 text-purple-900 text-xs font-bold flex items-center justify-between">
-                            <span>المادة معتمدة: <strong>{formData.specializations[0]}</strong></span>
-                            <span className="text-[10px] text-purple-600 bg-white px-2 py-0.5 rounded-full font-bold">معتمدة</span>
-                          </div>
-                        ) : formData.specializations.length > 1 ? (
-                          <select
-                            value={group.subject}
-                            onChange={(e) => handleGroupChange(group.id, 'subject', e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-medium"
-                          >
-                            <option value="">-- اختر مادة المجموعة من المواد التي حددتها --</option>
-                            {formData.specializations.map((sub) => (
-                              <option key={sub} value={sub}>{sub}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            value={group.subject}
-                            onChange={(e) => handleGroupChange(group.id, 'subject', e.target.value)}
-                            placeholder="اكتب اسم المادة لهذه المجموعة..."
-                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                          />
-                        )}
-                      </div>
+                    {/* Teacher Logo */}
+                    <div className="sm:col-span-2">
+                      <ImageUploadField
+                        label="لوجو أو شعار المعلم (إن وجد)"
+                        description="شعار البراند التعليمي الخاص بكم لوضعه على المذكرات والجدول والشاشات الإلكترونية"
+                        badgeText="اختياري"
+                        value={formData.logo_url}
+                        onChange={(url) => setFormData((prev) => ({ ...prev, logo_url: url }))}
+                        onUploadingChange={setIsLogoUploading}
+                        required={false}
+                        isWhiteBackground={false}
+                      />
                     </div>
                   </div>
-                ))}
+                </div>
+              )}
 
-                <div className="pt-1">
+              {/* ============================================================
+                  STEP 2: SUBJECTS & GRADES
+                  ============================================================ */}
+              {currentStep === 2 && (
+                <div className="space-y-7 animate-fade-in">
+                  
+                  {/* Section A: Specializations */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-slate-800">
+                        المواد التعليمية والتخصص <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+                        المحدد: {formData.specializations.length} مادة
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-4">
+                      اضغط على المادة لاختيارها — يمكنك اختيار أكثر من مادة أو إضافة مادة خاصة:
+                    </p>
+
+                    <div className="flex flex-wrap gap-2.5 mb-4">
+                      {AVAILABLE_SUBJECTS.map((sub) => {
+                        const isSelected = formData.specializations.includes(sub);
+                        return (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => toggleSubject(sub)}
+                            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/30 ring-2 ring-rose-200'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {isSelected && <span className="ml-1.5 font-bold">✓</span>}
+                            <span>{sub}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Subject */}
+                    {!showCustomSubjectField ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomSubjectField(true)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-800 bg-white border border-rose-200 hover:border-rose-300 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                      >
+                        <Plus size={14} />
+                        <span>إضافة مادة تعليمية أخرى غير موجودة بالقائمة</span>
+                      </button>
+                    ) : (
+                      <div className="flex gap-2 max-w-md mt-2">
+                        <input
+                          type="text"
+                          value={customSubjectInput}
+                          onChange={(e) => setCustomSubjectInput(e.target.value)}
+                          placeholder="اسم المادة المخصصة..."
+                          className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomSubject}
+                          className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer"
+                        >
+                          إضافة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomSubjectField(false)}
+                          className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section B: Target Grades */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-slate-800">
+                        الصفوف والمراحل الدراسية <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full border border-sky-100">
+                        المحدد: {formData.target_grades.length} صف
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-3">
+                      حدد الصفوف التي تدرس لها داخل قاعات الأكاديمية:
+                    </p>
+
+                    {/* Quick Stage Selectors */}
+                    <div className="flex flex-wrap gap-2 mb-4 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => selectStageCluster('الثانوي')}
+                        className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold transition-colors cursor-pointer"
+                      >
+                        + كل المرحلة الثانوية
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => selectStageCluster('الإعدادي')}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold transition-colors cursor-pointer"
+                      >
+                        + كل المرحلة الإعدادية
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => selectStageCluster('الابتدائي')}
+                        className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold transition-colors cursor-pointer"
+                      >
+                        + كل المرحلة الابتدائية
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2.5">
+                      {ALL_GRADES.map((grade) => {
+                        const isSelected = formData.target_grades.includes(grade);
+                        return (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => toggleGrade(grade)}
+                            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/30 ring-2 ring-sky-200'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {isSelected && <span className="ml-1.5 font-bold">✓</span>}
+                            <span>{grade}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* ============================================================
+                  STEP 3: ASSISTANTS & TEAM (UNLIMITED ASSISTANTS)
+                  ============================================================ */}
+              {currentStep === 3 && (
+                <div className="space-y-6 animate-fade-in">
+                  
+                  {/* Self Management Toggle */}
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+                    <label className="flex items-center gap-3 cursor-pointer text-xs sm:text-sm font-bold text-amber-950">
+                      <input
+                        type="checkbox"
+                        checked={hasNoAssistant}
+                        onChange={(e) => setHasNoAssistant(e.target.checked)}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span>لا يوجد فريق عمل أو سكرتارية (أدير الحجز والتواصل بنفسي)</span>
+                    </label>
+                  </div>
+
+                  {!hasNoAssistant && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <span className="text-xs font-bold text-slate-600">
+                          قائمة المساعدين والسكرتارية (يمكن إضافة أي عدد بدون حد أقصى)
+                        </span>
+                        <span className="text-xs font-semibold text-amber-700 bg-amber-100/70 px-2.5 py-0.5 rounded-full">
+                          {assistants.length} مساعد مسجل
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        {assistants.map((assistant, index) => (
+                          <div 
+                            key={assistant.id || index}
+                            className="p-5 rounded-2xl bg-slate-50 border border-slate-200/90 relative shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-bold">
+                                  {index + 1}
+                                </span>
+                                <span>المساعد / السكرتير {index + 1} {index === 0 && <span className="text-rose-500">*</span>}</span>
+                              </span>
+
+                              {assistants.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeAssistant(index)}
+                                  className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2.5 py-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <Trash2 size={14} />
+                                  <span>حذف المساعد</span>
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                  اسم المساعد {index === 0 && <span className="text-rose-500">*</span>}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={assistant.name}
+                                  onChange={(e) => handleAssistantChange(index, 'name', e.target.value)}
+                                  placeholder="مثال: أ/ محمد هاني"
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                  رقم هاتف المساعد {index === 0 && <span className="text-rose-500">*</span>}
+                                </label>
+                                <input
+                                  type="tel"
+                                  value={assistant.phone}
+                                  onChange={(e) => handleAssistantChange(index, 'phone', e.target.value)}
+                                  placeholder="011xxxxxxxx"
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={addAssistant}
+                        className="w-full py-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-dashed border-amber-300 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <Plus size={16} />
+                        <span>إضافة مساعد جديد في فريق العمل</span>
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {/* ============================================================
+                  STEP 4: GROUPS & SCHEDULES
+                  ============================================================ */}
+              {currentStep === 4 && (
+                <div className="space-y-6 animate-fade-in">
+                  
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">جدول المجموعات ومواعيد الحصص الأسبوعية</h4>
+                      <p className="text-xs text-slate-500">حدد مواعيد الحصص والقاعات المقترحة لكل صف دراسي</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addGroup}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 px-3.5 py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      <span>إضافة مجموعة</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {groups.map((group, idx) => {
+                      const timeVal = validateGroupTimes(group.start_time, group.end_time);
+                      return (
+                        <div
+                          key={group.id}
+                          className="p-5 rounded-2xl bg-purple-50/40 border border-purple-200/90 relative text-right shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-xs font-bold text-purple-900 flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-purple-200 text-purple-800 text-xs flex items-center justify-center font-bold">
+                                {idx + 1}
+                              </span>
+                              <span>المجموعة رقم {idx + 1}</span>
+                            </span>
+
+                            {groups.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeGroup(group.id)}
+                                className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2.5 py-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                                <span>حذف المجموعة</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                            {/* Day */}
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">اليوم <span className="text-rose-500">*</span></label>
+                              <select
+                                value={group.day}
+                                onChange={(e) => handleGroupChange(group.id, 'day', e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              >
+                                {DAYS_OF_WEEK.map((d) => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Start Time */}
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">وقت البداية <span className="text-rose-500">*</span></label>
+                              <input
+                                type="time"
+                                value={group.start_time}
+                                onChange={(e) => handleGroupChange(group.id, 'start_time', e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              />
+                            </div>
+
+                            {/* End Time */}
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">وقت النهاية <span className="text-rose-500">*</span></label>
+                              <input
+                                type="time"
+                                value={group.end_time}
+                                onChange={(e) => handleGroupChange(group.id, 'end_time', e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              />
+                            </div>
+
+                            {/* Grade */}
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">الصف الدراسي <span className="text-rose-500">*</span></label>
+                              <select
+                                value={group.grade}
+                                onChange={(e) => handleGroupChange(group.id, 'grade', e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              >
+                                {formData.target_grades.map((grd) => (
+                                  <option key={grd} value={grd}>{grd}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Calculated Duration */}
+                          {timeVal.valid && (
+                            <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-100/70 px-2.5 py-1 rounded-lg">
+                              <Clock size={12} />
+                              <span>مدة الحصة: {timeVal.durationArabic}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   <button
                     type="button"
                     onClick={addGroup}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-white hover:bg-purple-50 border border-purple-300 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
+                    className="w-full py-3 rounded-2xl bg-purple-50 hover:bg-purple-100 border-2 border-dashed border-purple-300 text-purple-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
-                    <Plus size={14} />
-                    <span>إضافة مجموعة أخرى</span>
+                    <Plus size={16} />
+                    <span>إضافة موعد أو مجموعة أخرى</span>
                   </button>
+
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* SECTION 6: BIO, SOCIAL & NOTES */}
-            <div className="p-5 sm:p-7 rounded-3xl bg-slate-50/70 border border-slate-200/90 shadow-2xs">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                <Briefcase size={18} className="text-slate-600" />
-                <h3 className="text-sm sm:text-base font-bold text-slate-800">
-                  6. النبذة والمنصات <span className="text-rose-500">*</span>
-                </h3>
-              </div>
-
-              <div className="space-y-3.5">
-                {/* Bio (Mandatory) */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    نبذة تعريفية وخبرات سابقة <span className="text-rose-500">*</span>
-                  </label>
-                  <textarea
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    required
-                    rows={3}
-                    placeholder="سنوات الخبرة، المراكز السابقة، نبذة عن أسلوب التدريس..."
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all resize-none bg-white"
-                  />
-                </div>
-
-                {/* Social Links */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* ============================================================
+                  STEP 5: BIO, PLATFORMS & FINAL REVIEW
+                  ============================================================ */}
+              {currentStep === 5 && (
+                <div className="space-y-6 animate-fade-in">
+                  
+                  {/* Bio */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      الفيسبوك <span className="text-slate-400 font-normal">(إن وجد)</span>
+                    <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
+                      النبذة التعريفية وسنوات الخبرة <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="url"
-                      name="facebook_link"
-                      value={formData.facebook_link}
+                    <textarea
+                      name="bio"
+                      value={formData.bio}
                       onChange={handleChange}
-                      placeholder="facebook.com/..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-left"
-                      dir="ltr"
+                      required
+                      rows={3}
+                      placeholder="اكتب نبذة مختصرة عن مؤهلاتك العلمية، سنوات الخبرة، المدارس أو المنصات التي عملت بها..."
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none bg-white"
                     />
                   </div>
 
+                  {/* Social Links */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        صفحة الفيسبوك <span className="text-slate-400 font-normal">(اختياري)</span>
+                      </label>
+                      <input
+                        type="url"
+                        name="facebook_link"
+                        value={formData.facebook_link}
+                        onChange={handleChange}
+                        placeholder="https://facebook.com/..."
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        قناة اليوتيوب <span className="text-slate-400 font-normal">(اختياري)</span>
+                      </label>
+                      <input
+                        type="url"
+                        name="youtube_link"
+                        value={formData.youtube_link}
+                        onChange={handleChange}
+                        placeholder="https://youtube.com/@..."
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        قناة أو جروب التليجرام <span className="text-slate-400 font-normal">(اختياري)</span>
+                      </label>
+                      <input
+                        type="url"
+                        name="telegram_link"
+                        value={formData.telegram_link}
+                        onChange={handleChange}
+                        placeholder="https://t.me/..."
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      اليوتيوب <span className="text-slate-400 font-normal">(إن وجد)</span>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      ملاحظات أو متطلبات خاصة بالقاعات <span className="text-slate-400 font-normal">(اختياري)</span>
                     </label>
-                    <input
-                      type="url"
-                      name="youtube_link"
-                      value={formData.youtube_link}
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
                       onChange={handleChange}
-                      placeholder="youtube.com/..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-left"
-                      dir="ltr"
+                      rows={2}
+                      placeholder="مثال: الحاجة لشاشات سمارت، سعة قاعة معينة، تجهيزات صوتية..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none bg-white"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      التليجرام <span className="text-slate-400 font-normal">(إن وجد)</span>
-                    </label>
-                    <input
-                      type="url"
-                      name="telegram_link"
-                      value={formData.telegram_link}
-                      onChange={handleChange}
-                      placeholder="t.me/..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-left"
-                      dir="ltr"
-                    />
+                  {/* Comprehensive Review Card */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                      <span className="font-bold text-slate-800 text-sm">ملخص الاستمارة قبل التأكيد النهائي:</span>
+                      <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded">جاهز للإرسال</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+                      <div><strong>اسم المعلم:</strong> {formData.full_name} ({formData.nickname})</div>
+                      <div><strong>الهاتف:</strong> {formData.phone}</div>
+                      <div><strong>المواد:</strong> {formData.specializations.join(' ، ')}</div>
+                      <div><strong>المراحل:</strong> {formData.target_grades.join(' ، ')}</div>
+                      <div><strong>المساعدين:</strong> {hasNoAssistant ? 'إدارة ذاتية' : `${assistants.length} مساعد`}</div>
+                      <div><strong>المجموعات المقترحة:</strong> {groups.length} مجموعة</div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    متطلبات القاعات أو ملاحظات إضافية <span className="text-slate-400 font-normal">(اختياري)</span>
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                    rows={2}
-                    placeholder="سعة القاعات المفضلة، شاشات عرض، أجهزة صوتية، إلخ..."
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all resize-none bg-white"
-                  />
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* SUBMIT BUTTON CARD */}
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-[#1F102F] text-white shadow-xl border border-slate-800">
-              <button
-                type="submit"
-                disabled={isSubmitting || isPhotoUploading || isLogoUploading}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-xl shadow-rose-600/30 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    <span>جاري إرسال الاستمارة وحفظ البيانات...</span>
-                  </>
-                ) : isPhotoUploading || isLogoUploading ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    <span>جاري رفع الصور إلى الخادم...</span>
-                  </>
+              {/* Navigation Action Buttons Bar */}
+              <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
+                {currentStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="px-6 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <ChevronRight size={18} />
+                    <span>الخطوة السابقة</span>
+                  </button>
                 ) : (
-                  <>
-                    <Send size={18} />
-                    <span>تأكيد وإرسال استمارة انضمام المعلم</span>
-                  </>
+                  <div />
                 )}
-              </button>
-              
-              <p className="text-center text-slate-400 text-xs mt-3">
-                بالضغط على إرسال، تؤكد صحة البيانات المسجلة لاعتماد جدول الحصص والملف التعريفي الخاص بكم
-              </p>
-            </div>
+
+                {currentStep < 5 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                  >
+                    <span>المتابعة للخطوة التالية</span>
+                    <ChevronLeft size={18} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isPhotoUploading || isLogoUploading}
+                    className="px-8 py-4 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-700 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-rose-600/30 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={20} className="animate-spin" />
+                        <span>جاري إرسال الاستمارة والاعتماد...</span>
+                      </>
+                    ) : isPhotoUploading || isLogoUploading ? (
+                      <>
+                        <Loader2 size={20} className="animate-spin" />
+                        <span>جاري رفع الصور...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={18} />
+                        <span>تأكيد وإرسال استمارة المعلم رسمياً</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+            </form>
 
           </div>
+        </main>
 
-        </div>
-
-      </form>
+      </div>
 
     </div>
   );
