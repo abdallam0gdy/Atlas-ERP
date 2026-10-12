@@ -67,6 +67,11 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://pfnyoskxlukfdbnpojia.supabase.co}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-sb_publishable_a7_iTk12sxbb0W31iDS7Tw_b09TeM0z}
+        VITE_IMGBB_API_KEY: ${VITE_IMGBB_API_KEY:-7f3f174d39d019c48c4a67bd36f0b8f6}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: atlas_client
     restart: unless-stopped
     depends_on:
