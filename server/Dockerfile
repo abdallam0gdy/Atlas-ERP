@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat
 
 # Copy package descriptors first for layer caching
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev || npm install --omit=dev
 
 # Copy server application code
 COPY . .
