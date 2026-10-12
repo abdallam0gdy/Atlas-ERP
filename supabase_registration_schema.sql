@@ -124,8 +124,39 @@ FOR INSERT
 TO anon 
 WITH CHECK (true);
 
--- ملاحظة أمنية هامة:
--- لم يتم وضع أي Policy لـ SELECT أو UPDATE للجمهور المجهول (anon).
--- هذا يعني هندسياً أنه يستحيل على أي زائر أو طالب قراءة أي رقم هاتف أو بيانات طلاب آخرين
--- حتى لو امتلك المفتاح العام (anon key)، فقاعدة البيانات ترفض قراءة أي سجل إطلاقاً!
--- القراءة والتعديل محصورة فقط لإدارة السنتر عبر لوحة سوبابيز أو السيرفر الداخلي.
+-- 3) السماح بقراءة وتحديث وحذف الاستمارات من لوحة إدارة المنصة (Dashboard)
+DROP POLICY IF EXISTS "Allow select for online_students" ON public.online_students;
+CREATE POLICY "Allow select for online_students"
+ON public.online_students 
+FOR SELECT 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow update for online_students" ON public.online_students;
+CREATE POLICY "Allow update for online_students"
+ON public.online_students 
+FOR UPDATE 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow delete for online_students" ON public.online_students;
+CREATE POLICY "Allow delete for online_students"
+ON public.online_students 
+FOR DELETE 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow select for online_teachers" ON public.online_teachers;
+CREATE POLICY "Allow select for online_teachers"
+ON public.online_teachers 
+FOR SELECT 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow update for online_teachers" ON public.online_teachers;
+CREATE POLICY "Allow update for online_teachers"
+ON public.online_teachers 
+FOR UPDATE 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow delete for online_teachers" ON public.online_teachers;
+CREATE POLICY "Allow delete for online_teachers"
+ON public.online_teachers 
+FOR DELETE 
+USING (true);

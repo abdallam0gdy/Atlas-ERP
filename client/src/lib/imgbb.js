@@ -2,7 +2,7 @@
  * خدمة رفع الصور إلى ImgBB API
  * المفتاح المعتمد من الإدارة: 7f3f174d39d019c48c4a67bd36f0b8f6
  */
-export const IMGBB_API_KEY = '7f3f174d39d019c48c4a67bd36f0b8f6';
+export const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY || '7f3f174d39d019c48c4a67bd36f0b8f6';
 
 export async function uploadToImgBB(file) {
   if (!file) return null;

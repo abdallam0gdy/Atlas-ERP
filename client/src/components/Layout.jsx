@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, QrCode,
   DoorOpen, LogOut, Menu, X, ChevronLeft, Settings,
   Wallet, Package, ShoppingCart, BookMarked, Library,
-  User, ShieldCheck, Clock, Calendar, CheckCircle2, CreditCard
+  User, ShieldCheck, Clock, Calendar, CheckCircle2, CreditCard,
+  UserCheck
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -51,6 +52,7 @@ export function ProtectedRoute({ allowedRoles, pageId, adminOnly }) {
 // Route titles map for Header breadcrumb
 const PAGE_TITLES = {
   '/dashboard': 'لوحة التحكم والمؤشرات',
+  '/online-registrations': 'طلبات التسجيل الإلكتروني (أونلاين)',
   '/students': 'إدارة شؤون الطلاب',
   '/teachers': 'هيئة التدريس والمدرسين',
   '/groups': 'المجموعات الدراسية والقاعات',
@@ -84,6 +86,7 @@ export function MainLayout() {
 
   const navItems = [
     { path: '/dashboard', pageId: 'dashboard', icon: LayoutDashboard, label: 'لوحة التحكم' },
+    { path: '/online-registrations', pageId: 'online-registrations', icon: UserCheck, label: 'التسجيل أونلاين', adminOnly: true },
     { path: '/students', pageId: 'students', icon: Users, label: 'الطلاب' },
     { path: '/teachers', pageId: 'teachers', icon: GraduationCap, label: 'المدرسين' },
     { path: '/groups', pageId: 'groups', icon: BookOpen, label: 'المجموعات' },

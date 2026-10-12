@@ -23,6 +23,7 @@ import StudentSubscriptionsPage from './pages/StudentSubscriptionsPage';
 import PackagesPage from './pages/PackagesPage';
 import UsersManagementPage from './pages/UsersManagementPage';
 import SettingsPage from './pages/SettingsPage';
+import OnlineRegistrationsPage from './pages/OnlineRegistrationsPage';
 import StudentPortalLayout from './components/portal/StudentPortalLayout';
 import TeacherPortalLayout from './components/portal/TeacherPortalLayout';
 import StudentRegistrationPage from './pages/portal/StudentRegistrationPage';
@@ -130,8 +131,9 @@ function App() {
               <Route path="/pos" element={<PosPage />} />
             </Route>
 
-            {/* Users Management - Strictly SUPER_ADMIN_OWNER */}
+            {/* Users & Online Registrations - Strictly SUPER_ADMIN_OWNER */}
             <Route element={<ProtectedRoute adminOnly />}>
+              <Route path="/online-registrations" element={<OnlineRegistrationsPage />} />
               <Route path="/users" element={<UsersManagementPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
