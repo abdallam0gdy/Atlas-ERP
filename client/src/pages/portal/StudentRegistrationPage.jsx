@@ -43,16 +43,21 @@ const STUDENT_STEPS = [
   { id: 4, title: 'المراجعة وتأكيد الحجز', subtitle: 'مراجعة كافة البيانات وتأكيد الطلب', icon: CheckCircle2 },
 ];
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function normalizeArabicNumbers(str) {
   if (!str) return '';
   const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
   return String(str).replace(/[٠-٩]/g, (w) => arabicNumerals.indexOf(w));
-}
-
-function isValidEgyptianPhone(phone) {
-  if (!phone) return false;
-  const clean = normalizeArabicNumbers(String(phone).replace(/[\s\-\+]/g, ''));
-  return /^01[0125]\d{8}$/.test(clean) || /^201[0125]\d{8}$/.test(clean);
 }
 
 function cleanEgyptianPhone(phone) {
@@ -62,6 +67,46 @@ function cleanEgyptianPhone(phone) {
     clean = '0' + clean.slice(2);
   }
   return clean;
+}
+
+function isValidRealEgyptianPhone(phone) {
+  if (!phone) return false;
+  const clean = cleanEgyptianPhone(phone);
+
+  // 1. يجب أن يكون 11 رقماً ويبدأ بأحد شبكات المحمول المصرية (010, 011, 012, 015)
+  if (!/^01[0125]\d{8}$/.test(clean)) {
+    return false;
+  }
+
+  // 2. منع الأرقام التي تحتوي على أقل من 4 أرقام مميزة (مثل 01200000000 أو 01010101010)
+  const uniqueDigits = new Set(clean);
+  if (uniqueDigits.size < 4) {
+    return false;
+  }
+
+  // 3. منع تكرار نفس الرقم 5 مرات متتالية أو أكثر (مثل 01000001234 أو 01299999456)
+  if (/(.)\1{4,}/.test(clean)) {
+    return false;
+  }
+
+  // 4. منع المتتاليات الرقمية الصريحة (مثل 0123456789 أو 01012345678)
+  const afterPrefix = clean.slice(3); // 8 أرقام بعد الكود
+  const sequentialAsc = '0123456789';
+  const sequentialDesc = '9876543210';
+  if (sequentialAsc.includes(afterPrefix) || sequentialDesc.includes(afterPrefix)) {
+    return false;
+  }
+  if (
+    clean === '01234567890' ||
+    clean === '01012345678' ||
+    clean === '01123456789' ||
+    clean === '01512345678' ||
+    clean === '01212345678'
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function parseEgyptianNationalId(nid) {
@@ -144,8 +189,8 @@ export default function StudentRegistrationPage() {
         return false;
       }
       const cleanPhone = cleanEgyptianPhone(formData.phone);
-      if (!isValidEgyptianPhone(cleanPhone)) {
-        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري صحيح للطالب (010, 011, 012, 015)');
+      if (!isValidRealEgyptianPhone(cleanPhone)) {
+        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للطالب (010, 011, 012, 015) مكون من 11 رقماً وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
       const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
@@ -161,16 +206,32 @@ export default function StudentRegistrationPage() {
     }
 
     if (step === 2) {
+      const cleanStudentPhone = cleanEgyptianPhone(formData.phone);
       const cleanFather = cleanEgyptianPhone(formData.father_phone);
-      if (!isValidEgyptianPhone(cleanFather)) {
-        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري صحيح لولي الأمر (الأب)');
-        return false;
-      }
       const cleanMother = cleanEgyptianPhone(formData.mother_phone);
-      if (!isValidEgyptianPhone(cleanMother)) {
-        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري صحيح للأم');
+
+      if (!isValidRealEgyptianPhone(cleanFather)) {
+        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح لولي الأمر (الأب) وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
+      if (cleanFather === cleanStudentPhone) {
+        setErrorMessage('لا يمكن أن يكون رقم هاتف ولي الأمر (الأب) مطابقاً لرقم هاتف الطالب. يجب تسجيل أرقام مختلفة للتواصل ومتابعة ولي الأمر.');
+        return false;
+      }
+
+      if (!isValidRealEgyptianPhone(cleanMother)) {
+        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للأم وتجنب الأرقام المتكررة أو الوهمية');
+        return false;
+      }
+      if (cleanMother === cleanStudentPhone) {
+        setErrorMessage('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الطالب. يرجى إدخال رقم والدة الطالب المستقل.');
+        return false;
+      }
+      if (cleanMother === cleanFather) {
+        setErrorMessage('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الأب. يرجى إدخال رقمين مستقلين للوالدين للاتصال في حالات الطوارئ.');
+        return false;
+      }
+
       if (!formData.parent_job.trim()) {
         setErrorMessage('يرجى إدخال وظيفة أو مهنة ولي الأمر');
         return false;
@@ -242,14 +303,20 @@ export default function StudentRegistrationPage() {
     const cleanPhone = cleanEgyptianPhone(formData.phone);
     const cleanFather = cleanEgyptianPhone(formData.father_phone);
     const cleanMother = cleanEgyptianPhone(formData.mother_phone);
+
+    if (cleanPhone === cleanFather || cleanPhone === cleanMother || cleanFather === cleanMother) {
+      setErrorMessage('يجب أن تكون أرقام هواتف الطالب، وولي الأمر (الأب)، والأم مختلفة تماماً ومستقلة عن بعضها البعض');
+      setCurrentStep(2);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+      return;
+    }
+
     const nidInfo = parseEgyptianNationalId(formData.national_id);
 
     setIsSubmitting(true);
 
     try {
-      const studentId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : `stu_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const studentId = generateUUID();
 
       const payload = {
         id: studentId,
@@ -726,6 +793,13 @@ export default function StudentRegistrationPage() {
                   ============================================================ */}
               {currentStep === 2 && (
                 <div className="space-y-6 animate-fade-in">
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5 leading-relaxed">
+                    <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>تنبيه هام للقبول:</strong> يرجى إدخال أرقام هواتف محمول حقيقية وصحيحة لكل من الأب والأم، ويشترط أن تكون <strong>أرقاماً مستقلة ومختلفة تماماً عن رقم الطالب وعن بعضهما</strong> لضمان التواصل ومتابعة ولي الأمر.
+                    </span>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Father Phone */}
                     <div>
@@ -739,8 +813,18 @@ export default function StudentRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="011xxxxxxxx"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all bg-white"
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 transition-all bg-white ${
+                          formData.father_phone && cleanEgyptianPhone(formData.father_phone) === cleanEgyptianPhone(formData.phone)
+                            ? 'border-rose-300 focus:ring-rose-500 bg-rose-50/20'
+                            : 'border-slate-200 focus:ring-sky-500'
+                        }`}
                       />
+                      {formData.father_phone && cleanEgyptianPhone(formData.father_phone) === cleanEgyptianPhone(formData.phone) && (
+                        <p className="text-[11px] text-rose-600 mt-1.5 font-bold flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          <span>رقم هاتف الأب لا يمكن أن يكون مطابقاً لرقم الطالب!</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Mother Phone */}
@@ -755,8 +839,27 @@ export default function StudentRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="012xxxxxxxx"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all bg-white"
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 transition-all bg-white ${
+                          formData.mother_phone && (
+                            cleanEgyptianPhone(formData.mother_phone) === cleanEgyptianPhone(formData.phone) ||
+                            cleanEgyptianPhone(formData.mother_phone) === cleanEgyptianPhone(formData.father_phone)
+                          )
+                            ? 'border-rose-300 focus:ring-rose-500 bg-rose-50/20'
+                            : 'border-slate-200 focus:ring-sky-500'
+                        }`}
                       />
+                      {formData.mother_phone && cleanEgyptianPhone(formData.mother_phone) === cleanEgyptianPhone(formData.phone) && (
+                        <p className="text-[11px] text-rose-600 mt-1.5 font-bold flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          <span>رقم هاتف الأم لا يمكن أن يكون مطابقاً لرقم الطالب!</span>
+                        </p>
+                      )}
+                      {formData.mother_phone && formData.father_phone && cleanEgyptianPhone(formData.mother_phone) === cleanEgyptianPhone(formData.father_phone) && (
+                        <p className="text-[11px] text-rose-600 mt-1.5 font-bold flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          <span>رقم هاتف الأم لا يمكن أن يكون مطابقاً لرقم هاتف الأب!</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Parent Job */}

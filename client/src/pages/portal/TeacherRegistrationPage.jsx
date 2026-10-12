@@ -84,16 +84,21 @@ const STEPS = [
   { id: 5, title: 'السيرة الذاتية والمراجعة', subtitle: 'النبذة، المنصات، وتأكيد الاستمارة', icon: FileText },
 ];
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function normalizeArabicNumbers(str) {
   if (!str) return '';
   const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
   return String(str).replace(/[٠-٩]/g, (w) => arabicNumerals.indexOf(w));
-}
-
-function isValidEgyptianPhone(phone) {
-  if (!phone) return false;
-  const clean = normalizeArabicNumbers(String(phone).replace(/[\s\-\+]/g, ''));
-  return /^01[0125]\d{8}$/.test(clean) || /^201[0125]\d{8}$/.test(clean);
 }
 
 function cleanEgyptianPhone(phone) {
@@ -103,6 +108,46 @@ function cleanEgyptianPhone(phone) {
     clean = '0' + clean.slice(2);
   }
   return clean;
+}
+
+function isValidRealEgyptianPhone(phone) {
+  if (!phone) return false;
+  const clean = cleanEgyptianPhone(phone);
+
+  // 1. يجب أن يكون 11 رقماً ويبدأ بأحد شبكات المحمول المصرية (010, 011, 012, 015)
+  if (!/^01[0125]\d{8}$/.test(clean)) {
+    return false;
+  }
+
+  // 2. منع الأرقام التي تحتوي على أقل من 4 أرقام مميزة (مثل 01200000000 أو 01010101010)
+  const uniqueDigits = new Set(clean);
+  if (uniqueDigits.size < 4) {
+    return false;
+  }
+
+  // 3. منع تكرار نفس الرقم 5 مرات متتالية أو أكثر (مثل 01000001234 أو 01299999456)
+  if (/(.)\1{4,}/.test(clean)) {
+    return false;
+  }
+
+  // 4. منع المتتاليات الرقمية الصريحة (مثل 0123456789 أو 01012345678)
+  const afterPrefix = clean.slice(3); // 8 أرقام بعد الكود
+  const sequentialAsc = '0123456789';
+  const sequentialDesc = '9876543210';
+  if (sequentialAsc.includes(afterPrefix) || sequentialDesc.includes(afterPrefix)) {
+    return false;
+  }
+  if (
+    clean === '01234567890' ||
+    clean === '01012345678' ||
+    clean === '01123456789' ||
+    clean === '01512345678' ||
+    clean === '01212345678'
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function parseEgyptianNationalId(nid) {
@@ -350,13 +395,13 @@ export default function TeacherRegistrationPage() {
         return false;
       }
       const cleanPhone = cleanEgyptianPhone(formData.phone);
-      if (!isValidEgyptianPhone(cleanPhone)) {
-        setErrorMessage('يرجى إدخال رقم هاتف شخصي مصري صحيح (010, 011, 012, 015)');
+      if (!isValidRealEgyptianPhone(cleanPhone)) {
+        setErrorMessage('يرجى إدخال رقم هاتف شخصي مصري حقيقي وصحيح (010, 011, 012, 015) وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
       const cleanWhatsapp = cleanEgyptianPhone(formData.whatsapp_phone);
-      if (!isValidEgyptianPhone(cleanWhatsapp)) {
-        setErrorMessage('يرجى إدخال رقم واتساب مصري صحيح للتواصل وإرسال الجداول');
+      if (!isValidRealEgyptianPhone(cleanWhatsapp)) {
+        setErrorMessage('يرجى إدخال رقم واتساب مصري حقيقي وصحيح للتواصل وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
       const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
@@ -398,13 +443,13 @@ export default function TeacherRegistrationPage() {
               setErrorMessage('يرجى إدخال اسم المساعد الأول / السكرتير الرئيسي');
               return false;
             }
-            if (!isValidEgyptianPhone(aPhone)) {
-              setErrorMessage('يرجى إدخال رقم هاتف محمول مصري صحيح للمساعد الأول');
+            if (!isValidRealEgyptianPhone(aPhone)) {
+              setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للمساعد الأول');
               return false;
             }
           } else {
-            if (aName && !isValidEgyptianPhone(aPhone)) {
-              setErrorMessage(`يرجى إدخال رقم هاتف مصري صحيح للمساعد رقم ${i + 1}`);
+            if (aName && !isValidRealEgyptianPhone(aPhone)) {
+              setErrorMessage(`يرجى إدخال رقم هاتف مصري حقيقي وصحيح للمساعد رقم ${i + 1}`);
               return false;
             }
             if (!aName && aPhone) {
@@ -513,7 +558,7 @@ export default function TeacherRegistrationPage() {
         const a = assistants[i];
         const aName = (a.name || '').trim();
         const aPhone = cleanEgyptianPhone(a.phone);
-        if (aName && aPhone && isValidEgyptianPhone(aPhone)) {
+        if (aName && aPhone && isValidRealEgyptianPhone(aPhone)) {
           validAssistants.push({
             id: a.id || i + 1,
             name: aName,
@@ -526,9 +571,7 @@ export default function TeacherRegistrationPage() {
     setIsSubmitting(true);
 
     try {
-      const teacherId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : `tch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const teacherId = generateUUID();
 
       const specializationString = formData.specializations.join(' ، ');
       const targetGradesString = formData.target_grades.join(' ، ');
