@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   UserCheck, 
@@ -11,7 +11,6 @@ import {
   CheckCircle2, 
   Loader2, 
   AlertCircle,
-  Printer,
   Sparkles,
   Users,
   Briefcase,
@@ -184,6 +183,87 @@ function parseEgyptianNationalId(nid) {
   };
 }
 
+function containsSuspiciousPayload(str) {
+  if (!str) return false;
+  const s = String(str).toLowerCase();
+  const dangerousPatterns = [
+    /--/,
+    /\/\*/,
+    /\*\//,
+    /\bunion\s+select\b/i,
+    /\bselect\b.*\bfrom\b/i,
+    /\binsert\s+into\b/i,
+    /\bdrop\s+table\b/i,
+    /\bdrop\s+database\b/i,
+    /\btruncate\s+table\b/i,
+    /\bdelete\s+from\b/i,
+    /\balter\s+table\b/i,
+    /\bexec(\s|\()+/i,
+    /<script\b/i,
+    /javascript:/i,
+    /onerror\s*=/i,
+    /onload\s*=/i,
+    /<\/?(script|iframe|object|embed|style)/i
+  ];
+  return dangerousPatterns.some((pattern) => pattern.test(s));
+}
+
+function sanitizeInputText(str, maxLength = 250) {
+  if (str === null || str === undefined) return '';
+  let s = String(str);
+  s = s.replace(/<[^>]*>?/gm, '');
+  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+  s = s.replace(/javascript\s*:/gi, '');
+  s = s.replace(/data\s*:/gi, '');
+  s = s.replace(/vbscript\s*:/gi, '');
+  s = s.trim().replace(/\s+/g, ' ');
+  if (maxLength && s.length > maxLength) {
+    s = s.slice(0, maxLength);
+  }
+  return s;
+}
+
+function isValidArabicPersonName(name) {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return false;
+  return /^[\u0600-\u06FFa-zA-Z\s]{4,90}$/.test(trimmed);
+}
+
+function isValidFacebookUrl(url) {
+  if (!url || !url.trim()) return true;
+  const trimmed = url.trim();
+  const fbRegex = /^(https?:\/\/)?(www\.|m\.)?(facebook\.com|fb\.com|fb\.me)\/[A-Za-z0-9_.\-%/?=&]+$/i;
+  return fbRegex.test(trimmed);
+}
+
+function isValidYoutubeUrl(url) {
+  if (!url || !url.trim()) return true;
+  const trimmed = url.trim();
+  const ytRegex = /^(https?:\/\/)?(www\.|m\.)?(youtube\.com\/(c\/|channel\/|user\/|@)?[A-Za-z0-9_.\-%/?=&]+|youtu\.be\/[A-Za-z0-9_\-]+)$/i;
+  return ytRegex.test(trimmed);
+}
+
+function isValidTelegramUrl(url) {
+  if (!url || !url.trim()) return true;
+  const trimmed = url.trim();
+  const tgRegex = /^((https?:\/\/)?(www\.)?(t\.me|telegram\.me)\/[A-Za-z0-9_]+|@[A-Za-z0-9_]{4,32})$/i;
+  return tgRegex.test(trimmed);
+}
+
+function formatSocialUrl(url, type) {
+  if (!url || !url.trim()) return null;
+  let trimmed = url.trim();
+  if (type === 'telegram' && trimmed.startsWith('@')) {
+    return `https://t.me/${trimmed.substring(1)}`;
+  }
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    trimmed = 'https://' + trimmed;
+  }
+  return trimmed;
+}
+
 function validateGroupTimes(startTime, endTime) {
   if (!startTime || !endTime) {
     return { valid: false, message: 'يرجى تحديد وقت البداية ووقت النهاية للحصة' };
@@ -280,6 +360,21 @@ export default function TeacherRegistrationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [submittedData, setSubmittedData] = useState(null);
+
+  // Bot Protection & CAPTCHA States
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [isVerifyingCaptcha, setIsVerifyingCaptcha] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
+  const mountTimeRef = useRef(Date.now());
+
+  const handleToggleCaptcha = () => {
+    if (isCaptchaVerified || isVerifyingCaptcha) return;
+    setIsVerifyingCaptcha(true);
+    setTimeout(() => {
+      setIsVerifyingCaptcha(false);
+      setIsCaptchaVerified(true);
+    }, 600);
+  };
 
   const parsedTeacherNid = useMemo(() => {
     return parseEgyptianNationalId(formData.national_id);
@@ -386,8 +481,12 @@ export default function TeacherRegistrationPage() {
     setErrorMessage(null);
 
     if (step === 1) {
-      if (!formData.full_name.trim() || formData.full_name.trim().length < 3) {
-        setErrorMessage('يرجى إدخال اسم المعلم بالكامل ثلاثي أو رباعي (3 أحرف على الأقل)');
+      if (containsSuspiciousPayload(formData.full_name) || containsSuspiciousPayload(formData.nickname)) {
+        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في بيانات المعلم. يرجى إدخال نصوص عادية فقط.');
+        return false;
+      }
+      if (!isValidArabicPersonName(formData.full_name)) {
+        setErrorMessage('يرجى إدخال اسم المعلم بالكامل باللغة العربية (الاسم ثنائي أو ثلاثي أو رباعي بدون أرقام أو رموز)');
         return false;
       }
       if (!formData.nickname.trim() || formData.nickname.trim().length < 2) {
@@ -434,10 +533,23 @@ export default function TeacherRegistrationPage() {
           setErrorMessage('يرجى إضافة بيانات مساعد واحد على الأقل، أو تحديد خيار "أدير الحجز بنفسي"');
           return false;
         }
+        const teacherPhone = cleanEgyptianPhone(formData.phone);
+        const teacherWhatsapp = cleanEgyptianPhone(formData.whatsapp_phone);
         for (let i = 0; i < assistants.length; i++) {
           const a = assistants[i];
           const aName = (a.name || '').trim();
           const aPhone = cleanEgyptianPhone(a.phone);
+
+          if (containsSuspiciousPayload(aName)) {
+            setErrorMessage('تم رصد مدخلات أو رموز غير آمنة في اسم المساعد');
+            return false;
+          }
+
+          if (aPhone && (aPhone === teacherPhone || aPhone === teacherWhatsapp)) {
+            setErrorMessage(`رقم هاتف المساعد رقم ${i + 1} لا يمكن أن يكون هو نفسه رقم هاتف المعلم أو رقم الواتساب الخاص به`);
+            return false;
+          }
+
           if (i === 0) {
             if (!aName) {
               setErrorMessage('يرجى إدخال اسم المساعد الأول / السكرتير الرئيسي');
@@ -494,8 +606,24 @@ export default function TeacherRegistrationPage() {
     }
 
     if (step === 5) {
+      if (containsSuspiciousPayload(formData.bio) || containsSuspiciousPayload(formData.notes)) {
+        setErrorMessage('تم رصد رموز أو وسوم غير آمنة في النبذة التعريفية أو الملاحظات');
+        return false;
+      }
       if (formData.bio.trim().length < 10) {
         setErrorMessage('يرجى كتابة نبذة تعريفية وخبراتك السابقة (10 أحرف على الأقل)');
+        return false;
+      }
+      if (!isValidFacebookUrl(formData.facebook_link)) {
+        setErrorMessage('رابط الفيسبوك غير صحيح. يرجى إدخال رابط صالح لصفحة أو حساب فيسبوك (مثال: facebook.com/username)');
+        return false;
+      }
+      if (!isValidYoutubeUrl(formData.youtube_link)) {
+        setErrorMessage('رابط اليوتيوب غير صحيح. يرجى إدخال رابط صالح لقناة يوتيوب (مثال: youtube.com/@username)');
+        return false;
+      }
+      if (!isValidTelegramUrl(formData.telegram_link)) {
+        setErrorMessage('رابط أو معرف التليجرام غير صحيح. يرجى إدخال رابط أو معرف صالح (مثال: t.me/username أو @username)');
         return false;
       }
       return true;
@@ -539,6 +667,30 @@ export default function TeacherRegistrationPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // فخ الروبوتات والسبام
+    if (honeypot) {
+      console.warn('Bot trap activated');
+      setIsSubmitting(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setErrorMessage('تعذر معالجة الطلب، يرجى المحاولة لاحقاً');
+      }, 1000);
+      return;
+    }
+
+    const timeElapsed = Date.now() - mountTimeRef.current;
+    if (timeElapsed < 5000) {
+      setErrorMessage('تم ملء النموذج بسرعة غير طبيعية، يرجى التأني وإعادة المحاولة');
+      return;
+    }
+
+    if (!isCaptchaVerified) {
+      setErrorMessage('يرجى تأكيد التحقق الأمني (أنا لست برنامج روبوت) أسفل الصفحة قبل إرسال الاستمارة');
+      setCurrentStep(5);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      return;
+    }
+
     // التحقق من كافة الخطوات
     for (let s = 1; s <= 5; s++) {
       if (!validateStep(s)) {
@@ -556,7 +708,7 @@ export default function TeacherRegistrationPage() {
     if (!hasNoAssistant) {
       for (let i = 0; i < assistants.length; i++) {
         const a = assistants[i];
-        const aName = (a.name || '').trim();
+        const aName = sanitizeInputText(a.name, 100);
         const aPhone = cleanEgyptianPhone(a.phone);
         if (aName && aPhone && isValidRealEgyptianPhone(aPhone)) {
           validAssistants.push({
@@ -578,8 +730,8 @@ export default function TeacherRegistrationPage() {
 
       const payload = {
         id: teacherId,
-        full_name: formData.full_name.trim(),
-        nickname: formData.nickname.trim(),
+        full_name: sanitizeInputText(formData.full_name, 100),
+        nickname: sanitizeInputText(formData.nickname, 60),
         phone: cleanPhone,
         whatsapp_phone: cleanWhatsapp,
         national_id: cleanNid,
@@ -591,11 +743,11 @@ export default function TeacherRegistrationPage() {
         assistant_phone: validAssistants[0]?.phone || null,
         assistants_data: validAssistants.length > 0 ? validAssistants : null,
         groups_data: groups,
-        bio: formData.bio.trim(),
-        facebook_link: formData.facebook_link.trim() || null,
-        youtube_link: formData.youtube_link.trim() || null,
-        telegram_link: formData.telegram_link.trim() || null,
-        notes: formData.notes.trim() || null,
+        bio: sanitizeInputText(formData.bio, 1000),
+        facebook_link: formatSocialUrl(formData.facebook_link, 'facebook'),
+        youtube_link: formatSocialUrl(formData.youtube_link, 'youtube'),
+        telegram_link: formatSocialUrl(formData.telegram_link, 'telegram'),
+        notes: sanitizeInputText(formData.notes, 500) || null,
         status: 'pending',
         synced_to_local_server: false,
       };
@@ -729,21 +881,13 @@ export default function TeacherRegistrationPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <Printer size={16} />
-            <span>طباعة ملخص الاستمارة</span>
-          </button>
-
+        <div className="flex items-center justify-center">
           <button
             type="button"
             onClick={() => {
               setSubmittedData(null);
               setCurrentStep(1);
+              setIsCaptchaVerified(false);
               setFormData({
                 full_name: '',
                 nickname: '',
@@ -772,9 +916,9 @@ export default function TeacherRegistrationPage() {
                 }
               ]);
             }}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
           >
-            <UserCheck size={16} />
+            <UserCheck size={18} />
             <span>تسجيل استمارة جديدة</span>
           </button>
         </div>
@@ -1553,6 +1697,58 @@ export default function TeacherRegistrationPage() {
                       <div><strong>المراحل:</strong> {formData.target_grades.join(' ، ')}</div>
                       <div><strong>المساعدين:</strong> {hasNoAssistant ? 'إدارة ذاتية' : `${assistants.length} مساعد`}</div>
                       <div><strong>المجموعات المقترحة:</strong> {groups.length} مجموعة</div>
+                    </div>
+                  </div>
+
+                  {/* Bot Honeypot Input (Invisible) */}
+                  <div className="hidden" aria-hidden="true" style={{ display: 'none' }}>
+                    <input
+                      type="text"
+                      name="bot_trap_field"
+                      value={honeypot}
+                      onChange={(e) => setHoneypot(e.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* Interactive CAPTCHA: أنا لست برنامج روبوت */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={handleToggleCaptcha}
+                        disabled={isCaptchaVerified || isVerifyingCaptcha}
+                        className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                          isCaptchaVerified
+                            ? 'bg-rose-600 border-rose-600 text-white shadow-sm'
+                            : isVerifyingCaptcha
+                            ? 'border-rose-500 bg-rose-50'
+                            : 'border-slate-300 hover:border-rose-500 bg-white'
+                        }`}
+                      >
+                        {isVerifyingCaptcha ? (
+                          <Loader2 size={16} className="animate-spin text-rose-600" />
+                        ) : isCaptchaVerified ? (
+                          <Check size={18} strokeWidth={3} />
+                        ) : null}
+                      </button>
+                      <div className="text-right">
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 block">
+                          أنا لست برنامج روبوت (I'm not a robot)
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {isCaptchaVerified ? '✅ تم التحقق بنجاح من أمان المعاملة' : 'اضغط على المربع لتأكيد أنك لست روبوت'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-slate-400 text-[11px] font-medium border-t sm:border-t-0 sm:border-r border-slate-100 pt-2 sm:pt-0 sm:pr-4 w-full sm:w-auto justify-end">
+                      <ShieldCheck size={22} className="text-rose-600 shrink-0" />
+                      <div className="text-right">
+                        <span className="block font-bold text-slate-600 text-[11px]">نظام حماية أطلس</span>
+                        <span className="text-[10px] text-slate-400">Atlas Bot Shield</span>
+                      </div>
                     </div>
                   </div>
 

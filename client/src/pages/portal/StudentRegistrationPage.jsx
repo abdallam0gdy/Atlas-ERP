@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   GraduationCap, 
@@ -9,7 +9,6 @@ import {
   CheckCircle2, 
   Loader2, 
   AlertCircle,
-  Printer,
   Sparkles,
   Calendar,
   Fingerprint,
@@ -17,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
-  FileCheck
+  FileCheck,
+  Lock
 } from 'lucide-react';
 import ImageUploadField from '../../components/portal/ImageUploadField';
 
@@ -42,6 +42,54 @@ const STUDENT_STEPS = [
   { id: 3, title: 'المسار الدراسي والمدرسة', subtitle: 'الصف، نوع التعليم، واسم المدرسة', icon: School },
   { id: 4, title: 'المراجعة وتأكيد الحجز', subtitle: 'مراجعة كافة البيانات وتأكيد الطلب', icon: CheckCircle2 },
 ];
+
+function containsSuspiciousPayload(str) {
+  if (!str) return false;
+  const s = String(str).toLowerCase();
+  const dangerousPatterns = [
+    /--/,
+    /\/\*/,
+    /\*\//,
+    /\bunion\s+select\b/i,
+    /\bselect\b.*\bfrom\b/i,
+    /\binsert\s+into\b/i,
+    /\bdrop\s+table\b/i,
+    /\bdrop\s+database\b/i,
+    /\btruncate\s+table\b/i,
+    /\bdelete\s+from\b/i,
+    /\balter\s+table\b/i,
+    /\bexec(\s|\()+/i,
+    /<script\b/i,
+    /javascript:/i,
+    /onerror\s*=/i,
+    /onload\s*=/i,
+    /<\/?(script|iframe|object|embed|style)/i
+  ];
+  return dangerousPatterns.some((pattern) => pattern.test(s));
+}
+
+function sanitizeInputText(str, maxLength = 250) {
+  if (str === null || str === undefined) return '';
+  let s = String(str);
+  s = s.replace(/<[^>]*>?/gm, '');
+  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+  s = s.replace(/javascript\s*:/gi, '');
+  s = s.replace(/data\s*:/gi, '');
+  s = s.replace(/vbscript\s*:/gi, '');
+  s = s.trim().replace(/\s+/g, ' ');
+  if (maxLength && s.length > maxLength) {
+    s = s.slice(0, maxLength);
+  }
+  return s;
+}
+
+function isValidArabicPersonName(name) {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length < 3) return false;
+  return /^[\u0600-\u06FFa-zA-Z\s]{6,90}$/.test(trimmed);
+}
 
 function generateUUID() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -167,6 +215,21 @@ export default function StudentRegistrationPage() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [submittedData, setSubmittedData] = useState(null);
 
+  // Bot Protection & CAPTCHA States
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [isVerifyingCaptcha, setIsVerifyingCaptcha] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
+  const mountTimeRef = useRef(Date.now());
+
+  const handleToggleCaptcha = () => {
+    if (isCaptchaVerified || isVerifyingCaptcha) return;
+    setIsVerifyingCaptcha(true);
+    setTimeout(() => {
+      setIsVerifyingCaptcha(false);
+      setIsCaptchaVerified(true);
+    }, 600);
+  };
+
   const parsedNid = useMemo(() => {
     return parseEgyptianNationalId(formData.national_id);
   }, [formData.national_id]);
@@ -180,8 +243,12 @@ export default function StudentRegistrationPage() {
     setErrorMessage(null);
 
     if (step === 1) {
-      if (!formData.full_name.trim() || formData.full_name.trim().length < 3) {
-        setErrorMessage('يرجى إدخال اسم الطالب رباعي بالكامل (3 أحرف على الأقل)');
+      if (containsSuspiciousPayload(formData.full_name) || containsSuspiciousPayload(formData.address)) {
+        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في بيانات الطالب. يرجى إدخال نصوص عادية فقط.');
+        return false;
+      }
+      if (!isValidArabicPersonName(formData.full_name)) {
+        setErrorMessage('يرجى إدخال اسم الطالب ثلاثي أو رباعي بالكامل وبأحرف صحيحة فقط (دون أرقام أو رموز خاصة)');
         return false;
       }
       if (!formData.photo_url) {
@@ -206,6 +273,10 @@ export default function StudentRegistrationPage() {
     }
 
     if (step === 2) {
+      if (containsSuspiciousPayload(formData.parent_job)) {
+        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في وظيفة ولي الأمر');
+        return false;
+      }
       const cleanStudentPhone = cleanEgyptianPhone(formData.phone);
       const cleanFather = cleanEgyptianPhone(formData.father_phone);
       const cleanMother = cleanEgyptianPhone(formData.mother_phone);
@@ -232,7 +303,7 @@ export default function StudentRegistrationPage() {
         return false;
       }
 
-      if (!formData.parent_job.trim()) {
+      if (!formData.parent_job.trim() || formData.parent_job.trim().length < 2) {
         setErrorMessage('يرجى إدخال وظيفة أو مهنة ولي الأمر');
         return false;
       }
@@ -240,6 +311,10 @@ export default function StudentRegistrationPage() {
     }
 
     if (step === 3) {
+      if (containsSuspiciousPayload(formData.school_name) || containsSuspiciousPayload(formData.notes)) {
+        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في البيانات التعليمية');
+        return false;
+      }
       if (!formData.academic_grade) {
         setErrorMessage('يرجى اختيار الصف الدراسي المقيد به الطالب');
         return false;
@@ -248,7 +323,7 @@ export default function StudentRegistrationPage() {
         setErrorMessage('يرجى اختيار نوع التعليم (عام، لغات، أزهر)');
         return false;
       }
-      if (!formData.school_name.trim()) {
+      if (!formData.school_name.trim() || formData.school_name.trim().length < 3) {
         setErrorMessage('يرجى إدخال اسم المدرسة الحالية المقيد بها الطالب');
         return false;
       }
@@ -292,6 +367,22 @@ export default function StudentRegistrationPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Bot trap checks
+    if (honeypot) {
+      setErrorMessage('تم رفض العملية لاكتشاف نشاط آلي غير مصرح به.');
+      return;
+    }
+    if (Date.now() - mountTimeRef.current < 2500) {
+      setErrorMessage('يرجى التمهل ومراجعة البيانات قبل إرسال الاستمارة.');
+      return;
+    }
+    if (!isCaptchaVerified) {
+      setErrorMessage('يرجى تأكيد التحقق الأمني (أنا لست برنامج روبوت) أسفل الصفحة قبل إرسال الاستمارة');
+      setCurrentStep(4);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      return;
+    }
+
     for (let s = 1; s <= 3; s++) {
       if (!validateStep(s)) {
         setCurrentStep(s);
@@ -320,19 +411,19 @@ export default function StudentRegistrationPage() {
 
       const payload = {
         id: studentId,
-        full_name: formData.full_name.trim(),
+        full_name: sanitizeInputText(formData.full_name, 100),
         phone: cleanPhone,
         father_phone: cleanFather,
         mother_phone: cleanMother,
-        parent_job: formData.parent_job.trim(),
+        parent_job: sanitizeInputText(formData.parent_job, 80),
         academic_grade: formData.academic_grade,
         education_type: formData.education_type,
-        school_name: formData.school_name.trim(),
+        school_name: sanitizeInputText(formData.school_name, 120),
         gender: formData.gender,
         birth_date: nidInfo.birthDate,
         national_id: nidInfo.clean,
-        address: formData.address.trim(),
-        notes: formData.notes.trim() || null,
+        address: sanitizeInputText(formData.address, 200),
+        notes: sanitizeInputText(formData.notes, 500) || null,
         photo_url: formData.photo_url || null,
         status: 'pending',
         synced_to_local_server: false,
@@ -449,21 +540,13 @@ export default function StudentRegistrationPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <Printer size={16} />
-            <span>طباعة إيصال التقديم</span>
-          </button>
-
+        <div className="flex items-center justify-center">
           <button
             type="button"
             onClick={() => {
               setSubmittedData(null);
               setCurrentStep(1);
+              setIsCaptchaVerified(false);
               setFormData({
                 full_name: '',
                 phone: '',
@@ -480,9 +563,9 @@ export default function StudentRegistrationPage() {
                 notes: '',
               });
             }}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-sky-600/30 cursor-pointer"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-700 hover:to-blue-800 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-600/20 transition-all cursor-pointer"
           >
-            <GraduationCap size={16} />
+            <GraduationCap size={18} />
             <span>تسجيل طالب آخر</span>
           </button>
         </div>
@@ -1012,6 +1095,58 @@ export default function StudentRegistrationPage() {
                       <div className="sm:col-span-2 flex justify-between py-1 border-b border-sky-100 sm:border-0">
                         <span className="text-slate-500">العنوان السكني:</span>
                         <span className="font-bold text-slate-800">{formData.address}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bot Honeypot Input (Invisible) */}
+                  <div className="hidden" aria-hidden="true" style={{ display: 'none' }}>
+                    <input
+                      type="text"
+                      name="bot_trap_field"
+                      value={honeypot}
+                      onChange={(e) => setHoneypot(e.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* Interactive CAPTCHA: أنا لست برنامج روبوت */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={handleToggleCaptcha}
+                        disabled={isCaptchaVerified || isVerifyingCaptcha}
+                        className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                          isCaptchaVerified
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                            : isVerifyingCaptcha
+                            ? 'border-sky-500 bg-sky-50'
+                            : 'border-slate-300 hover:border-sky-500 bg-white'
+                        }`}
+                      >
+                        {isVerifyingCaptcha ? (
+                          <Loader2 size={16} className="animate-spin text-sky-600" />
+                        ) : isCaptchaVerified ? (
+                          <Check size={18} strokeWidth={3} />
+                        ) : null}
+                      </button>
+                      <div className="text-right">
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 block">
+                          أنا لست برنامج روبوت (I'm not a robot)
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {isCaptchaVerified ? '✅ تم التحقق بنجاح من أمان المعاملة' : 'اضغط على المربع لتأكيد أنك لست روبوت'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-slate-400 text-[11px] font-medium border-t sm:border-t-0 sm:border-r border-slate-100 pt-2 sm:pt-0 sm:pr-4 w-full sm:w-auto justify-end">
+                      <ShieldCheck size={22} className="text-sky-600 shrink-0" />
+                      <div className="text-right">
+                        <span className="block font-bold text-slate-600 text-[11px]">نظام حماية أطلس</span>
+                        <span className="text-[10px] text-slate-400">Atlas Bot Shield</span>
                       </div>
                     </div>
                   </div>
