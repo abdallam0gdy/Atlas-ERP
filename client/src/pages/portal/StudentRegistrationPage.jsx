@@ -219,6 +219,7 @@ export default function StudentRegistrationPage() {
   // Bot Protection & Cloudflare Turnstile States
   const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
+  const [hasNoPhone, setHasNoPhone] = useState(false);
   const mountTimeRef = useRef(Date.now());
 
   const parsedNid = useMemo(() => {
@@ -246,10 +247,12 @@ export default function StudentRegistrationPage() {
         setErrorMessage('يرجى رفع الصورة الشخصية للطالب بخلفية بيضاء لاستخراج كود الحضور وبطاقة الطالب');
         return false;
       }
-      const cleanPhone = cleanEgyptianPhone(formData.phone);
-      if (!isValidRealEgyptianPhone(cleanPhone)) {
-        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للطالب (010, 011, 012, 015) مكون من 11 رقماً وتجنب الأرقام المتكررة أو الوهمية');
-        return false;
+      if (!hasNoPhone) {
+        const cleanPhone = cleanEgyptianPhone(formData.phone);
+        if (!isValidRealEgyptianPhone(cleanPhone)) {
+          setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للطالب (010, 011, 012, 015) أو تحديد خيار "الطالب ليس لديه هاتف"');
+          return false;
+        }
       }
       const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
       if (!parseEgyptianNationalId(cleanNid)) {
@@ -276,17 +279,20 @@ export default function StudentRegistrationPage() {
         setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح لولي الأمر (الأب) وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
-      if (cleanFather === cleanStudentPhone) {
-        setErrorMessage('لا يمكن أن يكون رقم هاتف ولي الأمر (الأب) مطابقاً لرقم هاتف الطالب. يجب تسجيل أرقام مختلفة للتواصل ومتابعة ولي الأمر.');
-        return false;
+      if (!hasNoPhone) {
+        const cleanStudentPhone = cleanEgyptianPhone(formData.phone);
+        if (cleanFather === cleanStudentPhone) {
+          setErrorMessage('لا يمكن أن يكون رقم هاتف ولي الأمر (الأب) مطابقاً لرقم هاتف الطالب. يجب تسجيل أرقام مختلفة للتواصل ومتابعة ولي الأمر.');
+          return false;
+        }
+        if (cleanMother === cleanStudentPhone) {
+          setErrorMessage('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الطالب. يرجى إدخال رقم والدة الطالب المستقل.');
+          return false;
+        }
       }
 
       if (!isValidRealEgyptianPhone(cleanMother)) {
         setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للأم وتجنب الأرقام المتكررة أو الوهمية');
-        return false;
-      }
-      if (cleanMother === cleanStudentPhone) {
-        setErrorMessage('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الطالب. يرجى إدخال رقم والدة الطالب المستقل.');
         return false;
       }
       if (cleanMother === cleanFather) {
@@ -401,12 +407,19 @@ export default function StudentRegistrationPage() {
       }
     }
 
-    const cleanPhone = cleanEgyptianPhone(formData.phone);
+    const cleanPhone = hasNoPhone ? null : cleanEgyptianPhone(formData.phone);
     const cleanFather = cleanEgyptianPhone(formData.father_phone);
     const cleanMother = cleanEgyptianPhone(formData.mother_phone);
 
-    if (cleanPhone === cleanFather || cleanPhone === cleanMother || cleanFather === cleanMother) {
-      setErrorMessage('يجب أن تكون أرقام هواتف الطالب، وولي الأمر (الأب)، والأم مختلفة تماماً ومستقلة عن بعضها البعض');
+    if (cleanFather === cleanMother) {
+      setErrorMessage('يجب أن يكون رقما ولي الأمر (الأب) والأم مختلفين ومستقلين عن بعضهما تماماً');
+      setCurrentStep(2);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+      return;
+    }
+
+    if (!hasNoPhone && (cleanPhone === cleanFather || cleanPhone === cleanMother)) {
+      setErrorMessage('يجب أن يكون رقم هاتف الطالب مستقلاً ومختلفاً عن أرقام الأب والأم');
       setCurrentStep(2);
       window.scrollTo({ top: 100, behavior: 'smooth' });
       return;
@@ -418,11 +431,17 @@ export default function StudentRegistrationPage() {
 
     try {
       // التحقق من عدم وجود تسجيل مسبق لنفس الطالب بالرقم القومي أو الهاتف
-      const { data: existingStudent } = await supabase
+      let checkQuery = supabase
         .from('online_students')
-        .select('id, full_name, phone, national_id')
-        .or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`)
-        .limit(1);
+        .select('id, full_name, phone, national_id');
+
+      if (cleanPhone) {
+        checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
+      } else {
+        checkQuery = checkQuery.eq('national_id', nidInfo.clean);
+      }
+
+      const { data: existingStudent } = await checkQuery.limit(1);
 
       if (existingStudent && existingStudent.length > 0) {
         const isSameNid = existingStudent[0].national_id === nidInfo.clean;
@@ -554,7 +573,9 @@ export default function StudentRegistrationPage() {
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60 sm:border-0">
               <span className="text-slate-500">هاتف الطالب:</span>
-              <span className="font-mono text-slate-800">{submittedData.phone}</span>
+              <span className="font-mono text-slate-800">
+                {submittedData.phone || <span className="text-slate-400 italic">لا يوجد (صغار السن / ابتدائي)</span>}
+              </span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60 sm:border-0">
               <span className="text-slate-500">هاتف ولي الأمر (الأب):</span>
@@ -575,6 +596,7 @@ export default function StudentRegistrationPage() {
               setSubmittedData(null);
               setCurrentStep(1);
               setTurnstileToken('');
+              setHasNoPhone(false);
               setFormData({
                 full_name: '',
                 phone: '',
@@ -813,17 +835,39 @@ export default function StudentRegistrationPage() {
 
                     {/* Student Phone */}
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        رقم هاتف الطالب (موبايل) <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs sm:text-sm font-bold text-slate-700">
+                          رقم هاتف الطالب (موبايل) {!hasNoPhone && <span className="text-rose-500">*</span>}
+                        </label>
+                        <label className="inline-flex items-center gap-1.5 text-xs text-sky-700 font-bold bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-lg border border-sky-200/70 cursor-pointer select-none transition-all">
+                          <input
+                            type="checkbox"
+                            checked={hasNoPhone}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setHasNoPhone(checked);
+                              if (checked) {
+                                setFormData((prev) => ({ ...prev, phone: '' }));
+                              }
+                            }}
+                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 w-3.5 h-3.5 cursor-pointer"
+                          />
+                          <span>الطالب ليس لديه هاتف</span>
+                        </label>
+                      </div>
                       <input
                         type="tel"
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        required
-                        placeholder="010xxxxxxxx"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all bg-white"
+                        disabled={hasNoPhone}
+                        required={!hasNoPhone}
+                        placeholder={hasNoPhone ? 'تم تحديد: لا يوجد هاتف خاص بالطالب (صغار السن / ابتدائي)' : '010xxxxxxxx'}
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all ${
+                          hasNoPhone 
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed italic' 
+                            : 'bg-white border-slate-200'
+                        }`}
                       />
                     </div>
 
@@ -1110,7 +1154,13 @@ export default function StudentRegistrationPage() {
                       </div>
                       <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
                         <span className="text-slate-500">هاتف الطالب:</span>
-                        <span className="font-mono text-slate-800">{formData.phone}</span>
+                        <span className="font-mono text-slate-800">
+                          {hasNoPhone ? (
+                            <span className="text-slate-400 italic font-sans text-xs">لا يوجد (صغار السن / ابتدائي)</span>
+                          ) : (
+                            formData.phone
+                          )}
+                        </span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
                         <span className="text-slate-500">هاتف الأب:</span>
