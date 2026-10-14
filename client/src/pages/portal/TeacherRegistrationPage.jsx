@@ -426,6 +426,14 @@ export default function TeacherRegistrationPage() {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
   const mountTimeRef = useRef(Date.now());
+  const turnstileRef = useRef(null);
+
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    try {
+      turnstileRef.current?.reset();
+    } catch (e) {}
+  };
 
   // Auto-save draft to localStorage whenever fields change
   useEffect(() => {
@@ -775,6 +783,7 @@ export default function TeacherRegistrationPage() {
       });
       const verifyData = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok || !verifyData.success) {
+        resetTurnstile();
         setErrorMessage(verifyData.message || 'فشل التحقق الأمني من كلاودفير (Turnstile)، يرجى إعادة المحاولة');
         return;
       }
@@ -823,6 +832,7 @@ export default function TeacherRegistrationPage() {
 
       if (existingTeacher && existingTeacher.length > 0) {
         const isSameNid = existingTeacher[0].national_id === cleanNid;
+        resetTurnstile();
         setErrorMessage(
           isSameNid 
             ? 'تم تسجيل استمارة انضمام مسبقاً بهذا الرقم القومي.' 
@@ -911,6 +921,7 @@ export default function TeacherRegistrationPage() {
       });
     } catch (err) {
       console.error(err);
+      resetTurnstile();
       setErrorMessage(
         err.message || 'حدث خطأ أثناء إرسال الاستمارة — يرجى التأكد من الاتصال بالإنترنت والمحاولة مجدداً'
       );
@@ -1832,6 +1843,7 @@ export default function TeacherRegistrationPage() {
                       <span className="text-[11px] text-slate-400 font-normal">Cloudflare Turnstile Protected</span>
                     </div>
                     <TurnstileWidget
+                      ref={turnstileRef}
                       onVerify={(token) => setTurnstileToken(token)}
                       onExpire={() => setTurnstileToken('')}
                       onError={() => setTurnstileToken('')}

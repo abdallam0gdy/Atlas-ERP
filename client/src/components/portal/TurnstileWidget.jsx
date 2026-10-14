@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 
 const DEFAULT_SITE_KEY = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '0x4AAAAAAFWKPtUZzYA0UYN3';
 
-export default function TurnstileWidget({
+const TurnstileWidget = forwardRef(function TurnstileWidget({
   onVerify,
   onError,
   onExpire,
   siteKey = DEFAULT_SITE_KEY,
   theme = 'light',
-}) {
+}, ref) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const [isRendered, setIsRendered] = useState(false);
@@ -16,6 +16,20 @@ export default function TurnstileWidget({
   // Keep latest callbacks in a ref to avoid infinite re-render loop
   const callbacksRef = useRef({ onVerify, onError, onExpire });
   callbacksRef.current = { onVerify, onError, onExpire };
+
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      try {
+        if (window.turnstile && widgetIdRef.current !== null) {
+          window.turnstile.reset(widgetIdRef.current);
+        } else if (window.turnstile) {
+          window.turnstile.reset();
+        }
+      } catch (e) {
+        console.warn('Failed to reset Turnstile widget:', e);
+      }
+    }
+  }));
 
   useEffect(() => {
     let intervalId = null;
@@ -95,4 +109,6 @@ export default function TurnstileWidget({
       )}
     </div>
   );
-}
+});
+
+export default TurnstileWidget;

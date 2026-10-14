@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.online_students (
     
     -- بيانات الطالب الأساسية
     full_name TEXT NOT NULL,                                     -- اسم الطالب رباعي
-    phone TEXT NOT NULL,                                         -- رقم هاتف الطالب
+    phone TEXT,                                                  -- رقم هاتف الطالب (اختياري لصغار السن والابتدائي)
     gender TEXT CHECK (gender IN ('male', 'female')),             -- النوع (ذكر / أنثى)
     birth_date DATE,                                             -- تاريخ الميلاد
     national_id TEXT,                                            -- الرقم القومي (إجباري)

@@ -260,6 +260,14 @@ export default function StudentRegistrationPage() {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
   const mountTimeRef = useRef(Date.now());
+  const turnstileRef = useRef(null);
+
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    try {
+      turnstileRef.current?.reset();
+    } catch (e) {}
+  };
 
   // Auto-save draft to localStorage whenever fields change
   useEffect(() => {
@@ -448,6 +456,7 @@ export default function StudentRegistrationPage() {
       });
       const verifyData = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok || !verifyData.success) {
+        resetTurnstile();
         setErrorMessage(verifyData.message || 'فشل التحقق الأمني من كلاودفير (Turnstile)، يرجى إعادة المحاولة');
         return;
       }
@@ -463,7 +472,7 @@ export default function StudentRegistrationPage() {
       }
     }
 
-    const cleanPhone = hasNoPhone ? null : cleanEgyptianPhone(formData.phone);
+    const cleanPhone = hasNoPhone ? 'لا يوجد (طالب ابتدائي)' : cleanEgyptianPhone(formData.phone);
     const cleanFather = cleanEgyptianPhone(formData.father_phone);
     const cleanMother = cleanEgyptianPhone(formData.mother_phone);
 
@@ -491,7 +500,7 @@ export default function StudentRegistrationPage() {
         .from('online_students')
         .select('id, full_name, phone, national_id');
 
-      if (cleanPhone) {
+      if (!hasNoPhone && cleanPhone) {
         checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
       } else {
         checkQuery = checkQuery.eq('national_id', nidInfo.clean);
@@ -501,6 +510,7 @@ export default function StudentRegistrationPage() {
 
       if (existingStudent && existingStudent.length > 0) {
         const isSameNid = existingStudent[0].national_id === nidInfo.clean;
+        resetTurnstile();
         setErrorMessage(
           isSameNid 
             ? 'تم تسجيل استمارة مسبقاً بنفس الرقم القومي لهذا الطالب. في حال وجود تعديل يرجى مراجعة إدارة الأكاديمية.' 
@@ -511,6 +521,10 @@ export default function StudentRegistrationPage() {
       }
 
       const studentId = generateUUID();
+
+      const finalNotes = hasNoPhone
+        ? (formData.notes ? formData.notes + '\n' : '') + '[طالب ابتدائي بدون هاتف - التواصل عبر هاتف ولي الأمر]'
+        : formData.notes;
 
       const payload = {
         id: studentId,
@@ -526,7 +540,7 @@ export default function StudentRegistrationPage() {
         birth_date: nidInfo.birthDate,
         national_id: nidInfo.clean,
         address: sanitizeInputText(formData.address, 200),
-        notes: sanitizeInputText(formData.notes, 500) || null,
+        notes: sanitizeInputText(finalNotes, 500) || null,
         photo_url: formData.photo_url || null,
         status: 'pending',
         synced_to_local_server: false,
@@ -536,7 +550,12 @@ export default function StudentRegistrationPage() {
         .from('online_students')
         .insert([payload]);
 
-      if (error && (error.message?.includes('photo_url') || error.message?.includes('schema cache'))) {
+      if (error && error.message?.includes('violates not-null constraint') && error.message?.includes('phone')) {
+        const fallbackPayload = { ...payload, phone: 'لا يوجد (طالب ابتدائي)' };
+        const retry = await supabase.from('online_students').insert([fallbackPayload]);
+        if (retry.error) throw retry.error;
+        error = null;
+      } else if (error && (error.message?.includes('photo_url') || error.message?.includes('schema cache'))) {
         const fallbackPayload = { ...payload };
         if (fallbackPayload.photo_url) {
           fallbackPayload.notes = (fallbackPayload.notes ? fallbackPayload.notes + '\n' : '') + `[رابط الصورة الشخصية]: ${fallbackPayload.photo_url}`;
@@ -560,6 +579,7 @@ export default function StudentRegistrationPage() {
       });
     } catch (err) {
       console.error(err);
+      resetTurnstile();
       setErrorMessage(
         err.message || 'حدث خطأ أثناء إرسال البيانات — تأكد من الاتصال بالإنترنت وحاول مرة أخرى'
       );
@@ -1255,6 +1275,7 @@ export default function StudentRegistrationPage() {
                       <span className="text-[11px] text-slate-400 font-normal">Cloudflare Turnstile Protected</span>
                     </div>
                     <TurnstileWidget
+                      ref={turnstileRef}
                       onVerify={(token) => setTurnstileToken(token)}
                       onExpire={() => setTurnstileToken('')}
                       onError={() => setTurnstileToken('')}
