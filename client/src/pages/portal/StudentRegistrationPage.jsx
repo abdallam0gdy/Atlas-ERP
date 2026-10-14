@@ -20,6 +20,7 @@ import {
   Lock
 } from 'lucide-react';
 import ImageUploadField from '../../components/portal/ImageUploadField';
+import TurnstileWidget from '../../components/portal/TurnstileWidget';
 
 const ACADEMIC_GRADES = [
   'الصف الأول الابتدائي',
@@ -215,20 +216,10 @@ export default function StudentRegistrationPage() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [submittedData, setSubmittedData] = useState(null);
 
-  // Bot Protection & CAPTCHA States
-  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
-  const [isVerifyingCaptcha, setIsVerifyingCaptcha] = useState(false);
+  // Bot Protection & Cloudflare Turnstile States
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
   const mountTimeRef = useRef(Date.now());
-
-  const handleToggleCaptcha = () => {
-    if (isCaptchaVerified || isVerifyingCaptcha) return;
-    setIsVerifyingCaptcha(true);
-    setTimeout(() => {
-      setIsVerifyingCaptcha(false);
-      setIsCaptchaVerified(true);
-    }, 600);
-  };
 
   const parsedNid = useMemo(() => {
     return parseEgyptianNationalId(formData.national_id);
@@ -376,11 +367,30 @@ export default function StudentRegistrationPage() {
       setErrorMessage('يرجى التمهل ومراجعة البيانات قبل إرسال الاستمارة.');
       return;
     }
-    if (!isCaptchaVerified) {
-      setErrorMessage('يرجى تأكيد التحقق الأمني (أنا لست برنامج روبوت) أسفل الصفحة قبل إرسال الاستمارة');
+    if (!turnstileToken) {
+      setErrorMessage('يرجى إكمال التحقق الأمني من كلاودفير (Cloudflare Turnstile) قبل تأكيد الإرسال');
       setCurrentStep(4);
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       return;
+    }
+
+    // Verify turnstile token with backend
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+      const verifyRes = await fetch(`${apiBase}/verify-turnstile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success) {
+          setErrorMessage(verifyData.message || 'فشل التحقق الأمني من كلاودفير، يرجى إعادة المحاولة');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend Turnstile verification check skipped (direct):', err);
     }
 
     for (let s = 1; s <= 3; s++) {
@@ -546,7 +556,7 @@ export default function StudentRegistrationPage() {
             onClick={() => {
               setSubmittedData(null);
               setCurrentStep(1);
-              setIsCaptchaVerified(false);
+              setTurnstileToken('');
               setFormData({
                 full_name: '',
                 phone: '',
@@ -1111,44 +1121,17 @@ export default function StudentRegistrationPage() {
                     />
                   </div>
 
-                  {/* Interactive CAPTCHA: أنا لست برنامج روبوت */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5 w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={handleToggleCaptcha}
-                        disabled={isCaptchaVerified || isVerifyingCaptcha}
-                        className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-                          isCaptchaVerified
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-                            : isVerifyingCaptcha
-                            ? 'border-sky-500 bg-sky-50'
-                            : 'border-slate-300 hover:border-sky-500 bg-white'
-                        }`}
-                      >
-                        {isVerifyingCaptcha ? (
-                          <Loader2 size={16} className="animate-spin text-sky-600" />
-                        ) : isCaptchaVerified ? (
-                          <Check size={18} strokeWidth={3} />
-                        ) : null}
-                      </button>
-                      <div className="text-right">
-                        <span className="text-xs sm:text-sm font-bold text-slate-800 block">
-                          أنا لست برنامج روبوت (I'm not a robot)
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-medium">
-                          {isCaptchaVerified ? '✅ تم التحقق بنجاح من أمان المعاملة' : 'اضغط على المربع لتأكيد أنك لست روبوت'}
-                        </span>
-                      </div>
+                  {/* Cloudflare Turnstile: التحقق الأمني الذكي */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span>التحقق الأمني الذكي من Cloudflare</span>
+                      <span className="text-[11px] text-slate-400 font-normal">Cloudflare Turnstile Protected</span>
                     </div>
-
-                    <div className="flex items-center gap-2 text-slate-400 text-[11px] font-medium border-t sm:border-t-0 sm:border-r border-slate-100 pt-2 sm:pt-0 sm:pr-4 w-full sm:w-auto justify-end">
-                      <ShieldCheck size={22} className="text-sky-600 shrink-0" />
-                      <div className="text-right">
-                        <span className="block font-bold text-slate-600 text-[11px]">نظام حماية أطلس</span>
-                        <span className="text-[10px] text-slate-400">Atlas Bot Shield</span>
-                      </div>
-                    </div>
+                    <TurnstileWidget
+                      onVerify={(token) => setTurnstileToken(token)}
+                      onExpire={() => setTurnstileToken('')}
+                      onError={() => setTurnstileToken('')}
+                    />
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">

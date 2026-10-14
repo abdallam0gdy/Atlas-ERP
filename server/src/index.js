@@ -96,6 +96,59 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Cloudflare Turnstile Verification Endpoint
+app.post('/api/verify-turnstile', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'رمز التحقق (Turnstile Token) مطلوب',
+      });
+    }
+
+    const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || '0x4AAAAAAFWKPr6kGzFRbLeFrM5aUiWZMDY';
+    const remoteIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    const params = new URLSearchParams();
+    params.append('secret', secretKey);
+    params.append('response', token);
+    if (remoteIp) {
+      params.append('remoteip', String(remoteIp).split(',')[0].trim());
+    }
+
+    const cfResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    const outcome = await cfResponse.json();
+
+    if (outcome.success) {
+      return res.json({
+        success: true,
+        message: 'تم التحقق بنجاح من كلاودفير',
+      });
+    } else {
+      console.warn('⚠️ Cloudflare Turnstile validation failed:', outcome);
+      return res.status(403).json({
+        success: false,
+        message: 'فشل التحقق الأمني من كلاودفير، يرجى إعادة المحاولة',
+        errorCodes: outcome['error-codes'] || [],
+      });
+    }
+  } catch (err) {
+    console.error('❌ Cloudflare Turnstile Verification Error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'تعذر الاتصال بخدمة كلاودفير للتحقق',
+    });
+  }
+});
+
 // ============================================================
 // ERROR HANDLING
 // ============================================================

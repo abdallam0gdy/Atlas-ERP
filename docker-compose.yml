@@ -53,6 +53,7 @@ services:
       JWT_EXPIRES_IN: 24h
       JWT_REFRESH_EXPIRES_IN: 7d
       CORS_ORIGIN: "*"
+      CLOUDFLARE_TURNSTILE_SECRET_KEY: ${CLOUDFLARE_TURNSTILE_SECRET_KEY:-0x4AAAAAAFWKPr6kGzFRbLeFrM5aUiWZMDY}
     volumes:
       - ./server/uploads:/app/uploads
       - ./server/backups:/app/backups
@@ -72,6 +73,7 @@ services:
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-sb_publishable_a7_iTk12sxbb0W31iDS7Tw_b09TeM0z}
         VITE_IMGBB_API_KEY: ${VITE_IMGBB_API_KEY:-7f3f174d39d019c48c4a67bd36f0b8f6}
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_CLOUDFLARE_TURNSTILE_SITE_KEY: ${VITE_CLOUDFLARE_TURNSTILE_SITE_KEY:-0x4AAAAAAFWKPtUZzYA0UYN3}
     container_name: atlas_client
     restart: unless-stopped
     depends_on:
