@@ -417,6 +417,24 @@ export default function StudentRegistrationPage() {
     setIsSubmitting(true);
 
     try {
+      // التحقق من عدم وجود تسجيل مسبق لنفس الطالب بالرقم القومي أو الهاتف
+      const { data: existingStudent } = await supabase
+        .from('online_students')
+        .select('id, full_name, phone, national_id')
+        .or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`)
+        .limit(1);
+
+      if (existingStudent && existingStudent.length > 0) {
+        const isSameNid = existingStudent[0].national_id === nidInfo.clean;
+        setErrorMessage(
+          isSameNid 
+            ? 'تم تسجيل استمارة مسبقاً بنفس الرقم القومي لهذا الطالب. في حال وجود تعديل يرجى مراجعة إدارة الأكاديمية.' 
+            : 'رقم هاتف الطالب هذا مسجل بالفعل في طلب سابق. يرجى التأكد من الرقم أو مراجعة الأكاديمية.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const studentId = generateUUID();
 
       const payload = {
@@ -527,7 +545,7 @@ export default function StudentRegistrationPage() {
               <span className="font-bold text-slate-800">{submittedData.education_type}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60 sm:border-0">
-              <span className="text-slate-500">تاريخ الميلاد (مستنتج):</span>
+              <span className="text-slate-500">تاريخ الميلاد:</span>
               <span className="font-bold text-slate-800">{submittedData.birth_date_arabic}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60 sm:border-0">
@@ -852,12 +870,12 @@ export default function StudentRegistrationPage() {
                         <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
                           <Calendar size={14} className="text-emerald-600 shrink-0" />
                           <span>
-                            تاريخ الميلاد المستنتج: <strong>{parsedNid.formattedArabic}</strong> — السن التقريبي: <strong>{parsedNid.age} سنة</strong>
+                            تاريخ الميلاد: <strong>{parsedNid.formattedArabic}</strong>
                           </span>
                         </div>
                       ) : formData.national_id.length > 0 ? (
                         <p className="text-[11px] text-amber-600 mt-1.5">
-                          * يرجى إدخال 14 رقماً بالكامل لاستنتاج تاريخ الميلاد والسن بدقة.
+                          * يرجى إدخال 14 رقماً بالكامل لاستنتاج تاريخ الميلاد بدقة.
                         </p>
                       ) : null}
                     </div>
@@ -1083,7 +1101,7 @@ export default function StudentRegistrationPage() {
                         <span className="font-bold text-slate-800">{formData.education_type}</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
-                        <span className="text-slate-500">تاريخ الميلاد المستنتج:</span>
+                        <span className="text-slate-500">تاريخ الميلاد:</span>
                         <span className="font-bold text-slate-800">{parsedNid?.formattedArabic || 'غير محدد'}</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">

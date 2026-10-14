@@ -733,6 +733,24 @@ export default function TeacherRegistrationPage() {
     setIsSubmitting(true);
 
     try {
+      // التحقق من عدم وجود تسجيل مسبق للمعلم بنفس الرقم القومي أو الهاتف
+      const { data: existingTeacher } = await supabase
+        .from('online_teachers')
+        .select('id, full_name, phone, national_id')
+        .or(`national_id.eq.${cleanNid},phone.eq.${cleanPhone}`)
+        .limit(1);
+
+      if (existingTeacher && existingTeacher.length > 0) {
+        const isSameNid = existingTeacher[0].national_id === cleanNid;
+        setErrorMessage(
+          isSameNid 
+            ? 'تم تسجيل استمارة انضمام مسبقاً بهذا الرقم القومي.' 
+            : 'رقم هاتف المعلم مسجل بالفعل في استمارة سابقة.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const teacherId = generateUUID();
 
       const specializationString = formData.specializations.join(' ، ');
@@ -1206,7 +1224,7 @@ export default function TeacherRegistrationPage() {
                         <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
                           <Calendar size={14} className="text-emerald-600 shrink-0" />
                           <span>
-                            تاريخ الميلاد المستنتج: <strong>{parsedTeacherNid.formattedArabic}</strong> — السن التقريبي: <strong>{parsedTeacherNid.age} سنة</strong>
+                            تاريخ الميلاد: <strong>{parsedTeacherNid.formattedArabic}</strong>
                           </span>
                         </div>
                       )}

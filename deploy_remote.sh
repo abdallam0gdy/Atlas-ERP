@@ -35,10 +35,13 @@ sshpass -p "$SERVER_PASS" rsync -avz \
   -e "ssh -o StrictHostKeyChecking=no" \
   ./ "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/"
 
-# 3. Copy client .env
-echo "🔑 2/4 جاري نقل إعدادات البيئة (Client .env)..."
+# 3. Copy client and server .env
+echo "🔑 2/4 جاري نقل إعدادات البيئة (Client & Server .env)..."
 if [ -f client/.env ]; then
   sshpass -p "$SERVER_PASS" scp -o StrictHostKeyChecking=no client/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/client/.env"
+fi
+if [ -f server/.env ]; then
+  sshpass -p "$SERVER_PASS" scp -o StrictHostKeyChecking=no server/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/server/.env"
 fi
 
 # 4. Remote Backup and Build
