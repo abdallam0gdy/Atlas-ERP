@@ -28,31 +28,92 @@ import {
   ShieldCheck,
   CheckCircle,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Search,
+  X
 } from 'lucide-react';
 import ImageUploadField from '../../components/portal/ImageUploadField';
 import TurnstileWidget from '../../components/portal/TurnstileWidget';
 
-const AVAILABLE_SUBJECTS = [
-  'اللغة العربية',
-  'اللغة الإنجليزية',
-  'اللغة الفرنسية',
-  'اللغة الألمانية',
-  'اللغة الإيطالية',
-  'الرياضيات (بحتة وتطبيقية)',
-  'الفيزياء',
-  'الكيمياء',
-  'الأحياء',
-  'الجيولوجيا وعلوم البيئة',
-  'التاريخ',
-  'الجغرافيا',
-  'الفلسفة والمنطق',
-  'علم النفس والاجتماع',
-  'الدراسات الاجتماعية',
-  'العلوم المتكاملة',
-  'التربية الدينية',
-  'الحاسب الآلي وتكنولوجيا المعلومات',
+const SUBJECT_CATEGORIES = [
+  {
+    id: 'languages',
+    title: 'اللغات والآداب',
+    icon: '🌐',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    subjects: [
+      'اللغة العربية',
+      'اللغة الإنجليزية',
+      'اللغة الفرنسية',
+      'اللغة الألمانية',
+      'اللغة الإيطالية',
+    ],
+  },
+  {
+    id: 'sciences',
+    title: 'العلوم الطبيعية والتطبيقية',
+    icon: '🔬',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    subjects: [
+      'الفيزياء',
+      'الكيمياء',
+      'الأحياء',
+      'الجيولوجيا وعلوم البيئة',
+      'العلوم المتكاملة (Integrated Science)',
+      'العلوم (ابتدائي وإعدادي)',
+      'Science (العلوم لغات)',
+    ],
+  },
+  {
+    id: 'math',
+    title: 'الرياضيات والإحصاء',
+    icon: '📐',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    subjects: [
+      'الرياضيات (بحتة وتطبيقية)',
+      'Math (الرياضيات لغات)',
+    ],
+  },
+  {
+    id: 'humanities',
+    title: 'المواد الأدبية والعلوم الاجتماعية',
+    icon: '📚',
+    badgeClass: 'bg-purple-50 text-purple-700 border-purple-200',
+    subjects: [
+      'التاريخ',
+      'الجغرافيا',
+      'الفلسفة والمنطق',
+      'علم النفس والاجتماع',
+      'الدراسات الاجتماعية',
+    ],
+  },
+  {
+    id: 'technology',
+    title: 'الحاسب الآلي والبرمجة وICT',
+    icon: '💻',
+    badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    subjects: [
+      'تكنولوجيا المعلومات والاتصالات ICT',
+      'البرمجة وعلوم الحاسب',
+    ],
+  },
+  {
+    id: 'azhar',
+    title: 'العلوم الشرعية والأزهرية والتربية الدينية',
+    icon: '🕌',
+    badgeClass: 'bg-teal-50 text-teal-700 border-teal-200',
+    subjects: [
+      'العلوم الشرعية والأزهرية',
+      'الفقه والأصول',
+      'التفسير والحديث',
+      'التوحيد والسيرة',
+      'التربية الدينية الإسلامية',
+      'التربية الدينية المسيحية',
+    ],
+  },
 ];
+
+const AVAILABLE_SUBJECTS = SUBJECT_CATEGORIES.flatMap((c) => c.subjects);
 
 const ALL_GRADES = [
   'الصف الأول الثانوي',
@@ -417,6 +478,36 @@ export default function TeacherRegistrationPage() {
 
   const [customSubjectInput, setCustomSubjectInput] = useState('');
   const [showCustomSubjectField, setShowCustomSubjectField] = useState(false);
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [activeSubjectTab, setActiveSubjectTab] = useState('all');
+
+  const customSubjects = useMemo(() => {
+    return formData.specializations.filter(
+      (sub) => !AVAILABLE_SUBJECTS.includes(sub)
+    );
+  }, [formData.specializations]);
+
+  const filteredCategories = useMemo(() => {
+    const query = subjectSearch.trim().toLowerCase();
+    
+    return SUBJECT_CATEGORIES.map((cat) => {
+      if (activeSubjectTab !== 'all' && activeSubjectTab !== cat.id && !query) {
+        return null;
+      }
+      
+      const matchingSubjects = cat.subjects.filter((sub) => {
+        if (!query) return true;
+        return sub.toLowerCase().includes(query);
+      });
+
+      if (matchingSubjects.length === 0) return null;
+
+      return {
+        ...cat,
+        subjects: matchingSubjects,
+      };
+    }).filter(Boolean);
+  }, [subjectSearch, activeSubjectTab]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -1364,75 +1455,228 @@ export default function TeacherRegistrationPage() {
                 <div className="space-y-7 animate-fade-in">
                   
                   {/* Section A: Specializations */}
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-bold text-slate-800">
-                        المواد التعليمية والتخصص <span className="text-rose-500">*</span>
-                      </label>
-                      <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+                  <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 border border-slate-200/80 space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="text-rose-600" size={18} />
+                          <label className="text-sm font-extrabold text-slate-800">
+                            المواد التعليمية والتخصصات المعتمدة <span className="text-rose-500">*</span>
+                          </label>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          اختر مادة أو أكثر من الأقسام التالية — يمكنك البحث السريع لتحديد مادتك فوراً:
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100 self-start sm:self-auto shrink-0">
                         المحدد: {formData.specializations.length} مادة
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mb-4">
-                      اضغط على المادة لاختيارها — يمكنك اختيار أكثر من مادة أو إضافة مادة خاصة:
-                    </p>
 
-                    <div className="flex flex-wrap gap-2.5 mb-4">
-                      {AVAILABLE_SUBJECTS.map((sub) => {
-                        const isSelected = formData.specializations.includes(sub);
-                        return (
-                          <button
-                            key={sub}
-                            type="button"
-                            onClick={() => toggleSubject(sub)}
-                            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/30 ring-2 ring-rose-200'
-                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                            }`}
-                          >
-                            {isSelected && <span className="ml-1.5 font-bold">✓</span>}
-                            <span>{sub}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Custom Subject */}
-                    {!showCustomSubjectField ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowCustomSubjectField(true)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-800 bg-white border border-rose-200 hover:border-rose-300 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-                      >
-                        <Plus size={14} />
-                        <span>إضافة مادة تعليمية أخرى غير موجودة بالقائمة</span>
-                      </button>
+                    {/* Selected Subjects Chips Bar */}
+                    {formData.specializations.length > 0 ? (
+                      <div className="p-3 bg-white rounded-2xl border border-rose-100 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-slate-600">
+                            المواد التي تم تحديدها لملفك التدريسي:
+                          </span>
+                          <span className="text-[10px] text-slate-400">اضغط ✕ لإلغاء أي مادة</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.specializations.map((sub) => (
+                            <span
+                              key={sub}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-rose-50 to-amber-50 text-rose-700 border border-rose-200 text-xs font-bold shadow-2xs"
+                            >
+                              <span>{sub}</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleSubject(sub)}
+                                className="w-4 h-4 rounded-full hover:bg-rose-200/60 flex items-center justify-center text-rose-600 cursor-pointer"
+                                title="إلغاء المادة"
+                              >
+                                <X size={12} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
-                      <div className="flex gap-2 max-w-md mt-2">
-                        <input
-                          type="text"
-                          value={customSubjectInput}
-                          onChange={(e) => setCustomSubjectInput(e.target.value)}
-                          placeholder="اسم المادة المخصصة..."
-                          className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddCustomSubject}
-                          className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer"
-                        >
-                          إضافة
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowCustomSubjectField(false)}
-                          className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
-                        >
-                          إلغاء
-                        </button>
+                      <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200/60 text-xs text-amber-800 flex items-center gap-2">
+                        <AlertCircle size={15} className="shrink-0 text-amber-600" />
+                        <span>يرجى اختيار مادة واحدة على الأقل من القوائم بالأسفل للاعتماد.</span>
                       </div>
                     )}
+
+                    {/* Quick Search & Category Tabs */}
+                    <div className="space-y-3">
+                      {/* Search Input */}
+                      <div className="relative">
+                        <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                          type="text"
+                          value={subjectSearch}
+                          onChange={(e) => setSubjectSearch(e.target.value)}
+                          placeholder="ابحث عن مادتك بسرعة... (مثال: فيزياء، لغة فرنسية، Math، ICT، فقه)"
+                          className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white shadow-2xs"
+                        />
+                        {subjectSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setSubjectSearch('')}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Category Filter Pills */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSubjectTab('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                            activeSubjectTab === 'all'
+                              ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/30'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          جميع الأقسام ({AVAILABLE_SUBJECTS.length})
+                        </button>
+                        {SUBJECT_CATEGORIES.map((cat) => {
+                          const isActive = activeSubjectTab === cat.id;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setActiveSubjectTab(cat.id)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                                isActive
+                                  ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/30'
+                                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                              }`}
+                            >
+                              <span>{cat.icon}</span>
+                              <span>{cat.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Categories and Subject Buttons */}
+                    <div className="space-y-4">
+                      {filteredCategories.length > 0 ? (
+                        filteredCategories.map((cat) => (
+                          <div
+                            key={cat.id}
+                            className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs transition-all"
+                          >
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">{cat.icon}</span>
+                                <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">
+                                  {cat.title}
+                                </h4>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${cat.badgeClass}`}>
+                                {cat.subjects.length} مادة
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {cat.subjects.map((sub) => {
+                                const isSelected = formData.specializations.includes(sub);
+                                return (
+                                  <button
+                                    key={sub}
+                                    type="button"
+                                    onClick={() => toggleSubject(sub)}
+                                    className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-gradient-to-r from-rose-600 to-rose-700 text-white border-rose-600 shadow-md shadow-rose-600/20 ring-2 ring-rose-200 font-bold'
+                                        : 'bg-slate-50/70 hover:bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-white text-rose-600 font-black' : 'bg-slate-200 text-slate-500'}`}>
+                                      {isSelected ? '✓' : '+'}
+                                    </span>
+                                    <span>{sub}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+                          لا توجد مواد مطابقة لكلمة البحث "{subjectSearch}". يمكنك إضافتها كمادة مخصصة بالأسفل.
+                        </div>
+                      )}
+
+                      {/* Display Custom Subjects if any */}
+                      {customSubjects.length > 0 && (
+                        <div className="bg-white rounded-2xl p-4 border border-dashed border-rose-200 shadow-2xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-rose-700">مواد مخصصة إضافية تمت إضافتها:</span>
+                            <span className="text-[10px] text-slate-400">مخصصة من قبلك</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {customSubjects.map((sub) => (
+                              <button
+                                key={sub}
+                                type="button"
+                                onClick={() => toggleSubject(sub)}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 text-white border border-rose-600 flex items-center gap-1.5 shadow-xs cursor-pointer"
+                              >
+                                <span>✓</span>
+                                <span>{sub}</span>
+                                <span className="opacity-70 hover:opacity-100 text-white mr-1">✕</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Custom Subject Addition */}
+                    <div className="pt-2 border-t border-slate-200/60">
+                      {!showCustomSubjectField ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomSubjectField(true)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-800 bg-white border border-rose-200 hover:border-rose-300 px-3.5 py-2 rounded-xl transition-all shadow-2xs cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span>إضافة مادة تعليمية أخرى غير موجودة بالقائمة</span>
+                        </button>
+                      ) : (
+                        <div className="flex gap-2 max-w-md mt-2">
+                          <input
+                            type="text"
+                            value={customSubjectInput}
+                            onChange={(e) => setCustomSubjectInput(e.target.value)}
+                            placeholder="اسم المادة المخصصة..."
+                            className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white shadow-2xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomSubject}
+                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm"
+                          >
+                            إضافة
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomSubjectField(false)}
+                            className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                          >
+                            إلغاء
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Section B: Target Grades */}
