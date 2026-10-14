@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   GraduationCap, 
@@ -192,23 +192,63 @@ function parseEgyptianNationalId(nid) {
   };
 }
 
-export default function StudentRegistrationPage() {
-  const [currentStep, setCurrentStep] = useState(1);
+const STUDENT_DRAFT_KEY = 'atlas_student_registration_draft';
 
-  const [formData, setFormData] = useState({
-    full_name: '',
-    phone: '',
-    photo_url: '',
-    father_phone: '',
-    mother_phone: '',
-    parent_job: '',
-    academic_grade: '',
-    education_type: '',
-    school_name: '',
-    gender: 'male',
-    national_id: '',
-    address: '',
-    notes: '',
+export default function StudentRegistrationPage() {
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STUDENT_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          full_name: parsed.full_name || '',
+          phone: parsed.phone || '',
+          photo_url: parsed.photo_url || '',
+          father_phone: parsed.father_phone || '',
+          mother_phone: parsed.mother_phone || '',
+          parent_job: parsed.parent_job || '',
+          academic_grade: parsed.academic_grade || '',
+          education_type: parsed.education_type || '',
+          school_name: parsed.school_name || '',
+          gender: parsed.gender || 'male',
+          national_id: parsed.national_id || '',
+          address: parsed.address || '',
+          notes: parsed.notes || '',
+        };
+      }
+    } catch (e) {}
+    return {
+      full_name: '',
+      phone: '',
+      photo_url: '',
+      father_phone: '',
+      mother_phone: '',
+      parent_job: '',
+      academic_grade: '',
+      education_type: '',
+      school_name: '',
+      gender: 'male',
+      national_id: '',
+      address: '',
+      notes: '',
+    };
+  });
+
+  const [hasNoPhone, setHasNoPhone] = useState(() => {
+    try {
+      return localStorage.getItem('atlas_student_has_no_phone') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const savedStep = parseInt(localStorage.getItem('atlas_student_draft_step'), 10);
+      return savedStep >= 1 && savedStep <= 4 ? savedStep : 1;
+    } catch (e) {
+      return 1;
+    }
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -219,8 +259,26 @@ export default function StudentRegistrationPage() {
   // Bot Protection & Cloudflare Turnstile States
   const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
-  const [hasNoPhone, setHasNoPhone] = useState(false);
   const mountTimeRef = useRef(Date.now());
+
+  // Auto-save draft to localStorage whenever fields change
+  useEffect(() => {
+    if (!submittedData) {
+      try {
+        localStorage.setItem(STUDENT_DRAFT_KEY, JSON.stringify(formData));
+        localStorage.setItem('atlas_student_has_no_phone', String(hasNoPhone));
+        localStorage.setItem('atlas_student_draft_step', String(currentStep));
+      } catch (e) {}
+    }
+  }, [formData, hasNoPhone, currentStep, submittedData]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(STUDENT_DRAFT_KEY);
+      localStorage.removeItem('atlas_student_has_no_phone');
+      localStorage.removeItem('atlas_student_draft_step');
+    } catch (e) {}
+  };
 
   const parsedNid = useMemo(() => {
     return parseEgyptianNationalId(formData.national_id);
@@ -494,6 +552,8 @@ export default function StudentRegistrationPage() {
         throw error;
       }
 
+      clearDraft();
+
       setSubmittedData({
         ...payload,
         birth_date_arabic: nidInfo.formattedArabic,
@@ -593,6 +653,7 @@ export default function StudentRegistrationPage() {
           <button
             type="button"
             onClick={() => {
+              clearDraft();
               setSubmittedData(null);
               setCurrentStep(1);
               setTurnstileToken('');

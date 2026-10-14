@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   UserCheck, 
@@ -316,41 +316,101 @@ function validateGroupTimes(startTime, endTime) {
   return { valid: true, duration, durationArabic };
 }
 
-export default function TeacherRegistrationPage() {
-  const [currentStep, setCurrentStep] = useState(1);
+const TEACHER_DRAFT_KEY = 'atlas_teacher_registration_draft';
 
-  const [formData, setFormData] = useState({
-    full_name: '',
-    nickname: '',
-    phone: '',
-    whatsapp_phone: '',
-    national_id: '',
-    photo_url: '',
-    logo_url: '',
-    specializations: ['اللغة العربية'],
-    target_grades: ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي (شهادة)'],
-    bio: '',
-    facebook_link: '',
-    youtube_link: '',
-    telegram_link: '',
-    notes: '',
+export default function TeacherRegistrationPage() {
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const savedStep = parseInt(localStorage.getItem('atlas_teacher_draft_step'), 10);
+      return savedStep >= 1 && savedStep <= 5 ? savedStep : 1;
+    } catch (e) {
+      return 1;
+    }
   });
 
-  const [hasNoAssistant, setHasNoAssistant] = useState(false);
-  const [assistants, setAssistants] = useState([
-    { id: 1, name: '', phone: '' }
-  ]);
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem(TEACHER_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          full_name: parsed.full_name || '',
+          nickname: parsed.nickname || '',
+          phone: parsed.phone || '',
+          whatsapp_phone: parsed.whatsapp_phone || '',
+          national_id: parsed.national_id || '',
+          photo_url: parsed.photo_url || '',
+          logo_url: parsed.logo_url || '',
+          specializations: Array.isArray(parsed.specializations) && parsed.specializations.length > 0 
+            ? parsed.specializations 
+            : ['اللغة العربية'],
+          target_grades: Array.isArray(parsed.target_grades) && parsed.target_grades.length > 0
+            ? parsed.target_grades
+            : ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي (شهادة)'],
+          bio: parsed.bio || '',
+          facebook_link: parsed.facebook_link || '',
+          youtube_link: parsed.youtube_link || '',
+          telegram_link: parsed.telegram_link || '',
+          notes: parsed.notes || '',
+        };
+      }
+    } catch (e) {}
+    return {
+      full_name: '',
+      nickname: '',
+      phone: '',
+      whatsapp_phone: '',
+      national_id: '',
+      photo_url: '',
+      logo_url: '',
+      specializations: ['اللغة العربية'],
+      target_grades: ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي (شهادة)'],
+      bio: '',
+      facebook_link: '',
+      youtube_link: '',
+      telegram_link: '',
+      notes: '',
+    };
+  });
 
-  const [groups, setGroups] = useState([
-    {
-      id: 1,
-      day: 'السبت',
-      start_time: '14:00',
-      end_time: '16:00',
-      grade: 'الصف الأول الثانوي',
-      subject: 'اللغة العربية',
+  const [hasNoAssistant, setHasNoAssistant] = useState(() => {
+    try {
+      return localStorage.getItem('atlas_teacher_has_no_assistant') === 'true';
+    } catch (e) {
+      return false;
     }
-  ]);
+  });
+
+  const [assistants, setAssistants] = useState(() => {
+    try {
+      const saved = localStorage.getItem('atlas_teacher_assistants');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [{ id: 1, name: '', phone: '' }];
+  });
+
+  const [groups, setGroups] = useState(() => {
+    try {
+      const saved = localStorage.getItem('atlas_teacher_groups');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [
+      {
+        id: 1,
+        day: 'السبت',
+        start_time: '14:00',
+        end_time: '16:00',
+        grade: 'الصف الأول الثانوي',
+        subject: 'اللغة العربية',
+      }
+    ];
+  });
 
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
   const [isLogoUploading, setIsLogoUploading] = useState(false);
@@ -366,6 +426,29 @@ export default function TeacherRegistrationPage() {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
   const mountTimeRef = useRef(Date.now());
+
+  // Auto-save draft to localStorage whenever fields change
+  useEffect(() => {
+    if (!submittedData) {
+      try {
+        localStorage.setItem(TEACHER_DRAFT_KEY, JSON.stringify(formData));
+        localStorage.setItem('atlas_teacher_assistants', JSON.stringify(assistants));
+        localStorage.setItem('atlas_teacher_groups', JSON.stringify(groups));
+        localStorage.setItem('atlas_teacher_has_no_assistant', String(hasNoAssistant));
+        localStorage.setItem('atlas_teacher_draft_step', String(currentStep));
+      } catch (e) {}
+    }
+  }, [formData, assistants, groups, hasNoAssistant, currentStep, submittedData]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(TEACHER_DRAFT_KEY);
+      localStorage.removeItem('atlas_teacher_assistants');
+      localStorage.removeItem('atlas_teacher_groups');
+      localStorage.removeItem('atlas_teacher_has_no_assistant');
+      localStorage.removeItem('atlas_teacher_draft_step');
+    } catch (e) {}
+  };
 
   const parsedTeacherNid = useMemo(() => {
     return parseEgyptianNationalId(formData.national_id);
@@ -817,6 +900,8 @@ export default function TeacherRegistrationPage() {
         throw error;
       }
 
+      clearDraft();
+
       setSubmittedData({
         ...payload,
         specializationsArray: formData.specializations,
@@ -913,9 +998,11 @@ export default function TeacherRegistrationPage() {
           <button
             type="button"
             onClick={() => {
+              clearDraft();
               setSubmittedData(null);
               setCurrentStep(1);
               setTurnstileToken('');
+              setHasNoAssistant(false);
               setFormData({
                 full_name: '',
                 nickname: '',
