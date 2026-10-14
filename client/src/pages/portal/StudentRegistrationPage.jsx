@@ -446,12 +446,10 @@ export default function StudentRegistrationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: turnstileToken }),
       });
-      if (verifyRes.ok) {
-        const verifyData = await verifyRes.json();
-        if (!verifyData.success) {
-          setErrorMessage(verifyData.message || 'فشل التحقق الأمني من كلاودفير، يرجى إعادة المحاولة');
-          return;
-        }
+      const verifyData = await verifyRes.json().catch(() => ({}));
+      if (!verifyRes.ok || !verifyData.success) {
+        setErrorMessage(verifyData.message || 'فشل التحقق الأمني من كلاودفير (Turnstile)، يرجى إعادة المحاولة');
+        return;
       }
     } catch (err) {
       console.warn('Backend Turnstile verification check skipped (direct):', err);
