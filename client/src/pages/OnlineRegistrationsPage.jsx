@@ -35,7 +35,11 @@ import {
   Tag,
   Check,
   X,
-  FileText
+  FileText,
+  LayoutGrid,
+  Table as TableIcon,
+  RotateCcw,
+  SlidersHorizontal
 } from 'lucide-react';
 
 // ============================================================
@@ -189,7 +193,8 @@ const ALL_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثا�
 // ============================================================
 
 export default function OnlineRegistrationsPage() {
-  const [activeTab, setActiveTab] = useState('students'); // 'students' | 'teachers'
+  const [activeTab, setActiveTab] = useState('teachers'); // 'students' | 'teachers'
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
 
   // Data states
   const [students, setStudents] = useState([]);
@@ -206,6 +211,10 @@ export default function OnlineRegistrationsPage() {
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [dayFilter, setDayFilter] = useState('all');
 
+  // Pagination states
+  const [pageSize, setPageSize] = useState(25); // 10, 20, 25, 50, 100
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Selected item for modal
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
@@ -215,6 +224,11 @@ export default function OnlineRegistrationsPage() {
 
   // Status updating indicator
   const [updatingId, setUpdatingId] = useState(null);
+
+  // Reset pagination on filter or tab change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, statusFilter, gradeFilter, educationTypeFilter, genderFilter, subjectFilter, dayFilter, pageSize]);
 
   // Fetch online students and teachers from Supabase
   const fetchData = async () => {
@@ -334,7 +348,7 @@ export default function OnlineRegistrationsPage() {
     }
   };
 
-  // Collect All Unique Teacher Subjects (Specializations + Group Subjects)
+  // Collect All Unique Teacher Subjects
   const uniqueTeacherSubjects = useMemo(() => {
     const set = new Set();
     teachers.forEach((t) => {
@@ -355,19 +369,11 @@ export default function OnlineRegistrationsPage() {
   // Filtered Students
   const filteredStudents = useMemo(() => {
     return students.filter((item) => {
-      // Status Filter
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-
-      // Grade Filter
       if (gradeFilter !== 'all' && item.academic_grade !== gradeFilter) return false;
-
-      // Education Type Filter
       if (educationTypeFilter !== 'all' && item.education_type !== educationTypeFilter) return false;
-
-      // Gender Filter
       if (genderFilter !== 'all' && item.gender !== genderFilter) return false;
 
-      // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = item.full_name?.toLowerCase().includes(q);
@@ -388,32 +394,27 @@ export default function OnlineRegistrationsPage() {
   // Filtered Teachers
   const filteredTeachers = useMemo(() => {
     return teachers.filter((item) => {
-      // Status Filter
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
 
       const groups = parseGroupsData(item);
 
-      // Subject Filter (Matches specialization OR any group's subject)
       if (subjectFilter !== 'all') {
         const matchesSpec = item.specialization?.includes(subjectFilter);
         const matchesGroupSub = groups.some((g) => g.subject?.includes(subjectFilter));
         if (!matchesSpec && !matchesGroupSub) return false;
       }
 
-      // Day Filter (Matches any group's day)
       if (dayFilter !== 'all') {
         const matchesDay = groups.some((g) => g.day === dayFilter);
         if (!matchesDay) return false;
       }
 
-      // Grade Filter (Matches target_grades OR any group's grade)
       if (gradeFilter !== 'all') {
         const matchesTarget = item.target_grades?.includes(gradeFilter);
         const matchesGroupGrd = groups.some((g) => g.grade === gradeFilter);
         if (!matchesTarget && !matchesGroupGrd) return false;
       }
 
-      // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = item.full_name?.toLowerCase().includes(q);
@@ -438,6 +439,15 @@ export default function OnlineRegistrationsPage() {
       return true;
     });
   }, [teachers, statusFilter, subjectFilter, dayFilter, gradeFilter, searchQuery]);
+
+  // Current active list & pagination calculations
+  const activeList = activeTab === 'students' ? filteredStudents : filteredTeachers;
+  const totalItems = activeList.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedList = activeList.slice(startIndex, endIndex);
 
   // Statistics
   const stats = useMemo(() => {
@@ -466,6 +476,18 @@ export default function OnlineRegistrationsPage() {
       latestDate: latestStudent?.created_at || latestTeacher?.created_at,
     };
   }, [students, teachers]);
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || gradeFilter !== 'all' || educationTypeFilter !== 'all' || genderFilter !== 'all' || subjectFilter !== 'all' || dayFilter !== 'all';
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setGradeFilter('all');
+    setEducationTypeFilter('all');
+    setGenderFilter('all');
+    setSubjectFilter('all');
+    setDayFilter('all');
+  };
 
   // Print single teacher application
   const printTeacherApplication = (teacher) => {
@@ -713,147 +735,145 @@ export default function OnlineRegistrationsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in font-sans" dir="rtl">
+    <div className="space-y-5 pb-12 animate-fade-in font-sans" dir="rtl">
       
-      {/* Top Header & Actions */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Top Header & Fast Actions */}
+      <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5 text-xs font-bold text-sky-600 mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-sky-600 mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>بوابة التسجيل والتقديم الإلكتروني (أونلاين)</span>
+            <span>بوابة التقديم الإلكتروني ومطابقة المجموعات (Live Supabase)</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
             استمارات الطلاب والمعلمين المسجلين
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            متابعة فورية لطلبات التقديم، مراجعة وتدقيق كافة البيانات، جداول المجموعات ومادة كل مجموعة، اعتماد الطلبات والتواصل المباشر
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+            متابعة فورية لطلبات التقديم السحابية، مراجعة واعتماد الطلبات، وتنسيق مواعيد ومجموعات كل مادة
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* Table / Cards View Mode Switcher */}
+          <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+              }`}
+              title="عرض جدول مفصل"
+            >
+              <TableIcon size={15} />
+              <span className="hidden lg:inline">جدول</span>
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'cards' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+              }`}
+              title="عرض بطاقات"
+            >
+              <LayoutGrid size={15} />
+              <span className="hidden lg:inline">بطاقات</span>
+            </button>
+          </div>
+
           <button
             onClick={fetchData}
             disabled={isRefreshing}
-            className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             title="تحديث البيانات من سوبابيز"
           >
-            <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-sky-600' : ''} />
+            <RefreshCw size={15} className={isRefreshing ? 'animate-spin text-sky-600' : ''} />
             <span>تحديث البيانات</span>
           </button>
 
           <button
             onClick={() => window.print()}
-            className="px-4 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs sm:text-sm font-bold flex items-center gap-2 border border-sky-200 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs sm:text-sm font-bold flex items-center gap-1.5 border border-sky-200 transition-all cursor-pointer"
           >
-            <Printer size={16} />
-            <span className="hidden sm:inline">طباعة التقرير</span>
+            <Printer size={15} />
+            <span className="hidden sm:inline">طباعة الكشف</span>
           </button>
         </div>
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Students */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 block mb-1">طلبات تسجيل الطلاب</span>
-            <span className="text-2xl font-black text-slate-800">{stats.totalStudents}</span>
-            <div className="flex items-center gap-1.5 mt-2">
-              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                {stats.studentPending} قيد المراجعة
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">طلبات تسجيل الطلاب</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-800">{stats.totalStudents}</span>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                {stats.studentPending} مراجعة
               </span>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                 {stats.studentApproved} معتمد
               </span>
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-            <Users size={24} />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+            <Users size={22} />
           </div>
         </div>
 
         {/* Total Teachers */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 block mb-1">طلبات انضمام المعلمين</span>
-            <span className="text-2xl font-black text-slate-800">{stats.totalTeachers}</span>
-            <div className="flex items-center gap-1.5 mt-2">
-              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                {stats.teacherPending} قيد المراجعة
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">طلبات انضمام المعلمين</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-800">{stats.totalTeachers}</span>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                {stats.teacherPending} مراجعة
               </span>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                 {stats.teacherApproved} معتمد
               </span>
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-            <GraduationCap size={24} />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+            <GraduationCap size={22} />
           </div>
         </div>
 
         {/* Total Groups Scheduled */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 block mb-1">إجمالي المجموعات المقترحة</span>
-            <span className="text-2xl font-black text-purple-600">{stats.totalGroups}</span>
-            <span className="text-[11px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded inline-block mt-2 font-medium">
-              مجموعات وحصص مسجلة بالمواد
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">إجمالي المجموعات المقترحة</span>
+            <span className="text-xl sm:text-2xl font-black text-purple-600">{stats.totalGroups}</span>
+            <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-semibold block mt-1.5">
+              مجموعات وحصص بالمواد
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <Clock size={24} />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <Clock size={22} />
           </div>
         </div>
 
         {/* Total Approved */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 block mb-1">إجمالي المعتمدين والمقبولين</span>
-            <span className="text-2xl font-black text-emerald-600">{stats.totalApproved}</span>
-            <span className="text-[11px] text-slate-500 block mt-2">
-              جاهزون للاستيراد وتوزيع القاعات والكروت
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">المعتمدون والمقبولون</span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-600">{stats.totalApproved}</span>
+            <span className="text-[10px] text-slate-400 block mt-1.5 truncate">
+              جاهزون لتوزيع القاعات والكروت
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <CheckCircle2 size={24} />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <CheckCircle2 size={22} />
           </div>
         </div>
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex border-b border-slate-200 gap-3">
-        <button
-          onClick={() => {
-            setActiveTab('students');
-            setStatusFilter('all');
-            setSearchQuery('');
-            setGradeFilter('all');
-          }}
-          className={`pb-3 px-5 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === 'students'
-              ? 'border-sky-600 text-sky-700 font-black'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Users size={18} />
-          <span>استمارات الطلاب</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700">
-            {students.length}
-          </span>
-          {stats.studentPending > 0 && (
-            <span className="w-2 h-2 rounded-full bg-rose-500" title="يوجد طلبات جديدة" />
-          )}
-        </button>
-
+      <div className="flex border-b border-slate-200 gap-2 sm:gap-4 overflow-x-auto">
         <button
           onClick={() => {
             setActiveTab('teachers');
-            setStatusFilter('all');
-            setSearchQuery('');
-            setSubjectFilter('all');
-            setDayFilter('all');
+            resetAllFilters();
           }}
-          className={`pb-3 px-5 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`pb-3 px-3 sm:px-5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeTab === 'teachers'
               ? 'border-rose-600 text-rose-700 font-black'
               : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -861,625 +881,1077 @@ export default function OnlineRegistrationsPage() {
         >
           <GraduationCap size={18} />
           <span>استمارات المعلمين ومجموعات المواد</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700">
+          <span className="px-2 py-0.5 rounded-full text-xs bg-rose-50 text-rose-700 font-bold border border-rose-200">
             {teachers.length}
           </span>
           {stats.teacherPending > 0 && (
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" title="يوجد طلبات جديدة" />
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('students');
+            resetAllFilters();
+          }}
+          className={`pb-3 px-3 sm:px-5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
+            activeTab === 'students'
+              ? 'border-sky-600 text-sky-700 font-black'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Users size={18} />
+          <span>استمارات الطلاب</span>
+          <span className="px-2 py-0.5 rounded-full text-xs bg-sky-50 text-sky-700 font-bold border border-sky-200">
+            {students.length}
+          </span>
+          {stats.studentPending > 0 && (
             <span className="w-2 h-2 rounded-full bg-rose-500" title="يوجد طلبات جديدة" />
           )}
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100 flex flex-col md:flex-row flex-wrap items-center gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1 min-w-[260px] w-full">
-          <Search size={18} className="absolute right-3.5 top-3 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              activeTab === 'students'
-                ? 'ابحث باسم الطالب، هاتف الطالب أو الأب، الرقم القومي، المدرسة، العنوان...'
-                : 'ابحث باسم المعلم، اللقب، الهاتف، المادة، مادة المجموعة، اليوم، المساعد...'
-            }
-            className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
-          />
+      <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200/80 space-y-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 w-full">
+            <Search size={17} className="absolute right-3.5 top-3 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                activeTab === 'teachers'
+                  ? 'ابحث باسم المعلم، اللقب، الهاتف، المادة، مادة المجموعة، اليوم...'
+                  : 'ابحث باسم الطالب، هاتف الطالب أو ولي الأمر، الرقم القومي، المدرسة...'
+              }
+              className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+            />
+          </div>
+
+          {/* Quick Clear Button */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              title="إعادة تعيين الفلاتر"
+            >
+              <RotateCcw size={14} />
+              <span>تفريغ الفلاتر</span>
+            </button>
+          )}
         </div>
 
-        {/* Status Filter */}
-        <div className="w-full sm:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium cursor-pointer"
-          >
-            <option value="all">كافة الحالات</option>
-            <option value="pending">⏳ قيد المراجعة</option>
-            <option value="approved">✓ معتمد ومقبول</option>
-            <option value="rejected">✕ مرفوض</option>
-          </select>
+        {/* Filter Dropdowns Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+          {/* Status Filter */}
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
+            >
+              <option value="all">كافة الحالات</option>
+              <option value="pending">⏳ قيد المراجعة</option>
+              <option value="approved">✓ معتمد ومقبول</option>
+              <option value="rejected">✕ مرفوض</option>
+            </select>
+          </div>
+
+          {/* Teacher-Specific Filters */}
+          {activeTab === 'teachers' && (
+            <>
+              {/* Subject Filter */}
+              <div>
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-purple-200 text-xs font-bold text-purple-900 bg-purple-50/40 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="all">كافة المواد التخصصية</option>
+                  {uniqueTeacherSubjects.map((sub) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Day Filter */}
+              <div>
+                <select
+                  value={dayFilter}
+                  onChange={(e) => setDayFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer"
+                >
+                  <option value="all">كافة أيام الأسبوع</option>
+                  {ALL_DAYS.map((d) => (
+                    <option key={d} value={d}>مجموعات يوم {d}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Grade Filter */}
+              <div>
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer"
+                >
+                  <option value="all">كافة الصفوف الدراسية</option>
+                  <option value="الصف الأول الثانوي">أولى ثانوي</option>
+                  <option value="الصف الثاني الثانوي">تانية ثانوي</option>
+                  <option value="الصف الثالث الثانوي">تالتة ثانوي</option>
+                  <option value="الصف الأول الإعدادي">أولى إعدادي</option>
+                  <option value="الصف الثاني الإعدادي">تانية إعدادي</option>
+                  <option value="الصف الثالث الإعدادي">تالتة إعدادي</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Student-Specific Filters */}
+          {activeTab === 'students' && (
+            <>
+              {/* Grade Filter */}
+              <div>
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
+                >
+                  <option value="all">كافة الصفوف الدراسية</option>
+                  <option value="الصف الأول الثانوي">أولى ثانوي</option>
+                  <option value="الصف الثاني الثانوي">تانية ثانوي</option>
+                  <option value="الصف الثالث الثانوي">تالتة ثانوي</option>
+                  <option value="الصف الأول الإعدادي">أولى إعدادي</option>
+                  <option value="الصف الثاني الإعدادي">تانية إعدادي</option>
+                  <option value="الصف الثالث الإعدادي">تالتة إعدادي</option>
+                  <option value="الصف السادس الابتدائي">سادسة ابتدائي</option>
+                  <option value="الصف الخامس الابتدائي">خامسة ابتدائي</option>
+                  <option value="الصف الرابع الابتدائي">رابعة ابتدائي</option>
+                </select>
+              </div>
+
+              {/* Education Type */}
+              <div>
+                <select
+                  value={educationTypeFilter}
+                  onChange={(e) => setEducationTypeFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
+                >
+                  <option value="all">كافة أنواع التعليم</option>
+                  <option value="عام">تعليم عام</option>
+                  <option value="لغات">تجريبي / لغات</option>
+                  <option value="أزهر">أزهر شريف</option>
+                </select>
+              </div>
+
+              {/* Gender Filter */}
+              <div>
+                <select
+                  value={genderFilter}
+                  onChange={(e) => setGenderFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
+                >
+                  <option value="all">الذكور والإناث</option>
+                  <option value="male">بنين (ذكور)</option>
+                  <option value="female">بنات (إناث)</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Page Size Selector */}
+          <div>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+              title="عدد العناصر في كل صفحة"
+            >
+              <option value={10}>عرض 10 أسماء</option>
+              <option value={20}>عرض 20 اسم</option>
+              <option value={25}>عرض 25 اسم</option>
+              <option value={50}>عرض 50 اسم</option>
+              <option value={100}>عرض 100 اسم</option>
+            </select>
+          </div>
         </div>
-
-        {/* Filters For Teachers Tab */}
-        {activeTab === 'teachers' && (
-          <>
-            {/* Subject Filter (Specializations & Group Subjects) */}
-            <div className="w-full sm:w-auto">
-              <select
-                value={subjectFilter}
-                onChange={(e) => setSubjectFilter(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-purple-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50/50 font-medium text-purple-900 cursor-pointer"
-              >
-                <option value="all">كافة المواد التخصصية</option>
-                {uniqueTeacherSubjects.map((sub) => (
-                  <option key={sub} value={sub}>{sub}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Day Filter */}
-            <div className="w-full sm:w-auto">
-              <select
-                value={dayFilter}
-                onChange={(e) => setDayFilter(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium cursor-pointer"
-              >
-                <option value="all">كافة أيام الأسبوع</option>
-                {ALL_DAYS.map((d) => (
-                  <option key={d} value={d}>مجموعات يوم {d}</option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-
-        {/* Filters For Students Tab */}
-        {activeTab === 'students' && (
-          <>
-            {/* Grade Filter */}
-            <div className="w-full sm:w-auto">
-              <select
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium cursor-pointer"
-              >
-                <option value="all">كافة الصفوف الدراسية</option>
-                <option value="الصف الأول الثانوي">أولى ثانوي</option>
-                <option value="الصف الثاني الثانوي">تانية ثانوي</option>
-                <option value="الصف الثالث الثانوي">تالتة ثانوي</option>
-                <option value="الصف الأول الإعدادي">أولى إعدادي</option>
-                <option value="الصف الثاني الإعدادي">تانية إعدادي</option>
-                <option value="الصف الثالث الإعدادي">تالتة إعدادي</option>
-                <option value="الصف السادس الابتدائي">سادسة ابتدائي</option>
-                <option value="الصف الخامس الابتدائي">خامسة ابتدائي</option>
-                <option value="الصف الرابع الابتدائي">رابعة ابتدائي</option>
-              </select>
-            </div>
-
-            {/* Education Type Filter */}
-            <div className="w-full sm:w-auto">
-              <select
-                value={educationTypeFilter}
-                onChange={(e) => setEducationTypeFilter(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium cursor-pointer"
-              >
-                <option value="all">كافة أنواع التعليم</option>
-                <option value="عام">تعليم عام</option>
-                <option value="لغات">تجريبي / لغات</option>
-                <option value="أزهر">أزهر شريف</option>
-              </select>
-            </div>
-
-            {/* Gender Filter */}
-            <div className="w-full sm:w-auto">
-              <select
-                value={genderFilter}
-                onChange={(e) => setGenderFilter(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium cursor-pointer"
-              >
-                <option value="all">الذكور والإناث</option>
-                <option value="male">بنين (ذكور)</option>
-                <option value="female">بنات (إناث)</option>
-              </select>
-            </div>
-          </>
-        )}
       </div>
 
       {/* ============================================================
-          MAIN DATA CONTENT (STUDENTS OR TEACHERS)
+          MAIN DATA LIST (TABLE OR MOBILE CARDS)
           ============================================================ */}
       {isLoading ? (
         <div className="bg-white rounded-3xl p-16 text-center shadow-xs border border-slate-100">
           <RefreshCw size={36} className="animate-spin text-sky-600 mx-auto mb-3" />
           <p className="text-slate-500 text-sm font-bold">جاري تحميل الاستمارات الإلكترونية من السيرفر السحابي...</p>
         </div>
-      ) : activeTab === 'students' ? (
-        /* ==================== STUDENTS TABLE ==================== */
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-          {filteredStudents.length === 0 ? (
-            <div className="p-16 text-center">
-              <Users size={48} className="text-slate-300 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-slate-700">لا توجد استمارات طلاب مسجلة تطابق البحث</h3>
-              <p className="text-slate-400 text-xs mt-1">تأكد من شروط الفلترة أو جرب البحث بكلمات أخرى</p>
-            </div>
+      ) : paginatedList.length === 0 ? (
+        <div className="bg-white rounded-3xl p-16 text-center shadow-xs border border-slate-100">
+          {activeTab === 'students' ? (
+            <Users size={48} className="text-slate-300 mx-auto mb-3" />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[11px] sm:text-xs">
-                    <th className="py-3.5 px-4 font-bold">الطالب</th>
-                    <th className="py-3.5 px-4 font-bold">الصف ونوع التعليم</th>
-                    <th className="py-3.5 px-4 font-bold">المدرسة والعنوان</th>
-                    <th className="py-3.5 px-4 font-bold">أرقام التواصل</th>
-                    <th className="py-3.5 px-4 font-bold">تاريخ التقديم</th>
-                    <th className="py-3.5 px-4 font-bold text-center">الحالة</th>
-                    <th className="py-3.5 px-4 font-bold text-center">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.map((student) => {
-                    const isElementaryNoPhone = student.phone?.includes('طالب ابتدائي') || student.phone?.includes('لا يوجد');
-
-                    return (
-                      <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
-                        {/* Student Name & Photo */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              onClick={() => student.photo_url ? setPreviewImage({ url: student.photo_url, title: student.full_name }) : setSelectedStudent(student)}
-                              className="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                              title="اضغط للمعاينة المكبرة"
-                            >
-                              {student.photo_url ? (
-                                <img
-                                  src={student.photo_url}
-                                  alt={student.full_name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                  <User size={18} />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <span 
-                                onClick={() => setSelectedStudent(student)}
-                                className="font-bold text-slate-800 hover:text-sky-600 cursor-pointer block"
-                              >
-                                {student.full_name}
-                              </span>
-                              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                                <span className="font-mono">الرقم القومي: {student.national_id || 'غير مسجل'}</span>
-                                {student.gender && (
-                                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold ${student.gender === 'female' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'}`}>
-                                    {student.gender === 'female' ? 'أنثى' : 'ذكر'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Grade & Education Type */}
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-700 block">{student.academic_grade}</span>
-                          <span className="text-[11px] text-sky-600 bg-sky-50 px-2 py-0.5 rounded font-semibold inline-block mt-0.5">
-                            {student.education_type}
-                          </span>
-                        </td>
-
-                        {/* School Name & Address */}
-                        <td className="py-3.5 px-4">
-                          <span className="text-slate-700 text-xs font-semibold block">{student.school_name || 'غير مسجل'}</span>
-                          <span className="text-[11px] text-slate-400 block truncate max-w-[160px]">
-                            {student.address || 'العنوان غير مسجل'}
-                          </span>
-                        </td>
-
-                        {/* Phones & Direct WhatsApp */}
-                        <td className="py-3.5 px-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5 font-mono text-xs">
-                              <span className="text-slate-500 text-[10px]">الطالب:</span>
-                              {isElementaryNoPhone ? (
-                                <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-sans font-bold">
-                                  طالب بدون هاتف
-                                </span>
-                              ) : (
-                                <>
-                                  <span className="font-bold text-slate-800">{student.phone}</span>
-                                  <a
-                                    href={getDirectWhatsAppUrl(student.phone, `أهلاً بك يا ${student.full_name}، نود إعلامك بشأن استمارة طلبك في أكاديمية أطلس التعليمية.`)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-emerald-600 hover:text-emerald-700 p-0.5"
-                                    title="محادثة واتساب"
-                                  >
-                                    <MessageCircle size={14} />
-                                  </a>
-                                </>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
-                              <span>ولي الأمر:</span>
-                              <span className="font-semibold text-slate-700">{student.father_phone}</span>
-                              <a
-                                href={getDirectWhatsAppUrl(student.father_phone, `السلام عليكم، بخصوص استمارة تسجيل الطالب/ة ${student.full_name} في أكاديمية أطلس.`)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-emerald-600 hover:text-emerald-700 p-0.5"
-                                title="محادثة ولي الأمر واتساب"
-                              >
-                                <MessageCircle size={14} />
-                              </a>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Registration Date/Time */}
-                        <td className="py-3.5 px-4">
-                          <span className="text-xs font-semibold text-slate-700 block">
-                            {formatArabicDateTime(student.created_at)}
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-3.5 px-4 text-center">
-                          {student.status === 'approved' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 size={12} />
-                              <span>معتمد</span>
-                            </span>
-                          ) : student.status === 'rejected' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                              <XCircle size={12} />
-                              <span>مرفوض</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                              <Clock size={12} />
-                              <span>قيد المراجعة</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-3.5 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* View Full Details */}
-                            <button
-                              type="button"
-                              onClick={() => setSelectedStudent(student)}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                              title="عرض كافة التفاصيل"
-                            >
-                              <Eye size={15} />
-                            </button>
-
-                            {/* Print Application */}
-                            <button
-                              type="button"
-                              onClick={() => printStudentApplication(student)}
-                              className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors cursor-pointer"
-                              title="طباعة الاستمارة"
-                            >
-                              <Printer size={15} />
-                            </button>
-
-                            {/* Approve */}
-                            {student.status !== 'approved' && (
-                              <button
-                                type="button"
-                                disabled={updatingId === student.id}
-                                onClick={() => handleUpdateStatus('student', student.id, 'approved')}
-                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                                title="اعتماد وقبول"
-                              >
-                                <CheckCircle2 size={15} />
-                              </button>
-                            )}
-
-                            {/* Reject */}
-                            {student.status !== 'rejected' && (
-                              <button
-                                type="button"
-                                disabled={updatingId === student.id}
-                                onClick={() => handleUpdateStatus('student', student.id, 'rejected')}
-                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
-                                title="رفض الطلب"
-                              >
-                                <XCircle size={15} />
-                              </button>
-                            )}
-
-                            {/* Delete */}
-                            <button
-                              type="button"
-                              disabled={updatingId === student.id}
-                              onClick={() => handleDeleteRecord('student', student.id, student.full_name)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              title="حذف الاستمارة"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <GraduationCap size={48} className="text-slate-300 mx-auto mb-3" />
+          )}
+          <h3 className="text-base font-bold text-slate-700">لا توجد استمارات مسجلة تطابق شروط البحث</h3>
+          <p className="text-slate-400 text-xs mt-1">تأكد من شروط الفلترة أو جرب البحث بكلمات أخرى</p>
+          {hasActiveFilters && (
+            <button
+              onClick={resetAllFilters}
+              className="mt-4 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw size={14} />
+              <span>إعادة تعيين كافة الفلاتر</span>
+            </button>
           )}
         </div>
       ) : (
-        /* ==================== TEACHERS TABLE ==================== */
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-          {filteredTeachers.length === 0 ? (
-            <div className="p-16 text-center">
-              <GraduationCap size={48} className="text-slate-300 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-slate-700">لا توجد استمارات معلمين مسجلة تطابق البحث</h3>
-              <p className="text-slate-400 text-xs mt-1">تأكد من شروط الفلترة أو جرب البحث بكلمات أخرى</p>
-            </div>
-          ) : (
+        <>
+          {/* ============================================================
+              DESKTOP TABLE VIEW (hidden on very small screens if viewMode=cards)
+              ============================================================ */}
+          <div className={`${viewMode === 'cards' ? 'hidden' : 'hidden md:block'} bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden`}>
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs sm:text-sm">
+              <table className="w-full text-right text-xs sm:text-sm min-w-[1100px]">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[11px] sm:text-xs">
-                    <th className="py-3.5 px-4 font-bold">المعلم</th>
-                    <th className="py-3.5 px-4 font-bold">المواد التعليمية</th>
-                    <th className="py-3.5 px-4 font-bold">المراحل المستهدفة</th>
-                    <th className="py-3.5 px-4 font-bold min-w-[260px]">المجموعات ومواعيد الحصص (مادة كل مجموعة)</th>
-                    <th className="py-3.5 px-4 font-bold">فريق المساعدين</th>
-                    <th className="py-3.5 px-4 font-bold">أرقام التواصل</th>
-                    <th className="py-3.5 px-4 font-bold">تاريخ التقديم</th>
-                    <th className="py-3.5 px-4 font-bold text-center">الحالة</th>
-                    <th className="py-3.5 px-4 font-bold text-center">الإجراءات</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-[11px] sm:text-xs">
+                    {activeTab === 'teachers' ? (
+                      <>
+                        <th className="py-3.5 px-4 font-bold min-w-[200px]">المعلم</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[150px]">المواد التخصصية</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[160px]">المراحل المستهدفة</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[280px]">المجموعات ومواعيد الحصص (مادة كل مجموعة)</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[130px]">فريق المساعدين</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[140px]">أرقام التواصل</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[120px]">تاريخ التقديم</th>
+                        <th className="py-3.5 px-4 font-bold text-center min-w-[90px]">الحالة</th>
+                        <th className="py-3.5 px-4 font-bold text-center min-w-[140px]">الإجراءات</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="py-3.5 px-4 font-bold min-w-[200px]">الطالب</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[140px]">الصف ونوع التعليم</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[160px]">المدرسة والعنوان</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[160px]">أرقام التواصل</th>
+                        <th className="py-3.5 px-4 font-bold min-w-[120px]">تاريخ التقديم</th>
+                        <th className="py-3.5 px-4 font-bold text-center min-w-[90px]">الحالة</th>
+                        <th className="py-3.5 px-4 font-bold text-center min-w-[140px]">الإجراءات</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredTeachers.map((teacher) => {
-                    const assistants = parseAssistantsData(teacher);
-                    const groups = parseGroupsData(teacher);
-                    const specs = (teacher.specialization || '').split(/[،,]/).map((s) => s.trim()).filter(Boolean);
+                  {activeTab === 'teachers'
+                    ? paginatedList.map((teacher) => {
+                        const assistants = parseAssistantsData(teacher);
+                        const groups = parseGroupsData(teacher);
+                        const specs = (teacher.specialization || '').split(/[،,]/).map((s) => s.trim()).filter(Boolean);
 
-                    return (
-                      <tr key={teacher.id} className="hover:bg-slate-50/70 transition-colors">
-                        {/* Teacher Name & Photo */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              onClick={() => teacher.photo_url ? setPreviewImage({ url: teacher.photo_url, title: teacher.full_name }) : setSelectedTeacher(teacher)}
-                              className="w-11 h-11 rounded-xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                              title="اضغط للمعاينة المكبرة"
-                            >
-                              {teacher.photo_url ? (
-                                <img
-                                  src={teacher.photo_url}
-                                  alt={teacher.full_name}
-                                  className="w-full h-full object-cover"
-                                />
+                        return (
+                          <tr key={teacher.id} className="hover:bg-slate-50/70 transition-colors">
+                            {/* Teacher Info */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div 
+                                  onClick={() => teacher.photo_url ? setPreviewImage({ url: teacher.photo_url, title: teacher.full_name }) : setSelectedTeacher(teacher)}
+                                  className="w-10 h-10 rounded-xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                  title="اضغط للمعاينة المكبرة"
+                                >
+                                  {teacher.photo_url ? (
+                                    <img
+                                      src={teacher.photo_url}
+                                      alt={teacher.full_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-rose-500">
+                                      <GraduationCap size={18} />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <span 
+                                    onClick={() => setSelectedTeacher(teacher)}
+                                    className="font-bold text-slate-800 hover:text-rose-600 cursor-pointer block leading-tight"
+                                  >
+                                    {teacher.nickname ? `${teacher.nickname}` : teacher.full_name}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500 block truncate max-w-[160px] mt-0.5">
+                                    {teacher.full_name}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Specializations */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                {specs.map((s, idx) => (
+                                  <span key={idx} className="bg-rose-50 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-rose-200">
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+
+                            {/* Target Grades */}
+                            <td className="py-3.5 px-4">
+                              <span className="text-slate-600 text-xs block line-clamp-2 max-w-[180px] leading-relaxed">
+                                {teacher.target_grades || 'غير محدد'}
+                              </span>
+                            </td>
+
+                            {/* Groups with 12H Times and Subject */}
+                            <td className="py-3.5 px-4">
+                              {groups.length === 0 ? (
+                                <span className="text-slate-400 text-xs">لا توجد مواعيد مسجلة</span>
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-rose-400">
-                                  <GraduationCap size={18} />
+                                <div className="space-y-1.5 max-w-[280px]">
+                                  {groups.slice(0, 2).map((grp, idx) => (
+                                    <div 
+                                      key={idx} 
+                                      className="p-1.5 rounded-lg bg-purple-50/90 border border-purple-200 flex items-center justify-between text-[11px] gap-1.5"
+                                    >
+                                      <div className="flex items-center gap-1 font-semibold text-purple-950 truncate">
+                                        <span className="text-purple-700 font-bold">{grp.day}:</span>
+                                        <span>{formatTime12H(grp.start_time)}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <span className="font-bold text-purple-800 bg-purple-100 px-1.5 py-0.2 rounded text-[10px] border border-purple-300">
+                                          مادة: {grp.subject}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {groups.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedTeacher(teacher)}
+                                      className="text-[10px] text-purple-700 font-bold hover:underline block"
+                                    >
+                                      + {groups.length - 2} مجموعات أخرى (اضغط للعرض)
+                                    </button>
+                                  )}
                                 </div>
                               )}
-                            </div>
-                            <div>
-                              <span 
-                                onClick={() => setSelectedTeacher(teacher)}
-                                className="font-bold text-slate-800 hover:text-rose-600 cursor-pointer block"
-                              >
-                                {teacher.nickname ? `${teacher.nickname}` : teacher.full_name}
+                            </td>
+
+                            {/* Assistants */}
+                            <td className="py-3.5 px-4">
+                              {assistants.length === 0 ? (
+                                <span className="text-slate-400 text-xs">إدارة شخصية</span>
+                              ) : (
+                                <div className="space-y-0.5">
+                                  <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">
+                                    {assistants.length} مساعد
+                                  </span>
+                                  <div className="text-[11px] text-slate-600 truncate max-w-[130px]">
+                                    {assistants[0]?.name}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Contacts */}
+                            <td className="py-3.5 px-4">
+                              <div className="space-y-0.5 text-xs font-mono">
+                                <span className="font-bold text-slate-800 block">{teacher.phone}</span>
+                                {teacher.whatsapp_phone && (
+                                  <div className="flex items-center gap-1 text-[11px] text-emerald-700">
+                                    <span>{teacher.whatsapp_phone}</span>
+                                    <a
+                                      href={getDirectWhatsAppUrl(teacher.whatsapp_phone, `مرحباً بحضرتك يا ${teacher.nickname || teacher.full_name}`)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-emerald-600 hover:text-emerald-700"
+                                      title="واتساب مباشر"
+                                    >
+                                      <MessageCircle size={13} />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Created At */}
+                            <td className="py-3.5 px-4">
+                              <span className="text-xs text-slate-700 block">
+                                {formatArabicDateTime(teacher.created_at)}
                               </span>
-                              <span className="text-[11px] text-slate-500 block truncate max-w-[160px]">
-                                {teacher.full_name}
-                              </span>
-                              {teacher.national_id && (
-                                <span className="text-[10px] font-mono text-slate-400 block">
-                                  {teacher.national_id}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3.5 px-4 text-center">
+                              {teacher.status === 'approved' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 size={11} />
+                                  <span>معتمد</span>
+                                </span>
+                              ) : teacher.status === 'rejected' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <XCircle size={11} />
+                                  <span>مرفوض</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Clock size={11} />
+                                  <span>مراجعة</span>
                                 </span>
                               )}
-                            </div>
-                          </div>
-                        </td>
+                            </td>
 
-                        {/* Specialization / Subjects Badges */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-wrap gap-1 max-w-[180px]">
-                            {specs.map((s, idx) => (
-                              <span key={idx} className="bg-rose-50 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-rose-200">
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-
-                        {/* Target Grades */}
-                        <td className="py-3.5 px-4">
-                          <span className="text-slate-600 text-xs block line-clamp-2 max-w-[180px]">
-                            {teacher.target_grades || 'غير محدد'}
-                          </span>
-                        </td>
-
-                        {/* Groups & Scheduling with Subject of Each Group */}
-                        <td className="py-3.5 px-4">
-                          {groups.length === 0 ? (
-                            <span className="text-slate-400 text-xs">لا توجد مواعيد مسجلة</span>
-                          ) : (
-                            <div className="space-y-1.5 max-w-[280px]">
-                              {groups.slice(0, 3).map((grp, idx) => (
-                                <div 
-                                  key={idx} 
-                                  className="p-1.5 rounded-lg bg-purple-50/90 border border-purple-200/80 flex items-center justify-between text-[11px] gap-1.5"
-                                >
-                                  <div className="flex items-center gap-1 font-semibold text-purple-950 truncate">
-                                    <span className="text-purple-600 font-bold">{grp.day}:</span>
-                                    <span className="font-mono text-slate-700">{formatTime12H(grp.start_time)}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <span className="font-bold text-purple-800 bg-purple-100/90 px-1.5 py-0.5 rounded text-[10px] border border-purple-300">
-                                      مادة: {grp.subject}
-                                    </span>
-                                    <span className="text-[10px] text-slate-500 hidden sm:inline">
-                                      ({grp.grade?.replace('الصف ', '')})
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                              {groups.length > 3 && (
+                            {/* Actions */}
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedTeacher(teacher)}
-                                  className="text-[11px] text-purple-700 font-bold hover:underline block"
+                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  title="عرض كافة التفاصيل"
                                 >
-                                  + {groups.length - 3} مجموعات أخرى (اضغط للعرض)
+                                  <Eye size={14} />
                                 </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Assistants Team */}
-                        <td className="py-3.5 px-4">
-                          {assistants.length === 0 ? (
-                            <span className="text-slate-400 text-xs">إدارة شخصية</span>
-                          ) : (
-                            <div className="space-y-1">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                <span>{assistants.length} مساعد مسجل</span>
-                              </span>
-                              <div className="text-[11px] text-slate-600 truncate max-w-[140px]">
-                                {assistants[0]?.name}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Contact & WhatsApp */}
-                        <td className="py-3.5 px-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5 font-mono text-xs">
-                              <span className="font-bold text-slate-800">{teacher.phone}</span>
-                            </div>
-                            {teacher.whatsapp_phone && (
-                              <div className="flex items-center gap-1.5 font-mono text-[11px] text-emerald-700">
-                                <span>{teacher.whatsapp_phone}</span>
-                                <a
-                                  href={getDirectWhatsAppUrl(teacher.whatsapp_phone, `مرحباً بحضرتك يا ${teacher.nickname || teacher.full_name}، نود التواصل معكم من إدارة أكاديمية أطلس.`)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-emerald-600 hover:text-emerald-700 p-0.5"
-                                  title="محادثة واتساب مباشرة"
+                                <button
+                                  type="button"
+                                  onClick={() => printTeacherApplication(teacher)}
+                                  className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer"
+                                  title="طباعة الاستمارة"
                                 >
-                                  <MessageCircle size={14} />
-                                </a>
+                                  <Printer size={14} />
+                                </button>
+                                {teacher.status !== 'approved' && (
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === teacher.id}
+                                    onClick={() => handleUpdateStatus('teacher', teacher.id, 'approved')}
+                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                                    title="اعتماد"
+                                  >
+                                    <CheckCircle2 size={14} />
+                                  </button>
+                                )}
+                                {teacher.status !== 'rejected' && (
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === teacher.id}
+                                    onClick={() => handleUpdateStatus('teacher', teacher.id, 'rejected')}
+                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                    title="رفض"
+                                  >
+                                    <XCircle size={14} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={updatingId === teacher.id}
+                                  onClick={() => handleDeleteRecord('teacher', teacher.id, teacher.full_name)}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="حذف"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
                               </div>
-                            )}
-                          </div>
-                        </td>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    : paginatedList.map((student) => {
+                        const isElementaryNoPhone = student.phone?.includes('طالب ابتدائي') || student.phone?.includes('لا يوجد');
 
-                        {/* Registration Date/Time */}
-                        <td className="py-3.5 px-4">
-                          <span className="text-xs font-semibold text-slate-700 block">
-                            {formatArabicDateTime(teacher.created_at)}
-                          </span>
-                        </td>
+                        return (
+                          <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
+                            {/* Student Info */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div 
+                                  onClick={() => student.photo_url ? setPreviewImage({ url: student.photo_url, title: student.full_name }) : setSelectedStudent(student)}
+                                  className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                  title="اضغط للمعاينة المكبرة"
+                                >
+                                  {student.photo_url ? (
+                                    <img
+                                      src={student.photo_url}
+                                      alt={student.full_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                      <User size={18} />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <span 
+                                    onClick={() => setSelectedStudent(student)}
+                                    className="font-bold text-slate-800 hover:text-sky-600 cursor-pointer block leading-tight"
+                                  >
+                                    {student.full_name}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
+                                    <span className="font-mono">{student.national_id || 'غير مسجل'}</span>
+                                    {student.gender && (
+                                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold ${student.gender === 'female' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'}`}>
+                                        {student.gender === 'female' ? 'أنثى' : 'ذكر'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
 
-                        {/* Status */}
-                        <td className="py-3.5 px-4 text-center">
-                          {teacher.status === 'approved' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 size={12} />
-                              <span>معتمد</span>
-                            </span>
-                          ) : teacher.status === 'rejected' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                              <XCircle size={12} />
-                              <span>مرفوض</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                              <Clock size={12} />
-                              <span>قيد المراجعة</span>
-                            </span>
-                          )}
-                        </td>
+                            {/* Grade & Education Type */}
+                            <td className="py-3.5 px-4">
+                              <span className="font-bold text-slate-700 block">{student.academic_grade}</span>
+                              <span className="text-[11px] text-sky-600 bg-sky-50 px-2 py-0.5 rounded font-semibold inline-block mt-0.5">
+                                {student.education_type}
+                              </span>
+                            </td>
 
-                        {/* Actions */}
-                        <td className="py-3.5 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* View Full Details */}
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTeacher(teacher)}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                              title="عرض كافة التفاصيل والجدول"
-                            >
-                              <Eye size={15} />
-                            </button>
+                            {/* School Name & Address */}
+                            <td className="py-3.5 px-4">
+                              <span className="text-slate-700 text-xs font-semibold block">{student.school_name || 'غير مسجل'}</span>
+                              <span className="text-[11px] text-slate-400 block truncate max-w-[160px]">
+                                {student.address || 'العنوان غير مسجل'}
+                              </span>
+                            </td>
 
-                            {/* Print Application */}
-                            <button
-                              type="button"
-                              onClick={() => printTeacherApplication(teacher)}
-                              className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer"
-                              title="طباعة استمارة وجدول المعلم"
-                            >
-                              <Printer size={15} />
-                            </button>
+                            {/* Contacts */}
+                            <td className="py-3.5 px-4">
+                              <div className="space-y-0.5 text-xs font-mono">
+                                <div className="flex items-center gap-1">
+                                  {isElementaryNoPhone ? (
+                                    <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded font-sans font-bold">
+                                      طالب بدون هاتف
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span className="font-bold text-slate-800">{student.phone}</span>
+                                      <a
+                                        href={getDirectWhatsAppUrl(student.phone, `أهلاً بك يا ${student.full_name}`)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-emerald-600 hover:text-emerald-700"
+                                      >
+                                        <MessageCircle size={13} />
+                                      </a>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                                  <span>ولي الأمر: {student.father_phone}</span>
+                                  <a
+                                    href={getDirectWhatsAppUrl(student.father_phone, `السلام عليكم، بخصوص تسجيل الطالب/ة ${student.full_name}`)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-emerald-600 hover:text-emerald-700"
+                                  >
+                                    <MessageCircle size={13} />
+                                  </a>
+                                </div>
+                              </div>
+                            </td>
 
-                            {/* Approve */}
-                            {teacher.status !== 'approved' && (
-                              <button
-                                type="button"
-                                disabled={updatingId === teacher.id}
-                                onClick={() => handleUpdateStatus('teacher', teacher.id, 'approved')}
-                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                                title="اعتماد وقبول"
-                              >
-                                <CheckCircle2 size={15} />
-                              </button>
-                            )}
+                            {/* Created At */}
+                            <td className="py-3.5 px-4">
+                              <span className="text-xs text-slate-700 block">
+                                {formatArabicDateTime(student.created_at)}
+                              </span>
+                            </td>
 
-                            {/* Reject */}
-                            {teacher.status !== 'rejected' && (
-                              <button
-                                type="button"
-                                disabled={updatingId === teacher.id}
-                                onClick={() => handleUpdateStatus('teacher', teacher.id, 'rejected')}
-                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
-                                title="رفض الطلب"
-                              >
-                                <XCircle size={15} />
-                              </button>
-                            )}
+                            {/* Status */}
+                            <td className="py-3.5 px-4 text-center">
+                              {student.status === 'approved' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 size={11} />
+                                  <span>معتمد</span>
+                                </span>
+                              ) : student.status === 'rejected' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <XCircle size={11} />
+                                  <span>مرفوض</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Clock size={11} />
+                                  <span>مراجعة</span>
+                                </span>
+                              )}
+                            </td>
 
-                            {/* Delete */}
-                            <button
-                              type="button"
-                              disabled={updatingId === teacher.id}
-                              onClick={() => handleDeleteRecord('teacher', teacher.id, teacher.full_name)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              title="حذف الاستمارة"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                            {/* Actions */}
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedStudent(student)}
+                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  title="عرض كافة التفاصيل"
+                                >
+                                  <Eye size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => printStudentApplication(student)}
+                                  className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors cursor-pointer"
+                                  title="طباعة الاستمارة"
+                                >
+                                  <Printer size={14} />
+                                </button>
+                                {student.status !== 'approved' && (
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === student.id}
+                                    onClick={() => handleUpdateStatus('student', student.id, 'approved')}
+                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                                    title="اعتماد"
+                                  >
+                                    <CheckCircle2 size={14} />
+                                  </button>
+                                )}
+                                {student.status !== 'rejected' && (
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === student.id}
+                                    onClick={() => handleUpdateStatus('student', student.id, 'rejected')}
+                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                    title="رفض"
+                                  >
+                                    <XCircle size={14} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={updatingId === student.id}
+                                  onClick={() => handleDeleteRecord('student', student.id, student.full_name)}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="حذف"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+
+          {/* ============================================================
+              MOBILE / CARDS VIEW (Responsive & Touch-Friendly)
+              ============================================================ */}
+          <div className={`${viewMode === 'cards' ? 'grid' : 'grid md:hidden'} grid-cols-1 sm:grid-cols-2 gap-3.5`}>
+            {activeTab === 'teachers'
+              ? paginatedList.map((teacher) => {
+                  const assistants = parseAssistantsData(teacher);
+                  const groups = parseGroupsData(teacher);
+                  const specs = (teacher.specialization || '').split(/[،,]/).map((s) => s.trim()).filter(Boolean);
+
+                  return (
+                    <div 
+                      key={teacher.id}
+                      className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3 text-right"
+                    >
+                      {/* Top Row: Avatar + Name + Status */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            onClick={() => teacher.photo_url ? setPreviewImage({ url: teacher.photo_url, title: teacher.full_name }) : setSelectedTeacher(teacher)}
+                            className="w-12 h-12 rounded-xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer"
+                          >
+                            {teacher.photo_url ? (
+                              <img src={teacher.photo_url} alt={teacher.full_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-rose-500">
+                                <GraduationCap size={22} />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 
+                              onClick={() => setSelectedTeacher(teacher)}
+                              className="font-bold text-slate-800 text-sm hover:text-rose-600 cursor-pointer leading-tight"
+                            >
+                              {teacher.nickname ? `${teacher.nickname}` : teacher.full_name}
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-0.5">{teacher.full_name}</p>
+                            <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                              {formatArabicDateTime(teacher.created_at)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          {teacher.status === 'approved' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 size={11} />
+                              <span>معتمد</span>
+                            </span>
+                          ) : teacher.status === 'rejected' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <XCircle size={11} />
+                              <span>مرفوض</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <Clock size={11} />
+                              <span>قيد المراجعة</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Subjects & Grades */}
+                      <div className="space-y-1.5 pt-1 border-t border-slate-100 text-xs">
+                        <div className="flex flex-wrap gap-1">
+                          {specs.map((s, idx) => (
+                            <span key={idx} className="bg-rose-50 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-200">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-slate-600 line-clamp-1">{teacher.target_grades}</p>
+                      </div>
+
+                      {/* Groups List (12H) */}
+                      {groups.length > 0 && (
+                        <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 space-y-1 text-xs">
+                          <span className="text-[11px] font-bold text-purple-900 block mb-1">
+                            المجموعات ({groups.length} مواعيد مسجلة):
+                          </span>
+                          {groups.slice(0, 3).map((grp, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-[11px] bg-white p-1.5 rounded-lg border border-purple-100">
+                              <span className="font-bold text-purple-950">{grp.day}: {formatTime12H(grp.start_time)}</span>
+                              <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded">
+                                مادة: {grp.subject}
+                              </span>
+                            </div>
+                          ))}
+                          {groups.length > 3 && (
+                            <span className="text-[10px] text-purple-700 font-bold block text-center pt-0.5">
+                              + {groups.length - 3} مجموعات أخرى
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Quick Contacts */}
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-800">{teacher.phone}</span>
+                          {teacher.whatsapp_phone && (
+                            <a
+                              href={getDirectWhatsAppUrl(teacher.whatsapp_phone, `مرحباً بحضرتك يا ${teacher.nickname || teacher.full_name}`)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-100"
+                            >
+                              <MessageCircle size={12} />
+                              <span>واتساب</span>
+                            </a>
+                          )}
+                        </div>
+                        {assistants.length > 0 && (
+                          <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-bold">
+                            {assistants.length} مساعد
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Card Actions Footer */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTeacher(teacher)}
+                          className="flex-1 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <Eye size={13} />
+                          <span>التفاصيل</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printTeacherApplication(teacher)}
+                          className="p-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors"
+                          title="طباعة"
+                        >
+                          <Printer size={15} />
+                        </button>
+                        {teacher.status !== 'approved' && (
+                          <button
+                            type="button"
+                            disabled={updatingId === teacher.id}
+                            onClick={() => handleUpdateStatus('teacher', teacher.id, 'approved')}
+                            className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
+                            title="اعتماد"
+                          >
+                            <CheckCircle2 size={15} />
+                          </button>
+                        )}
+                        {teacher.status !== 'rejected' && (
+                          <button
+                            type="button"
+                            disabled={updatingId === teacher.id}
+                            onClick={() => handleUpdateStatus('teacher', teacher.id, 'rejected')}
+                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
+                            title="رفض"
+                          >
+                            <XCircle size={15} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={updatingId === teacher.id}
+                          onClick={() => handleDeleteRecord('teacher', teacher.id, teacher.full_name)}
+                          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
+                          title="حذف"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              : paginatedList.map((student) => {
+                  const isElementaryNoPhone = student.phone?.includes('طالب ابتدائي') || student.phone?.includes('لا يوجد');
+
+                  return (
+                    <div 
+                      key={student.id}
+                      className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3 text-right"
+                    >
+                      {/* Top Row: Avatar + Name + Status */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            onClick={() => student.photo_url ? setPreviewImage({ url: student.photo_url, title: student.full_name }) : setSelectedStudent(student)}
+                            className="w-12 h-12 rounded-xl overflow-hidden bg-sky-50 border border-sky-200 shrink-0 cursor-pointer"
+                          >
+                            {student.photo_url ? (
+                              <img src={student.photo_url} alt={student.full_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-sky-500">
+                                <User size={22} />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 
+                              onClick={() => setSelectedStudent(student)}
+                              className="font-bold text-slate-800 text-sm hover:text-sky-600 cursor-pointer leading-tight"
+                            >
+                              {student.full_name}
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-0.5">{student.academic_grade} ({student.education_type})</p>
+                            <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                              {formatArabicDateTime(student.created_at)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          {student.status === 'approved' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 size={11} />
+                              <span>معتمد</span>
+                            </span>
+                          ) : student.status === 'rejected' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <XCircle size={11} />
+                              <span>مرفوض</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <Clock size={11} />
+                              <span>قيد المراجعة</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* School & Address */}
+                      <div className="pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-0.5">
+                        <p className="font-semibold text-slate-700">المدرسة: {student.school_name || 'غير مسجل'}</p>
+                        <p className="text-[11px] text-slate-400 truncate">العنوان: {student.address || 'غير مسجل'}</p>
+                      </div>
+
+                      {/* Quick Contacts */}
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 text-[11px]">الطالب:</span>
+                          {isElementaryNoPhone ? (
+                            <span className="text-[10px] text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded font-bold">
+                              بدون هاتف
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1 font-mono">
+                              <span>{student.phone}</span>
+                              <a
+                                href={getDirectWhatsAppUrl(student.phone, `أهلاً بك يا ${student.full_name}`)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-600 hover:text-emerald-700"
+                              >
+                                <MessageCircle size={12} />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 text-[11px]">ولي الأمر:</span>
+                          <div className="flex items-center gap-1 font-mono">
+                            <span>{student.father_phone}</span>
+                            <a
+                              href={getDirectWhatsAppUrl(student.father_phone, `السلام عليكم، بخصوص تسجيل الطالب/ة ${student.full_name}`)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-600 hover:text-emerald-700"
+                            >
+                              <MessageCircle size={12} />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Actions Footer */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudent(student)}
+                          className="flex-1 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <Eye size={13} />
+                          <span>التفاصيل</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printStudentApplication(student)}
+                          className="p-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors"
+                          title="طباعة"
+                        >
+                          <Printer size={15} />
+                        </button>
+                        {student.status !== 'approved' && (
+                          <button
+                            type="button"
+                            disabled={updatingId === student.id}
+                            onClick={() => handleUpdateStatus('student', student.id, 'approved')}
+                            className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
+                            title="اعتماد"
+                          >
+                            <CheckCircle2 size={15} />
+                          </button>
+                        )}
+                        {student.status !== 'rejected' && (
+                          <button
+                            type="button"
+                            disabled={updatingId === student.id}
+                            onClick={() => handleUpdateStatus('student', student.id, 'rejected')}
+                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
+                            title="رفض"
+                          >
+                            <XCircle size={15} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={updatingId === student.id}
+                          onClick={() => handleDeleteRecord('student', student.id, student.full_name)}
+                          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
+                          title="حذف"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+          </div>
+
+          {/* ============================================================
+              PAGINATION BAR (Controls: 10, 20, 25, 50, 100 & Page Nav)
+              ============================================================ */}
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border border-slate-200/80 rounded-2xl bg-white shadow-2xs gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-xs text-slate-500">
+                عرض <span className="font-bold text-slate-800">{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</span> من أصل <span className="font-bold text-slate-800">{totalItems}</span> {activeTab === 'students' ? 'طالب' : 'معلم'}
+                {totalPages > 1 && (
+                  <span className="mr-1">
+                    (صفحة <span className="font-bold text-slate-800">{safeCurrentPage}</span> من <span className="font-bold text-slate-800">{totalPages}</span>)
+                  </span>
+                )}
+              </p>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 border-r border-slate-200 pr-3">
+                <span>العدد بالصفحة:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage <= 1}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                title="الصفحة السابقة"
+              >
+                <ChevronRight size={15} />
+                <span>السابق</span>
+              </button>
+
+              {/* Page Numbers */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, idx) => {
+                    let p = idx + 1;
+                    if (totalPages > 5 && safeCurrentPage > 3) {
+                      p = safeCurrentPage - 2 + idx;
+                      if (p > totalPages) p = totalPages - (4 - idx);
+                    }
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setCurrentPage(p)}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          safeCurrentPage === p
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safeCurrentPage >= totalPages}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                title="الصفحة التالية"
+              >
+                <span>التالي</span>
+                <ChevronLeft size={15} />
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ============================================================
@@ -1517,9 +1989,9 @@ export default function OnlineRegistrationsPage() {
                     <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">
                       {selectedStudent.education_type}
                     </span>
-                    {selectedStudent.gender && (
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${selectedStudent.gender === 'female' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'}`}>
-                        {selectedStudent.gender === 'female' ? 'أنثى' : 'ذكر'}
+                    {student.gender && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${student.gender === 'female' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'}`}>
+                        {student.gender === 'female' ? 'أنثى' : 'ذكر'}
                       </span>
                     )}
                   </div>
@@ -1581,6 +2053,13 @@ export default function OnlineRegistrationsPage() {
                 <div>
                   <span className="text-slate-400 block text-xs">تاريخ الميلاد:</span>
                   <span className="font-bold text-slate-800">{selectedStudent.birth_date || 'غير محدد'}</span>
+                </div>
+
+                <div>
+                  <span className="text-slate-400 block text-xs">النوع (الجنس):</span>
+                  <span className="font-bold text-slate-800">
+                    {selectedStudent.gender === 'female' ? 'أنثى' : 'ذكر'}
+                  </span>
                 </div>
 
                 <div>
@@ -1880,7 +2359,7 @@ export default function OnlineRegistrationsPage() {
 
                               <div>
                                 <span className="text-slate-400 block text-[11px]">توقيت الحصة:</span>
-                                <span className="font-mono font-bold text-slate-800">
+                                <span className="font-bold text-purple-950">
                                   من {formatTime12H(grp.start_time, true)} إلى {formatTime12H(grp.end_time, true)}
                                 </span>
                               </div>
