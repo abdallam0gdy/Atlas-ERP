@@ -18,6 +18,8 @@ import {
   Printer,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   Layers,
   BookOpen,
@@ -39,7 +41,13 @@ import {
   LayoutGrid,
   Table as TableIcon,
   RotateCcw,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Copy,
+  CheckCheck,
+  FileSpreadsheet,
+  CheckSquare,
+  Square,
+  Share2
 } from 'lucide-react';
 
 // ============================================================
@@ -106,43 +114,34 @@ export const parseAssistantsData = (teacher) => {
     } catch {}
   }
 
-  if (list.length === 0 && (teacher.assistant_name || teacher.assistant_phone)) {
-    list = [
-      {
-        id: 1,
-        name: teacher.assistant_name || 'مساعد السكرتارية',
-        phone: teacher.assistant_phone || '',
-      },
-    ];
-  }
-
-  return list;
+  return list.map((a, idx) => ({
+    id: a.id || idx + 1,
+    name: a.name || `مساعد ${idx + 1}`,
+    phone: a.phone || '',
+  }));
 };
 
-export const calculateGroupDuration = (start, end) => {
-  if (!start || !end) return '';
-  try {
-    const [startH, startM] = start.split(':').map(Number);
-    const [endH, endM] = end.split(':').map(Number);
-    const diffMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-    if (diffMinutes <= 0) return '';
-    const hours = Math.floor(diffMinutes / 60);
-    const mins = diffMinutes % 60;
-    if (hours === 1 && mins === 0) return 'ساعة واحدة';
-    if (hours === 1 && mins === 30) return 'ساعة ونصف';
-    if (hours === 2 && mins === 0) return 'ساعتان';
-    if (hours === 2 && mins === 30) return 'ساعتان ونصف';
-    if (hours === 3 && mins === 0) return '3 ساعات';
-    let text = '';
-    if (hours > 0) text += `${hours} ساعة `;
-    if (mins > 0) text += `و ${mins} دقيقة`;
-    return text.trim();
-  } catch {
-    return '';
-  }
+export const calculateGroupDuration = (startTime, endTime) => {
+  if (!startTime || !endTime) return '';
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  if (isNaN(startH) || isNaN(endH)) return '';
+
+  const startMinutes = startH * 60 + (startM || 0);
+  const endMinutes = endH * 60 + (endM || 0);
+  const duration = endMinutes - startMinutes;
+  if (duration <= 0) return '';
+
+  const hours = Math.floor(duration / 60);
+  const mins = duration % 60;
+  if (hours > 0 && mins > 0) return `${hours} س و ${mins} د`;
+  if (hours === 1) return 'ساعة واحدة';
+  if (hours === 2) return 'ساعتان';
+  if (hours > 2) return `${hours} ساعات`;
+  return `${mins} دقيقة`;
 };
 
-export function formatTime12H(time24, includeWord = false) {
+export const formatTime12H = (time24, includeWord = false) => {
   if (!time24) return '';
   const parts = String(time24).split(':');
   if (parts.length < 2) return time24;
@@ -162,7 +161,7 @@ export function formatTime12H(time24, includeWord = false) {
     return `${hStr}:${m} ${word}`;
   }
   return `${hStr}:${m} ${period}`;
-}
+};
 
 export const formatArabicDateTime = (dateStr) => {
   if (!dateStr) return 'غير محدد';
@@ -210,14 +209,20 @@ export default function OnlineRegistrationsPage() {
   const [genderFilter, setGenderFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [dayFilter, setDayFilter] = useState('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Pagination states
   const [pageSize, setPageSize] = useState(25); // 10, 20, 25, 50, 100
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Multi-Selection State for Batch Actions
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+
   // Selected item for modal
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [modalActiveTab, setModalActiveTab] = useState('overview'); // for internal modal tabs
 
   // Lightbox Image Preview
   const [previewImage, setPreviewImage] = useState(null);
@@ -225,10 +230,23 @@ export default function OnlineRegistrationsPage() {
   // Status updating indicator
   const [updatingId, setUpdatingId] = useState(null);
 
-  // Reset pagination on filter or tab change
+  // Copy to clipboard tracker
+  const [copiedKey, setCopiedKey] = useState(null);
+
+  // Reset pagination & selection on filter or tab change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds([]);
   }, [activeTab, searchQuery, statusFilter, gradeFilter, educationTypeFilter, genderFilter, subjectFilter, dayFilter, pageSize]);
+
+  // Copy to clipboard helper
+  const copyToClipboard = (text, key) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success('تم النسخ إلى الحافظة');
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   // Fetch online students and teachers from Supabase
   const fetchData = async () => {
@@ -290,7 +308,7 @@ export default function OnlineRegistrationsPage() {
           ? 'تم اعتماد وقبول الطلب بنجاح' 
           : newStatus === 'rejected' 
           ? 'تم رفض الطلب' 
-          : 'تم إعادة الطلب لقيد المراجعة'
+          : 'تم إرجاع الطلب لقيد المراجعة'
       );
 
       // Update state locally
@@ -311,9 +329,44 @@ export default function OnlineRegistrationsPage() {
       }
     } catch (err) {
       console.error('Status update error:', err);
-      toast.error('فشل تحديث حالة الطلب، تأكد من الاتصال وصلاحيات Supabase');
+      toast.error('فشل تحديث حالة الطلب، تأكد من الاتصال وصلاحيات السيرفر');
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  // Batch Status Update
+  const handleBatchStatusUpdate = async (newStatus) => {
+    if (selectedIds.length === 0) return;
+    const count = selectedIds.length;
+    const table = activeTab === 'students' ? 'online_students' : 'online_teachers';
+
+    setIsBatchUpdating(true);
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      toast.success(`تم تحديث حالة ${count} طلب بنجاح إلى "${newStatus === 'approved' ? 'معتمد' : newStatus === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}"`);
+
+      if (activeTab === 'students') {
+        setStudents((prev) =>
+          prev.map((s) => (selectedIds.includes(s.id) ? { ...s, status: newStatus } : s))
+        );
+      } else {
+        setTeachers((prev) =>
+          prev.map((t) => (selectedIds.includes(t.id) ? { ...t, status: newStatus } : t))
+        );
+      }
+      setSelectedIds([]);
+    } catch (err) {
+      console.error('Batch update error:', err);
+      toast.error('فشل التحديث الجماعي');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
@@ -340,6 +393,7 @@ export default function OnlineRegistrationsPage() {
         setTeachers((prev) => prev.filter((t) => t.id !== id));
         if (selectedTeacher?.id === id) setSelectedTeacher(null);
       }
+      setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
     } catch (err) {
       console.error('Delete error:', err);
       toast.error('فشل حذف الاستمارة');
@@ -453,31 +507,43 @@ export default function OnlineRegistrationsPage() {
   const stats = useMemo(() => {
     const studentPending = students.filter((s) => s.status === 'pending').length;
     const studentApproved = students.filter((s) => s.status === 'approved').length;
+    const studentRejected = students.filter((s) => s.status === 'rejected').length;
+
     const teacherPending = teachers.filter((t) => t.status === 'pending').length;
     const teacherApproved = teachers.filter((t) => t.status === 'approved').length;
+    const teacherRejected = teachers.filter((t) => t.status === 'rejected').length;
 
     let totalGroups = 0;
     teachers.forEach((t) => {
       totalGroups += parseGroupsData(t).length;
     });
 
-    const latestStudent = students[0];
-    const latestTeacher = teachers[0];
-
     return {
       totalStudents: students.length,
       studentPending,
       studentApproved,
+      studentRejected,
       totalTeachers: teachers.length,
       teacherPending,
       teacherApproved,
+      teacherRejected,
       totalGroups,
       totalApproved: studentApproved + teacherApproved,
-      latestDate: latestStudent?.created_at || latestTeacher?.created_at,
+      totalPending: studentPending + teacherPending,
     };
   }, [students, teachers]);
 
-  const hasActiveFilters = searchQuery || statusFilter !== 'all' || gradeFilter !== 'all' || educationTypeFilter !== 'all' || genderFilter !== 'all' || subjectFilter !== 'all' || dayFilter !== 'all';
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (gradeFilter !== 'all') count++;
+    if (educationTypeFilter !== 'all') count++;
+    if (genderFilter !== 'all') count++;
+    if (subjectFilter !== 'all') count++;
+    if (dayFilter !== 'all') count++;
+    return count;
+  }, [gradeFilter, educationTypeFilter, genderFilter, subjectFilter, dayFilter]);
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || activeFiltersCount > 0;
 
   const resetAllFilters = () => {
     setSearchQuery('');
@@ -487,6 +553,115 @@ export default function OnlineRegistrationsPage() {
     setGenderFilter('all');
     setSubjectFilter('all');
     setDayFilter('all');
+  };
+
+  // Multi-Selection Handlers
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllCurrentPage = () => {
+    const pageIds = paginatedList.map((item) => item.id);
+    const allSelected = pageIds.every((id) => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const isCurrentPageAllSelected = paginatedList.length > 0 && paginatedList.every((item) => selectedIds.includes(item.id));
+
+  // CSV Export Engine with UTF-8 BOM for Arabic Excel Support
+  const exportToCSV = (type, listToExport) => {
+    const dataList = listToExport && listToExport.length > 0 ? listToExport : activeList;
+    if (!dataList || dataList.length === 0) {
+      toast.error('لا توجد بيانات مطابقة لتصديرها');
+      return;
+    }
+
+    let headers = [];
+    let rows = [];
+
+    if (type === 'students') {
+      headers = [
+        'كود الطالب',
+        'اسم الطالب',
+        'الرقم القومي',
+        'هاتف الطالب',
+        'هاتف ولي الأمر',
+        'الصف الدراسي',
+        'نوع التعليم',
+        'المدرسة',
+        'النوع',
+        'العنوان',
+        'الحالة',
+        'تاريخ التسجيل'
+      ];
+
+      rows = dataList.map((s) => [
+        s.id.slice(0, 8).toUpperCase(),
+        `"${(s.full_name || '').replace(/"/g, '""')}"`,
+        `'${s.national_id || ''}`,
+        `'${s.phone || ''}`,
+        `'${s.father_phone || ''}`,
+        `"${s.academic_grade || ''}"`,
+        `"${s.education_type || ''}"`,
+        `"${(s.school_name || '').replace(/"/g, '""')}"`,
+        s.gender === 'female' ? 'أنثى' : 'ذكر',
+        `"${(s.address || '').replace(/"/g, '""')}"`,
+        s.status === 'approved' ? 'معتمد' : s.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة',
+        s.created_at ? new Date(s.created_at).toLocaleDateString('ar-EG') : ''
+      ]);
+    } else {
+      headers = [
+        'كود المعلم',
+        'الاسم الرسمي',
+        'اسم الشهرة',
+        'الرقم القومي',
+        'الهاتف الشخصي',
+        'هاتف الواتساب',
+        'المواد التخصصية',
+        'المراحل المستهدفة',
+        'عدد المجموعات المقترحة',
+        'فريق السكرتارية',
+        'الحالة',
+        'تاريخ التقديم'
+      ];
+
+      rows = dataList.map((t) => {
+        const groups = parseGroupsData(t);
+        const assistants = parseAssistantsData(t);
+        return [
+          t.id.slice(0, 8).toUpperCase(),
+          `"${(t.full_name || '').replace(/"/g, '""')}"`,
+          `"${(t.nickname || '').replace(/"/g, '""')}"`,
+          `'${t.national_id || ''}`,
+          `'${t.phone || ''}`,
+          `'${t.whatsapp_phone || ''}`,
+          `"${(t.specialization || '').replace(/"/g, '""')}"`,
+          `"${(t.target_grades || '').replace(/"/g, '""')}"`,
+          groups.length,
+          `"${assistants.map((a) => a.name).join('، ')}"`,
+          t.status === 'approved' ? 'معتمد' : t.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة',
+          t.created_at ? new Date(t.created_at).toLocaleDateString('ar-EG') : ''
+        ];
+      });
+    }
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${type === 'students' ? 'كشف_طلبات_الطلاب' : 'كشف_طلبات_المعلمين'}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('تم تصدير ملف الكشف بنجاح');
   };
 
   // Print single teacher application
@@ -509,7 +684,6 @@ export default function OnlineRegistrationsPage() {
         <style>
           body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 25px; margin: 0; color: #1e293b; background: #fff; line-height: 1.5; }
           .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
-          .logo { max-height: 70px; }
           .title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; }
           .subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
           .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; font-size: 13px; }
@@ -522,7 +696,7 @@ export default function OnlineRegistrationsPage() {
           th { background: #f1f5f9; color: #334155; font-weight: bold; }
           .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; background: #ede9fe; color: #6d28d9; }
           .footer { margin-top: 35px; border-top: 1px dashed #cbd5e1; padding-top: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
-          @media print { body { padding: 15px; } button { display: none; } }
+          @media print { body { padding: 15px; } }
         </style>
       </head>
       <body>
@@ -531,16 +705,20 @@ export default function OnlineRegistrationsPage() {
             <h1 class="title">أكاديمية أطلس التعليمية — استمارة انضمام معلّم</h1>
             <div class="subtitle">رقم الطلب المرجعي: ${teacher.id.slice(0, 8).toUpperCase()} • تاريخ التقديم: ${formatArabicDateTime(teacher.created_at)}</div>
           </div>
-          ${teacher.logo_url ? `<img src="${teacher.logo_url}" class="logo" />` : ''}
+          ${teacher.photo_url ? `<img src="${teacher.photo_url}" style="width:70px;height:70px;border-radius:10px;object-fit:cover;" />` : ''}
         </div>
 
         <div class="grid">
           <div class="card">
-            <span class="label">اسم المعلم الكامل:</span>
-            <span class="val">${teacher.full_name} ${teacher.nickname ? `(${teacher.nickname})` : ''}</span>
+            <span class="label">اسم المعلم الرسمي:</span>
+            <span class="val">${teacher.full_name}</span>
           </div>
           <div class="card">
-            <span class="label">المواد التعليمية التخصصية:</span>
+            <span class="label">اسم الشهرة / اللقب:</span>
+            <span class="val">${teacher.nickname || 'غير محدد'}</span>
+          </div>
+          <div class="card">
+            <span class="label">المواد والتخصصات:</span>
             <span class="val">${teacher.specialization || 'غير محدد'}</span>
           </div>
           <div class="card">
@@ -735,348 +913,567 @@ export default function OnlineRegistrationsPage() {
   };
 
   return (
-    <div className="space-y-5 pb-12 animate-fade-in font-sans" dir="rtl">
+    <div className="space-y-6 pb-20 animate-fade-in font-sans" dir="rtl">
       
-      {/* Top Header & Fast Actions */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-sky-600 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>بوابة التقديم الإلكتروني ومطابقة المجموعات (Live Supabase)</span>
+      {/* ============================================================
+          TOP HERO HEADER & FAST GLOBAL ACTIONS
+          ============================================================ */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-slate-800">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-bold text-sky-300">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
+              <span>البوابة السحابية الموحدة • مزامنة حية (Live Supabase Sync)</span>
+            </div>
+            
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white flex items-center gap-3">
+              <span>إدارة طلبات التسجيل الإلكتروني</span>
+              <span className="text-xs sm:text-sm font-bold bg-white/15 px-3 py-1 rounded-xl text-slate-200">
+                {activeTab === 'teachers' ? 'المعلمين' : 'الطلاب'}
+              </span>
+            </h1>
+
+            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
+              مراجعة وتدقيق استمارات الطلاب والمعلمين المقدمة إلكترونياً، تنسيق مواعيد الحصص ومادة كل مجموعة، واعتماد انضمامهم لنظام أطلس التعليمي.
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-            استمارات الطلاب والمعلمين المسجلين
-          </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-            متابعة فورية لطلبات التقديم السحابية، مراجعة واعتماد الطلبات، وتنسيق مواعيد ومجموعات كل مادة
+
+          {/* Quick Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/15">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === 'table' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:text-white'
+                }`}
+                title="عرض في جدول بيانات تفصيلي"
+              >
+                <TableIcon size={15} />
+                <span>جدول</span>
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === 'cards' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:text-white'
+                }`}
+                title="عرض بطاقات مرنة للموبايل"
+              >
+                <LayoutGrid size={15} />
+                <span>بطاقات</span>
+              </button>
+            </div>
+
+            {/* Refresh Data */}
+            <button
+              onClick={fetchData}
+              disabled={isRefreshing}
+              className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border border-white/15 transition-all cursor-pointer disabled:opacity-50"
+              title="تحديث البيانات فورياً"
+            >
+              <RefreshCw size={15} className={isRefreshing ? 'animate-spin text-sky-400' : ''} />
+              <span className="hidden sm:inline">تحديث فوري</span>
+            </button>
+
+            {/* Export CSV / Excel */}
+            <button
+              onClick={() => exportToCSV(activeTab, activeList)}
+              className="px-4 py-2 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-500/30 text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer"
+              title="تصدير الكشف الحالي إلى ملف Excel / CSV"
+            >
+              <FileSpreadsheet size={16} />
+              <span>تصدير Excel</span>
+            </button>
+
+            {/* Global Print */}
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-500/30 text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer"
+              title="طباعة الكشف المعروض"
+            >
+              <Printer size={15} />
+              <span className="hidden sm:inline">طباعة الكشف</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================
+          INTERACTIVE KPI STATS (Clickable Fast Filter Cards)
+          ============================================================ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Students Card */}
+        <div 
+          onClick={() => { setActiveTab('students'); setStatusFilter('all'); }}
+          className={`group bg-white rounded-3xl p-5 border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+            activeTab === 'students' ? 'border-sky-500 ring-2 ring-sky-100 bg-sky-50/20' : 'border-slate-100 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">طلبات الطلاب</span>
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <Users size={20} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900">{stats.totalStudents}</span>
+            <span className="text-xs text-slate-400 font-semibold">طالب مسجل</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-100 text-[11px] font-bold">
+            <span 
+              onClick={(e) => { e.stopPropagation(); setActiveTab('students'); setStatusFilter('pending'); }}
+              className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              {stats.studentPending} قيد المراجعة
+            </span>
+            <span 
+              onClick={(e) => { e.stopPropagation(); setActiveTab('students'); setStatusFilter('approved'); }}
+              className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+            >
+              {stats.studentApproved} معتمد
+            </span>
+          </div>
+        </div>
+
+        {/* Teachers Card */}
+        <div 
+          onClick={() => { setActiveTab('teachers'); setStatusFilter('all'); }}
+          className={`group bg-white rounded-3xl p-5 border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+            activeTab === 'teachers' ? 'border-rose-500 ring-2 ring-rose-100 bg-rose-50/20' : 'border-slate-100 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">طلبات انضمام المعلمين</span>
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <GraduationCap size={20} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900">{stats.totalTeachers}</span>
+            <span className="text-xs text-slate-400 font-semibold">معلم متقدم</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-100 text-[11px] font-bold">
+            <span 
+              onClick={(e) => { e.stopPropagation(); setActiveTab('teachers'); setStatusFilter('pending'); }}
+              className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              {stats.teacherPending} قيد المراجعة
+            </span>
+            <span 
+              onClick={(e) => { e.stopPropagation(); setActiveTab('teachers'); setStatusFilter('approved'); }}
+              className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+            >
+              {stats.teacherApproved} معتمد
+            </span>
+          </div>
+        </div>
+
+        {/* Total Groups Card */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">المجموعات المقترحة</span>
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+              <Clock size={20} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-purple-600">{stats.totalGroups}</span>
+            <span className="text-xs text-purple-400 font-semibold">مجموعة / ميعاد</span>
+          </div>
+          <p className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-purple-700 font-bold truncate">
+            موزعة بالمواد وتنسيق 12h
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Table / Cards View Mode Switcher */}
-          <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                viewMode === 'table' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700'
-              }`}
-              title="عرض جدول مفصل"
-            >
-              <TableIcon size={15} />
-              <span className="hidden lg:inline">جدول</span>
-            </button>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                viewMode === 'cards' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700'
-              }`}
-              title="عرض بطاقات"
-            >
-              <LayoutGrid size={15} />
-              <span className="hidden lg:inline">بطاقات</span>
-            </button>
-          </div>
-
-          <button
-            onClick={fetchData}
-            disabled={isRefreshing}
-            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-            title="تحديث البيانات من سوبابيز"
-          >
-            <RefreshCw size={15} className={isRefreshing ? 'animate-spin text-sky-600' : ''} />
-            <span>تحديث البيانات</span>
-          </button>
-
-          <button
-            onClick={() => window.print()}
-            className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs sm:text-sm font-bold flex items-center gap-1.5 border border-sky-200 transition-all cursor-pointer"
-          >
-            <Printer size={15} />
-            <span className="hidden sm:inline">طباعة الكشف</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Total Students */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">طلبات تسجيل الطلاب</span>
-            <span className="text-xl sm:text-2xl font-black text-slate-800">{stats.totalStudents}</span>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                {stats.studentPending} مراجعة
-              </span>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                {stats.studentApproved} معتمد
-              </span>
+        {/* Pending Review Fast Action Card */}
+        <div 
+          onClick={() => setStatusFilter('pending')}
+          className="group bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-3xl p-5 border border-amber-200/80 shadow-xs cursor-pointer hover:border-amber-300 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-800">بانتظار المراجعة الفورية</span>
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-sm shadow-amber-500/30">
+              <AlertCircle size={20} />
             </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-            <Users size={22} />
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-amber-900">{stats.totalPending}</span>
+            <span className="text-xs text-amber-700 font-semibold">طلب معلق</span>
           </div>
-        </div>
-
-        {/* Total Teachers */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">طلبات انضمام المعلمين</span>
-            <span className="text-xl sm:text-2xl font-black text-slate-800">{stats.totalTeachers}</span>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                {stats.teacherPending} مراجعة
-              </span>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                {stats.teacherApproved} معتمد
-              </span>
-            </div>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-            <GraduationCap size={22} />
-          </div>
-        </div>
-
-        {/* Total Groups Scheduled */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">إجمالي المجموعات المقترحة</span>
-            <span className="text-xl sm:text-2xl font-black text-purple-600">{stats.totalGroups}</span>
-            <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-semibold block mt-1.5">
-              مجموعات وحصص بالمواد
-            </span>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <Clock size={22} />
-          </div>
-        </div>
-
-        {/* Total Approved */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] sm:text-xs font-bold text-slate-400 block mb-0.5">المعتمدون والمقبولون</span>
-            <span className="text-xl sm:text-2xl font-black text-emerald-600">{stats.totalApproved}</span>
-            <span className="text-[10px] text-slate-400 block mt-1.5 truncate">
-              جاهزون لتوزيع القاعات والكروت
-            </span>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <CheckCircle2 size={22} />
-          </div>
+          <p className="mt-3 pt-2.5 border-t border-amber-200/60 text-[11px] font-bold text-amber-800 flex items-center justify-between">
+            <span>اضغط لعرض المعلق فقط</span>
+            <ChevronLeft size={13} className="group-hover:-translate-x-1 transition-transform" />
+          </p>
         </div>
       </div>
 
-      {/* Tabs Selector */}
-      <div className="flex border-b border-slate-200 gap-2 sm:gap-4 overflow-x-auto">
-        <button
-          onClick={() => {
-            setActiveTab('teachers');
-            resetAllFilters();
-          }}
-          className={`pb-3 px-3 sm:px-5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
-            activeTab === 'teachers'
-              ? 'border-rose-600 text-rose-700 font-black'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <GraduationCap size={18} />
-          <span>استمارات المعلمين ومجموعات المواد</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-rose-50 text-rose-700 font-bold border border-rose-200">
-            {teachers.length}
-          </span>
-          {stats.teacherPending > 0 && (
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" title="يوجد طلبات جديدة" />
-          )}
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveTab('students');
-            resetAllFilters();
-          }}
-          className={`pb-3 px-3 sm:px-5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
-            activeTab === 'students'
-              ? 'border-sky-600 text-sky-700 font-black'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Users size={18} />
-          <span>استمارات الطلاب</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-sky-50 text-sky-700 font-bold border border-sky-200">
-            {students.length}
-          </span>
-          {stats.studentPending > 0 && (
-            <span className="w-2 h-2 rounded-full bg-rose-500" title="يوجد طلبات جديدة" />
-          )}
-        </button>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200/80 space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1 w-full">
-            <Search size={17} className="absolute right-3.5 top-3 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={
+      {/* ============================================================
+          MAIN SECTION TABS & INTEGRATED FILTER HUB
+          ============================================================ */}
+      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 space-y-5">
+        
+        {/* Tab Selector & Counts */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center bg-slate-100/80 p-1.5 rounded-2xl max-w-fit">
+            <button
+              onClick={() => {
+                setActiveTab('teachers');
+                resetAllFilters();
+              }}
+              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'teachers'
-                  ? 'ابحث باسم المعلم، اللقب، الهاتف، المادة، مادة المجموعة، اليوم...'
-                  : 'ابحث باسم الطالب، هاتف الطالب أو ولي الأمر، الرقم القومي، المدرسة...'
-              }
-              className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
-            />
+                  ? 'bg-white text-rose-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <GraduationCap size={18} />
+              <span>استمارات المعلمين والمجموعات</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                activeTab === 'teachers' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {teachers.length}
+              </span>
+              {stats.teacherPending > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" title="طلبات جديدة" />
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('students');
+                resetAllFilters();
+              }}
+              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'students'
+                  ? 'bg-white text-sky-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Users size={18} />
+              <span>استمارات الطلاب</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                activeTab === 'students' ? 'bg-sky-100 text-sky-800' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {students.length}
+              </span>
+              {stats.studentPending > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500" title="طلبات جديدة" />
+              )}
+            </button>
           </div>
 
-          {/* Quick Clear Button */}
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetAllFilters}
-              className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-              title="إعادة تعيين الفلاتر"
-            >
-              <RotateCcw size={14} />
-              <span>تفريغ الفلاتر</span>
-            </button>
-          )}
+          {/* Quick Page Size & Total items badge */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-500">
+              إجمالي النتائج: <span className="font-black text-slate-900 font-mono">{totalItems}</span>
+            </span>
+
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+              <span>عرض:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="bg-transparent font-black text-slate-900 outline-none cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        {/* Filter Dropdowns Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
-          {/* Status Filter */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
+        {/* Search Bar & Fast Status Filter Pills */}
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 w-full">
+              <Search size={18} className="absolute right-4 top-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={
+                  activeTab === 'teachers'
+                    ? 'بحث باسم المعلم، اللقب، الهاتف، المادة التخصصية، مادة المجموعة، اليوم...'
+                    : 'بحث باسم الطالب، رقم هاتف الطالب أو ولي الأمر، الرقم القومي، المدرسة، العنوان...'
+                }
+                className="w-full pr-11 pl-10 py-3 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent bg-slate-50/60 placeholder:text-slate-400 font-medium transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-3.5 top-3.5 w-5 h-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-xs transition-colors"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Advanced Filters Toggle Button */}
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer shrink-0 w-full md:w-auto ${
+                showAdvancedFilters || activeFiltersCount > 0
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
             >
-              <option value="all">كافة الحالات</option>
-              <option value="pending">⏳ قيد المراجعة</option>
-              <option value="approved">✓ معتمد ومقبول</option>
-              <option value="rejected">✕ مرفوض</option>
-            </select>
+              <SlidersHorizontal size={16} />
+              <span>فلاتر متقدمة</span>
+              {activeFiltersCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[11px] flex items-center justify-center font-bold">
+                  {activeFiltersCount}
+                </span>
+              )}
+              {showAdvancedFilters ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+
+            {/* Quick Reset Button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 w-full md:w-auto"
+                title="تفريغ كافة الفلاتر والبحث"
+              >
+                <RotateCcw size={15} />
+                <span>إلغاء الفلترة</span>
+              </button>
+            )}
           </div>
 
-          {/* Teacher-Specific Filters */}
-          {activeTab === 'teachers' && (
-            <>
-              {/* Subject Filter */}
-              <div>
-                <select
-                  value={subjectFilter}
-                  onChange={(e) => setSubjectFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-purple-200 text-xs font-bold text-purple-900 bg-purple-50/40 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
-                >
-                  <option value="all">كافة المواد التخصصية</option>
-                  {uniqueTeacherSubjects.map((sub) => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Day Filter */}
-              <div>
-                <select
-                  value={dayFilter}
-                  onChange={(e) => setDayFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer"
-                >
-                  <option value="all">كافة أيام الأسبوع</option>
-                  {ALL_DAYS.map((d) => (
-                    <option key={d} value={d}>مجموعات يوم {d}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Grade Filter */}
-              <div>
-                <select
-                  value={gradeFilter}
-                  onChange={(e) => setGradeFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer"
-                >
-                  <option value="all">كافة الصفوف الدراسية</option>
-                  <option value="الصف الأول الثانوي">أولى ثانوي</option>
-                  <option value="الصف الثاني الثانوي">تانية ثانوي</option>
-                  <option value="الصف الثالث الثانوي">تالتة ثانوي</option>
-                  <option value="الصف الأول الإعدادي">أولى إعدادي</option>
-                  <option value="الصف الثاني الإعدادي">تانية إعدادي</option>
-                  <option value="الصف الثالث الإعدادي">تالتة إعدادي</option>
-                </select>
-              </div>
-            </>
-          )}
-
-          {/* Student-Specific Filters */}
-          {activeTab === 'students' && (
-            <>
-              {/* Grade Filter */}
-              <div>
-                <select
-                  value={gradeFilter}
-                  onChange={(e) => setGradeFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
-                >
-                  <option value="all">كافة الصفوف الدراسية</option>
-                  <option value="الصف الأول الثانوي">أولى ثانوي</option>
-                  <option value="الصف الثاني الثانوي">تانية ثانوي</option>
-                  <option value="الصف الثالث الثانوي">تالتة ثانوي</option>
-                  <option value="الصف الأول الإعدادي">أولى إعدادي</option>
-                  <option value="الصف الثاني الإعدادي">تانية إعدادي</option>
-                  <option value="الصف الثالث الإعدادي">تالتة إعدادي</option>
-                  <option value="الصف السادس الابتدائي">سادسة ابتدائي</option>
-                  <option value="الصف الخامس الابتدائي">خامسة ابتدائي</option>
-                  <option value="الصف الرابع الابتدائي">رابعة ابتدائي</option>
-                </select>
-              </div>
-
-              {/* Education Type */}
-              <div>
-                <select
-                  value={educationTypeFilter}
-                  onChange={(e) => setEducationTypeFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
-                >
-                  <option value="all">كافة أنواع التعليم</option>
-                  <option value="عام">تعليم عام</option>
-                  <option value="لغات">تجريبي / لغات</option>
-                  <option value="أزهر">أزهر شريف</option>
-                </select>
-              </div>
-
-              {/* Gender Filter */}
-              <div>
-                <select
-                  value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white cursor-pointer"
-                >
-                  <option value="all">الذكور والإناث</option>
-                  <option value="male">بنين (ذكور)</option>
-                  <option value="female">بنات (إناث)</option>
-                </select>
-              </div>
-            </>
-          )}
-
-          {/* Page Size Selector */}
-          <div>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
-              title="عدد العناصر في كل صفحة"
+          {/* Status Tabs Row (All / Pending / Approved / Rejected) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 ml-1">الحالة:</span>
+            
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                statusFilter === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
             >
-              <option value={10}>عرض 10 أسماء</option>
-              <option value={20}>عرض 20 اسم</option>
-              <option value={25}>عرض 25 اسم</option>
-              <option value={50}>عرض 50 اسم</option>
-              <option value={100}>عرض 100 اسم</option>
-            </select>
+              <span>الكل</span>
+              <span className="text-[11px] font-mono opacity-80">
+                ({activeTab === 'teachers' ? teachers.length : students.length})
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('pending')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                statusFilter === 'pending'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60'
+              }`}
+            >
+              <Clock size={13} />
+              <span>قيد المراجعة</span>
+              <span className="text-[11px] font-mono">
+                ({activeTab === 'teachers' ? stats.teacherPending : stats.studentPending})
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('approved')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                statusFilter === 'approved'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60'
+              }`}
+            >
+              <CheckCircle2 size={13} />
+              <span>معتمد ومقبول</span>
+              <span className="text-[11px] font-mono">
+                ({activeTab === 'teachers' ? stats.teacherApproved : stats.studentApproved})
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('rejected')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                statusFilter === 'rejected'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200/60'
+              }`}
+            >
+              <XCircle size={13} />
+              <span>مرفوض</span>
+              <span className="text-[11px] font-mono">
+                ({activeTab === 'teachers' ? stats.teacherRejected : stats.studentRejected})
+              </span>
+            </button>
           </div>
+
+          {/* Advanced Collapsible Filter Row */}
+          {showAdvancedFilters && (
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 animate-fade-in-down grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Teacher-Specific Filters */}
+              {activeTab === 'teachers' && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">المادة التخصصية:</label>
+                    <select
+                      value={subjectFilter}
+                      onChange={(e) => setSubjectFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-purple-900 bg-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    >
+                      <option value="all">كافة المواد التخصصية</option>
+                      {uniqueTeacherSubjects.map((sub) => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">يوم الحصص:</label>
+                    <select
+                      value={dayFilter}
+                      onChange={(e) => setDayFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    >
+                      <option value="all">كافة الأيام</option>
+                      {ALL_DAYS.map((d) => (
+                        <option key={d} value={d}>مجموعات يوم {d}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">المرحلة والصف:</label>
+                    <select
+                      value={gradeFilter}
+                      onChange={(e) => setGradeFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    >
+                      <option value="all">كافة الصفوف الدراسية</option>
+                      <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                      <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                      <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                      <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                      <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                      <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Student-Specific Filters */}
+              {activeTab === 'students' && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">الصف الدراسي:</label>
+                    <select
+                      value={gradeFilter}
+                      onChange={(e) => setGradeFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-sky-500 outline-none"
+                    >
+                      <option value="all">كافة الصفوف الدراسية</option>
+                      <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                      <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                      <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                      <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                      <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                      <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                      <option value="الصف السادس الابتدائي">الصف السادس الابتدائي</option>
+                      <option value="الصف الخامس الابتدائي">الصف الخامس الابتدائي</option>
+                      <option value="الصف الرابع الابتدائي">الصف الرابع الابتدائي</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">نوع التعليم:</label>
+                    <select
+                      value={educationTypeFilter}
+                      onChange={(e) => setEducationTypeFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-sky-500 outline-none"
+                    >
+                      <option value="all">كافة أنواع التعليم</option>
+                      <option value="عام">تعليم عام</option>
+                      <option value="لغات">تجريبي / لغات</option>
+                      <option value="أزهر">أزهر شريف</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">النوع / الجنس:</label>
+                    <select
+                      value={genderFilter}
+                      onChange={(e) => setGenderFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-sky-500 outline-none"
+                    >
+                      <option value="all">الذكور والإناث</option>
+                      <option value="male">بنين (ذكور)</option>
+                      <option value="female">بنات (إناث)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Active Filter Tags */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+              <span className="text-slate-400 font-bold ml-1">الفلاتر المطبقة:</span>
+              
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold">
+                  <span>بحث: {searchQuery}</span>
+                  <button onClick={() => setSearchQuery('')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+
+              {statusFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold border border-amber-200">
+                  <span>الحالة: {statusFilter === 'pending' ? 'مراجعة' : statusFilter === 'approved' ? 'معتمد' : 'مرفوض'}</span>
+                  <button onClick={() => setStatusFilter('all')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+
+              {subjectFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 font-bold border border-purple-200">
+                  <span>المادة: {subjectFilter}</span>
+                  <button onClick={() => setSubjectFilter('all')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+
+              {dayFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 font-bold border border-purple-200">
+                  <span>اليوم: {dayFilter}</span>
+                  <button onClick={() => setDayFilter('all')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+
+              {gradeFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 font-bold border border-sky-200">
+                  <span>الصف: {gradeFilter}</span>
+                  <button onClick={() => setGradeFilter('all')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+
+              {educationTypeFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 font-bold border border-sky-200">
+                  <span>التعليم: {educationTypeFilter}</span>
+                  <button onClick={() => setEducationTypeFilter('all')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+
+              {genderFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 font-bold border border-blue-200">
+                  <span>النوع: {genderFilter === 'female' ? 'إناث' : 'ذكور'}</span>
+                  <button onClick={() => setGenderFilter('all')} className="hover:text-rose-600">✕</button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1084,23 +1481,23 @@ export default function OnlineRegistrationsPage() {
           MAIN DATA LIST (TABLE OR MOBILE CARDS)
           ============================================================ */}
       {isLoading ? (
-        <div className="bg-white rounded-3xl p-16 text-center shadow-xs border border-slate-100">
-          <RefreshCw size={36} className="animate-spin text-sky-600 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm font-bold">جاري تحميل الاستمارات الإلكترونية من السيرفر السحابي...</p>
+        <div className="bg-white rounded-3xl p-16 text-center shadow-xs border border-slate-100 space-y-4">
+          <RefreshCw size={36} className="animate-spin text-indigo-600 mx-auto" />
+          <p className="text-slate-600 text-sm font-bold">جاري تحميل الاستمارات الإلكترونية من السيرفر السحابي...</p>
         </div>
       ) : paginatedList.length === 0 ? (
-        <div className="bg-white rounded-3xl p-16 text-center shadow-xs border border-slate-100">
-          {activeTab === 'students' ? (
-            <Users size={48} className="text-slate-300 mx-auto mb-3" />
-          ) : (
-            <GraduationCap size={48} className="text-slate-300 mx-auto mb-3" />
-          )}
-          <h3 className="text-base font-bold text-slate-700">لا توجد استمارات مسجلة تطابق شروط البحث</h3>
-          <p className="text-slate-400 text-xs mt-1">تأكد من شروط الفلترة أو جرب البحث بكلمات أخرى</p>
+        <div className="bg-white rounded-3xl p-16 text-center shadow-xs border border-slate-100 space-y-4">
+          <div className="w-20 h-20 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center mx-auto border border-slate-200">
+            {activeTab === 'students' ? <Users size={36} /> : <GraduationCap size={36} />}
+          </div>
+          <h3 className="text-lg font-black text-slate-800">لا توجد استمارات مسجلة تطابق شروط البحث والفلترة</h3>
+          <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto">
+            تأكد من شروط الفلترة المحددة أو جرب البحث بكلمات أخرى أو تفريغ الفلاتر.
+          </p>
           {hasActiveFilters && (
             <button
               onClick={resetAllFilters}
-              className="mt-4 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2.5 rounded-2xl bg-slate-900 text-white text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-sm hover:bg-slate-800"
             >
               <RotateCcw size={14} />
               <span>إعادة تعيين كافة الفلاتر</span>
@@ -1110,34 +1507,48 @@ export default function OnlineRegistrationsPage() {
       ) : (
         <>
           {/* ============================================================
-              DESKTOP TABLE VIEW (hidden on very small screens if viewMode=cards)
+              DESKTOP TABLE VIEW (With Sticky Header & Multi-Select)
               ============================================================ */}
           <div className={`${viewMode === 'cards' ? 'hidden' : 'hidden md:block'} bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs sm:text-sm min-w-[1100px]">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-[11px] sm:text-xs">
+            <div className="overflow-x-auto max-h-[75vh]">
+              <table className="w-full text-right text-xs sm:text-sm min-w-[1100px] border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/80 text-slate-600 text-[11px] sm:text-xs">
+                  <tr>
+                    <th className="py-4 px-4 w-12 text-center">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllCurrentPage}
+                        className="text-slate-500 hover:text-slate-800 cursor-pointer"
+                        title={isCurrentPageAllSelected ? 'إلغاء تحديد الصفحة' : 'تحديد جميع عناصر الصفحة'}
+                      >
+                        {isCurrentPageAllSelected ? (
+                          <CheckSquare size={17} className="text-indigo-600" />
+                        ) : (
+                          <Square size={17} />
+                        )}
+                      </button>
+                    </th>
                     {activeTab === 'teachers' ? (
                       <>
-                        <th className="py-3.5 px-4 font-bold min-w-[200px]">المعلم</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[150px]">المواد التخصصية</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[160px]">المراحل المستهدفة</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[280px]">المجموعات ومواعيد الحصص (مادة كل مجموعة)</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[130px]">فريق المساعدين</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[140px]">أرقام التواصل</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[120px]">تاريخ التقديم</th>
-                        <th className="py-3.5 px-4 font-bold text-center min-w-[90px]">الحالة</th>
-                        <th className="py-3.5 px-4 font-bold text-center min-w-[140px]">الإجراءات</th>
+                        <th className="py-4 px-4 font-black min-w-[220px]">المعلم</th>
+                        <th className="py-4 px-4 font-black min-w-[160px]">المواد والتخصصات</th>
+                        <th className="py-4 px-4 font-black min-w-[160px]">المراحل المستهدفة</th>
+                        <th className="py-4 px-4 font-black min-w-[280px]">المجموعات ومواعيد الحصص (مادة كل مجموعة)</th>
+                        <th className="py-4 px-4 font-black min-w-[130px]">فريق المساعدين</th>
+                        <th className="py-4 px-4 font-black min-w-[150px]">بيانات التواصل</th>
+                        <th className="py-4 px-4 font-black min-w-[130px]">تاريخ التقديم</th>
+                        <th className="py-4 px-4 font-black text-center min-w-[100px]">الحالة</th>
+                        <th className="py-4 px-4 font-black text-center min-w-[140px]">الإجراءات</th>
                       </>
                     ) : (
                       <>
-                        <th className="py-3.5 px-4 font-bold min-w-[200px]">الطالب</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[140px]">الصف ونوع التعليم</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[160px]">المدرسة والعنوان</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[160px]">أرقام التواصل</th>
-                        <th className="py-3.5 px-4 font-bold min-w-[120px]">تاريخ التقديم</th>
-                        <th className="py-3.5 px-4 font-bold text-center min-w-[90px]">الحالة</th>
-                        <th className="py-3.5 px-4 font-bold text-center min-w-[140px]">الإجراءات</th>
+                        <th className="py-4 px-4 font-black min-w-[220px]">الطالب</th>
+                        <th className="py-4 px-4 font-black min-w-[150px]">الصف ونوع التعليم</th>
+                        <th className="py-4 px-4 font-black min-w-[180px]">المدرسة والعنوان</th>
+                        <th className="py-4 px-4 font-black min-w-[160px]">بيانات التواصل</th>
+                        <th className="py-4 px-4 font-black min-w-[130px]">تاريخ التسجيل</th>
+                        <th className="py-4 px-4 font-black text-center min-w-[100px]">الحالة</th>
+                        <th className="py-4 px-4 font-black text-center min-w-[140px]">الإجراءات</th>
                       </>
                     )}
                   </tr>
@@ -1148,16 +1559,35 @@ export default function OnlineRegistrationsPage() {
                         const assistants = parseAssistantsData(teacher);
                         const groups = parseGroupsData(teacher);
                         const specs = (teacher.specialization || '').split(/[،,]/).map((s) => s.trim()).filter(Boolean);
+                        const isSelected = selectedIds.includes(teacher.id);
 
                         return (
-                          <tr key={teacher.id} className="hover:bg-slate-50/70 transition-colors">
+                          <tr 
+                            key={teacher.id} 
+                            className={`transition-colors hover:bg-slate-50/80 ${isSelected ? 'bg-indigo-50/40' : ''}`}
+                          >
+                            {/* Checkbox */}
+                            <td className="py-4 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSelect(teacher.id)}
+                                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                              >
+                                {isSelected ? (
+                                  <CheckSquare size={17} className="text-indigo-600" />
+                                ) : (
+                                  <Square size={17} />
+                                )}
+                              </button>
+                            </td>
+
                             {/* Teacher Info */}
-                            <td className="py-3.5 px-4">
+                            <td className="py-4 px-4">
                               <div className="flex items-center gap-3">
                                 <div 
                                   onClick={() => teacher.photo_url ? setPreviewImage({ url: teacher.photo_url, title: teacher.full_name }) : setSelectedTeacher(teacher)}
-                                  className="w-10 h-10 rounded-xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                  title="اضغط للمعاينة المكبرة"
+                                  className="w-11 h-11 rounded-2xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity shadow-2xs"
+                                  title="اضغط لمعاينة الصورة بالحجم الكامل"
                                 >
                                   {teacher.photo_url ? (
                                     <img
@@ -1167,29 +1597,32 @@ export default function OnlineRegistrationsPage() {
                                     />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center text-rose-500">
-                                      <GraduationCap size={18} />
+                                      <GraduationCap size={20} />
                                     </div>
                                   )}
                                 </div>
                                 <div>
-                                  <span 
-                                    onClick={() => setSelectedTeacher(teacher)}
-                                    className="font-bold text-slate-800 hover:text-rose-600 cursor-pointer block leading-tight"
-                                  >
-                                    {teacher.nickname ? `${teacher.nickname}` : teacher.full_name}
-                                  </span>
-                                  <span className="text-[11px] text-slate-500 block truncate max-w-[160px] mt-0.5">
-                                    {teacher.full_name}
+                                  <div className="flex items-center gap-1.5">
+                                    <span 
+                                      onClick={() => setSelectedTeacher(teacher)}
+                                      className="font-bold text-slate-900 hover:text-rose-600 cursor-pointer leading-tight"
+                                    >
+                                      {teacher.nickname ? `${teacher.nickname}` : teacher.full_name}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-slate-500 block mt-0.5">{teacher.full_name}</span>
+                                  <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                                    كود: {teacher.id.slice(0, 8).toUpperCase()}
                                   </span>
                                 </div>
                               </div>
                             </td>
 
-                            {/* Specializations */}
-                            <td className="py-3.5 px-4">
-                              <div className="flex flex-wrap gap-1 max-w-[180px]">
+                            {/* Specialization */}
+                            <td className="py-4 px-4">
+                              <div className="flex flex-wrap gap-1 max-w-[160px]">
                                 {specs.map((s, idx) => (
-                                  <span key={idx} className="bg-rose-50 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-rose-200">
+                                  <span key={idx} className="bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-lg text-xs border border-rose-200/60">
                                     {s}
                                   </span>
                                 ))}
@@ -1197,76 +1630,88 @@ export default function OnlineRegistrationsPage() {
                             </td>
 
                             {/* Target Grades */}
-                            <td className="py-3.5 px-4">
-                              <span className="text-slate-600 text-xs block line-clamp-2 max-w-[180px] leading-relaxed">
+                            <td className="py-4 px-4">
+                              <span className="text-xs text-slate-700 block max-w-[180px] leading-relaxed">
                                 {teacher.target_grades || 'غير محدد'}
                               </span>
                             </td>
 
-                            {/* Groups with 12H Times and Subject */}
-                            <td className="py-3.5 px-4">
-                              {groups.length === 0 ? (
-                                <span className="text-slate-400 text-xs">لا توجد مواعيد مسجلة</span>
-                              ) : (
-                                <div className="space-y-1.5 max-w-[280px]">
+                            {/* Groups with Individual Subject */}
+                            <td className="py-4 px-4">
+                              {groups.length > 0 ? (
+                                <div className="space-y-1.5 max-w-[320px]">
                                   {groups.slice(0, 2).map((grp, idx) => (
                                     <div 
-                                      key={idx} 
-                                      className="p-1.5 rounded-lg bg-purple-50/90 border border-purple-200 flex items-center justify-between text-[11px] gap-1.5"
+                                      key={idx}
+                                      className="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-purple-50/70 border border-purple-200/70 text-[11px]"
                                     >
-                                      <div className="flex items-center gap-1 font-semibold text-purple-950 truncate">
-                                        <span className="text-purple-700 font-bold">{grp.day}:</span>
-                                        <span>{formatTime12H(grp.start_time)}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <span className="font-bold text-purple-800 bg-purple-100 px-1.5 py-0.2 rounded text-[10px] border border-purple-300">
-                                          مادة: {grp.subject}
+                                      <div className="flex items-center gap-1.5 font-bold text-purple-950">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                                        <span>{grp.day}</span>
+                                        <span className="font-mono text-purple-800">
+                                          ({formatTime12H(grp.start_time)})
                                         </span>
                                       </div>
+                                      <span className="px-1.5 py-0.5 rounded-md bg-purple-200/80 text-purple-900 font-bold text-[10px]">
+                                        مادة: {grp.subject}
+                                      </span>
                                     </div>
                                   ))}
                                   {groups.length > 2 && (
                                     <button
                                       type="button"
                                       onClick={() => setSelectedTeacher(teacher)}
-                                      className="text-[10px] text-purple-700 font-bold hover:underline block"
+                                      className="text-[11px] text-purple-700 font-bold hover:underline block text-center w-full"
                                     >
                                       + {groups.length - 2} مجموعات أخرى (اضغط للعرض)
                                     </button>
                                   )}
                                 </div>
+                              ) : (
+                                <span className="text-xs text-slate-400">لا توجد مواعيد</span>
                               )}
                             </td>
 
                             {/* Assistants */}
-                            <td className="py-3.5 px-4">
-                              {assistants.length === 0 ? (
-                                <span className="text-slate-400 text-xs">إدارة شخصية</span>
-                              ) : (
+                            <td className="py-4 px-4">
+                              {assistants.length > 0 ? (
                                 <div className="space-y-0.5">
-                                  <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">
-                                    {assistants.length} مساعد
+                                  <span className="font-bold text-slate-800 text-xs block">
+                                    {assistants[0].name}
                                   </span>
-                                  <div className="text-[11px] text-slate-600 truncate max-w-[130px]">
-                                    {assistants[0]?.name}
-                                  </div>
+                                  {assistants.length > 1 && (
+                                    <span className="text-[10px] text-slate-400 block">
+                                      + {assistants.length - 1} مساعدين آخرين
+                                    </span>
+                                  )}
                                 </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400">إدارة شخصية</span>
                               )}
                             </td>
 
-                            {/* Contacts */}
-                            <td className="py-3.5 px-4">
-                              <div className="space-y-0.5 text-xs font-mono">
-                                <span className="font-bold text-slate-800 block">{teacher.phone}</span>
+                            {/* Contacts & Quick WhatsApp */}
+                            <td className="py-4 px-4">
+                              <div className="space-y-1 font-mono text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-800">{teacher.phone}</span>
+                                  <button
+                                    onClick={() => copyToClipboard(teacher.phone, `t_phone_${teacher.id}`)}
+                                    className="text-slate-400 hover:text-slate-700"
+                                    title="نسخ الرقم"
+                                  >
+                                    {copiedKey === `t_phone_${teacher.id}` ? <CheckCheck size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                  </button>
+                                </div>
                                 {teacher.whatsapp_phone && (
-                                  <div className="flex items-center gap-1 text-[11px] text-emerald-700">
-                                    <span>{teacher.whatsapp_phone}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] text-slate-500">واتساب: {teacher.whatsapp_phone}</span>
                                     <a
                                       href={getDirectWhatsAppUrl(teacher.whatsapp_phone, `مرحباً بحضرتك يا ${teacher.nickname || teacher.full_name}`)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="text-emerald-600 hover:text-emerald-700"
-                                      title="واتساب مباشر"
+                                      title="محادثة واتساب مباشرة"
                                     >
                                       <MessageCircle size={13} />
                                     </a>
@@ -1276,60 +1721,60 @@ export default function OnlineRegistrationsPage() {
                             </td>
 
                             {/* Created At */}
-                            <td className="py-3.5 px-4">
-                              <span className="text-xs text-slate-700 block">
+                            <td className="py-4 px-4">
+                              <span className="text-xs text-slate-600 block">
                                 {formatArabicDateTime(teacher.created_at)}
                               </span>
                             </td>
 
                             {/* Status */}
-                            <td className="py-3.5 px-4 text-center">
+                            <td className="py-4 px-4 text-center">
                               {teacher.status === 'approved' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <CheckCircle2 size={11} />
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 size={12} />
                                   <span>معتمد</span>
                                 </span>
                               ) : teacher.status === 'rejected' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                  <XCircle size={11} />
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <XCircle size={12} />
                                   <span>مرفوض</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                  <Clock size={11} />
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  <Clock size={12} />
                                   <span>مراجعة</span>
                                 </span>
                               )}
                             </td>
 
                             {/* Actions */}
-                            <td className="py-3.5 px-4 text-center">
+                            <td className="py-4 px-4 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedTeacher(teacher)}
-                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                                  title="عرض كافة التفاصيل"
+                                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  title="عرض كافة التفاصيل والجدول"
                                 >
-                                  <Eye size={14} />
+                                  <Eye size={15} />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => printTeacherApplication(teacher)}
-                                  className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer"
-                                  title="طباعة الاستمارة"
+                                  className="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer"
+                                  title="طباعة الاستمارة الرسمية"
                                 >
-                                  <Printer size={14} />
+                                  <Printer size={15} />
                                 </button>
                                 {teacher.status !== 'approved' && (
                                   <button
                                     type="button"
                                     disabled={updatingId === teacher.id}
                                     onClick={() => handleUpdateStatus('teacher', teacher.id, 'approved')}
-                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                                    title="اعتماد"
+                                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                                    title="اعتماد وقبول"
                                   >
-                                    <CheckCircle2 size={14} />
+                                    <CheckCircle2 size={15} />
                                   </button>
                                 )}
                                 {teacher.status !== 'rejected' && (
@@ -1337,20 +1782,20 @@ export default function OnlineRegistrationsPage() {
                                     type="button"
                                     disabled={updatingId === teacher.id}
                                     onClick={() => handleUpdateStatus('teacher', teacher.id, 'rejected')}
-                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                    className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
                                     title="رفض"
                                   >
-                                    <XCircle size={14} />
+                                    <XCircle size={15} />
                                   </button>
                                 )}
                                 <button
                                   type="button"
                                   disabled={updatingId === teacher.id}
                                   onClick={() => handleDeleteRecord('teacher', teacher.id, teacher.full_name)}
-                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                  title="حذف"
+                                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="حذف الاستمارة"
                                 >
-                                  <Trash2 size={14} />
+                                  <Trash2 size={15} />
                                 </button>
                               </div>
                             </td>
@@ -1359,16 +1804,35 @@ export default function OnlineRegistrationsPage() {
                       })
                     : paginatedList.map((student) => {
                         const isElementaryNoPhone = student.phone?.includes('طالب ابتدائي') || student.phone?.includes('لا يوجد');
+                        const isSelected = selectedIds.includes(student.id);
 
                         return (
-                          <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
+                          <tr 
+                            key={student.id} 
+                            className={`transition-colors hover:bg-slate-50/80 ${isSelected ? 'bg-sky-50/40' : ''}`}
+                          >
+                            {/* Checkbox */}
+                            <td className="py-4 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSelect(student.id)}
+                                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                              >
+                                {isSelected ? (
+                                  <CheckSquare size={17} className="text-indigo-600" />
+                                ) : (
+                                  <Square size={17} />
+                                )}
+                              </button>
+                            </td>
+
                             {/* Student Info */}
-                            <td className="py-3.5 px-4">
+                            <td className="py-4 px-4">
                               <div className="flex items-center gap-3">
                                 <div 
                                   onClick={() => student.photo_url ? setPreviewImage({ url: student.photo_url, title: student.full_name }) : setSelectedStudent(student)}
-                                  className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                  title="اضغط للمعاينة المكبرة"
+                                  className="w-11 h-11 rounded-2xl overflow-hidden bg-sky-50 border border-sky-200 shrink-0 cursor-pointer hover:opacity-80 transition-opacity shadow-2xs"
+                                  title="اضغط لمعاينة الصورة"
                                 >
                                   {student.photo_url ? (
                                     <img
@@ -1377,15 +1841,15 @@ export default function OnlineRegistrationsPage() {
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                      <User size={18} />
+                                    <div className="w-full h-full flex items-center justify-center text-sky-500">
+                                      <User size={20} />
                                     </div>
                                   )}
                                 </div>
                                 <div>
                                   <span 
                                     onClick={() => setSelectedStudent(student)}
-                                    className="font-bold text-slate-800 hover:text-sky-600 cursor-pointer block leading-tight"
+                                    className="font-bold text-slate-900 hover:text-sky-600 cursor-pointer block leading-tight"
                                   >
                                     {student.full_name}
                                   </span>
@@ -1402,32 +1866,32 @@ export default function OnlineRegistrationsPage() {
                             </td>
 
                             {/* Grade & Education Type */}
-                            <td className="py-3.5 px-4">
-                              <span className="font-bold text-slate-700 block">{student.academic_grade}</span>
-                              <span className="text-[11px] text-sky-600 bg-sky-50 px-2 py-0.5 rounded font-semibold inline-block mt-0.5">
+                            <td className="py-4 px-4">
+                              <span className="font-bold text-slate-800 block">{student.academic_grade}</span>
+                              <span className="text-[11px] text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-lg font-bold inline-block mt-0.5 border border-sky-200/60">
                                 {student.education_type}
                               </span>
                             </td>
 
                             {/* School Name & Address */}
-                            <td className="py-3.5 px-4">
-                              <span className="text-slate-700 text-xs font-semibold block">{student.school_name || 'غير مسجل'}</span>
-                              <span className="text-[11px] text-slate-400 block truncate max-w-[160px]">
+                            <td className="py-4 px-4">
+                              <span className="text-slate-800 text-xs font-bold block">{student.school_name || 'غير مسجل'}</span>
+                              <span className="text-[11px] text-slate-400 block truncate max-w-[180px] mt-0.5">
                                 {student.address || 'العنوان غير مسجل'}
                               </span>
                             </td>
 
                             {/* Contacts */}
-                            <td className="py-3.5 px-4">
-                              <div className="space-y-0.5 text-xs font-mono">
-                                <div className="flex items-center gap-1">
+                            <td className="py-4 px-4">
+                              <div className="space-y-1 text-xs font-mono">
+                                <div className="flex items-center gap-1.5">
                                   {isElementaryNoPhone ? (
-                                    <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded font-sans font-bold">
+                                    <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-sans font-bold border border-amber-200">
                                       طالب بدون هاتف
                                     </span>
                                   ) : (
                                     <>
-                                      <span className="font-bold text-slate-800">{student.phone}</span>
+                                      <span className="font-bold text-slate-900">{student.phone}</span>
                                       <a
                                         href={getDirectWhatsAppUrl(student.phone, `أهلاً بك يا ${student.full_name}`)}
                                         target="_blank"
@@ -1454,60 +1918,60 @@ export default function OnlineRegistrationsPage() {
                             </td>
 
                             {/* Created At */}
-                            <td className="py-3.5 px-4">
-                              <span className="text-xs text-slate-700 block">
+                            <td className="py-4 px-4">
+                              <span className="text-xs text-slate-600 block">
                                 {formatArabicDateTime(student.created_at)}
                               </span>
                             </td>
 
                             {/* Status */}
-                            <td className="py-3.5 px-4 text-center">
+                            <td className="py-4 px-4 text-center">
                               {student.status === 'approved' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <CheckCircle2 size={11} />
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 size={12} />
                                   <span>معتمد</span>
                                 </span>
                               ) : student.status === 'rejected' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                  <XCircle size={11} />
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <XCircle size={12} />
                                   <span>مرفوض</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                  <Clock size={11} />
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  <Clock size={12} />
                                   <span>مراجعة</span>
                                 </span>
                               )}
                             </td>
 
                             {/* Actions */}
-                            <td className="py-3.5 px-4 text-center">
+                            <td className="py-4 px-4 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedStudent(student)}
-                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                                   title="عرض كافة التفاصيل"
                                 >
-                                  <Eye size={14} />
+                                  <Eye size={15} />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => printStudentApplication(student)}
-                                  className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors cursor-pointer"
+                                  className="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors cursor-pointer"
                                   title="طباعة الاستمارة"
                                 >
-                                  <Printer size={14} />
+                                  <Printer size={15} />
                                 </button>
                                 {student.status !== 'approved' && (
                                   <button
                                     type="button"
                                     disabled={updatingId === student.id}
                                     onClick={() => handleUpdateStatus('student', student.id, 'approved')}
-                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
                                     title="اعتماد"
                                   >
-                                    <CheckCircle2 size={14} />
+                                    <CheckCircle2 size={15} />
                                   </button>
                                 )}
                                 {student.status !== 'rejected' && (
@@ -1515,20 +1979,20 @@ export default function OnlineRegistrationsPage() {
                                     type="button"
                                     disabled={updatingId === student.id}
                                     onClick={() => handleUpdateStatus('student', student.id, 'rejected')}
-                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                    className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
                                     title="رفض"
                                   >
-                                    <XCircle size={14} />
+                                    <XCircle size={15} />
                                   </button>
                                 )}
                                 <button
                                   type="button"
                                   disabled={updatingId === student.id}
                                   onClick={() => handleDeleteRecord('student', student.id, student.full_name)}
-                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                                   title="حذف"
                                 >
-                                  <Trash2 size={14} />
+                                  <Trash2 size={15} />
                                 </button>
                               </div>
                             </td>
@@ -1541,26 +2005,37 @@ export default function OnlineRegistrationsPage() {
           </div>
 
           {/* ============================================================
-              MOBILE / CARDS VIEW (Responsive & Touch-Friendly)
+              MOBILE / CARDS VIEW (Responsive & Touch-Optimized)
               ============================================================ */}
-          <div className={`${viewMode === 'cards' ? 'grid' : 'grid md:hidden'} grid-cols-1 sm:grid-cols-2 gap-3.5`}>
+          <div className={`${viewMode === 'cards' ? 'grid' : 'grid md:hidden'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4`}>
             {activeTab === 'teachers'
               ? paginatedList.map((teacher) => {
                   const assistants = parseAssistantsData(teacher);
                   const groups = parseGroupsData(teacher);
                   const specs = (teacher.specialization || '').split(/[،,]/).map((s) => s.trim()).filter(Boolean);
+                  const isSelected = selectedIds.includes(teacher.id);
 
                   return (
                     <div 
                       key={teacher.id}
-                      className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3 text-right"
+                      className={`bg-white rounded-3xl p-5 border transition-all shadow-xs hover:shadow-md flex flex-col justify-between space-y-4 text-right ${
+                        isSelected ? 'border-indigo-500 ring-2 ring-indigo-100 bg-indigo-50/20' : 'border-slate-100 hover:border-slate-300'
+                      }`}
                     >
-                      {/* Top Row: Avatar + Name + Status */}
+                      {/* Top Row: Avatar + Name + Checkbox + Status */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSelect(teacher.id)}
+                            className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                          >
+                            {isSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
+                          </button>
+
                           <div 
                             onClick={() => teacher.photo_url ? setPreviewImage({ url: teacher.photo_url, title: teacher.full_name }) : setSelectedTeacher(teacher)}
-                            className="w-12 h-12 rounded-xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer"
+                            className="w-12 h-12 rounded-2xl overflow-hidden bg-rose-50 border border-rose-200 shrink-0 cursor-pointer shadow-2xs"
                           >
                             {teacher.photo_url ? (
                               <img src={teacher.photo_url} alt={teacher.full_name} className="w-full h-full object-cover" />
@@ -1573,7 +2048,7 @@ export default function OnlineRegistrationsPage() {
                           <div>
                             <h4 
                               onClick={() => setSelectedTeacher(teacher)}
-                              className="font-bold text-slate-800 text-sm hover:text-rose-600 cursor-pointer leading-tight"
+                              className="font-black text-slate-900 text-sm hover:text-rose-600 cursor-pointer leading-tight"
                             >
                               {teacher.nickname ? `${teacher.nickname}` : teacher.full_name}
                             </h4>
@@ -1587,29 +2062,29 @@ export default function OnlineRegistrationsPage() {
                         {/* Status Badge */}
                         <div>
                           {teacher.status === 'approved' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 size={11} />
                               <span>معتمد</span>
                             </span>
                           ) : teacher.status === 'rejected' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                               <XCircle size={11} />
                               <span>مرفوض</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               <Clock size={11} />
-                              <span>قيد المراجعة</span>
+                              <span>مراجعة</span>
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Subjects & Grades */}
-                      <div className="space-y-1.5 pt-1 border-t border-slate-100 text-xs">
+                      {/* Specializations & Targets */}
+                      <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
                         <div className="flex flex-wrap gap-1">
                           {specs.map((s, idx) => (
-                            <span key={idx} className="bg-rose-50 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-200">
+                            <span key={idx} className="bg-rose-50 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-rose-200/60">
                               {s}
                             </span>
                           ))}
@@ -1617,78 +2092,85 @@ export default function OnlineRegistrationsPage() {
                         <p className="text-[11px] text-slate-600 line-clamp-1">{teacher.target_grades}</p>
                       </div>
 
-                      {/* Groups List (12H) */}
+                      {/* Groups List Highlight */}
                       {groups.length > 0 && (
-                        <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 space-y-1 text-xs">
-                          <span className="text-[11px] font-bold text-purple-900 block mb-1">
-                            المجموعات ({groups.length} مواعيد مسجلة):
-                          </span>
-                          {groups.slice(0, 3).map((grp, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-[11px] bg-white p-1.5 rounded-lg border border-purple-100">
-                              <span className="font-bold text-purple-950">{grp.day}: {formatTime12H(grp.start_time)}</span>
-                              <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded">
-                                مادة: {grp.subject}
+                        <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-purple-900">
+                            <span>المجموعات المسجلة:</span>
+                            <span className="bg-purple-200/80 px-2 py-0.5 rounded-full text-[10px]">
+                              {groups.length} مواعيد
+                            </span>
+                          </div>
+                          {groups.slice(0, 2).map((grp, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-[11px] bg-white p-2 rounded-xl border border-purple-100">
+                              <span className="font-bold text-purple-950">
+                                {grp.day}: {formatTime12H(grp.start_time)}
+                              </span>
+                              <span className="text-[10px] font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md">
+                                {grp.subject}
                               </span>
                             </div>
                           ))}
-                          {groups.length > 3 && (
+                          {groups.length > 2 && (
                             <span className="text-[10px] text-purple-700 font-bold block text-center pt-0.5">
-                              + {groups.length - 3} مجموعات أخرى
+                              + {groups.length - 2} مجموعات أخرى
                             </span>
                           )}
                         </div>
                       )}
 
-                      {/* Quick Contacts */}
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                      {/* Quick Contacts Bar */}
+                      <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-slate-800">{teacher.phone}</span>
-                          {teacher.whatsapp_phone && (
-                            <a
-                              href={getDirectWhatsAppUrl(teacher.whatsapp_phone, `مرحباً بحضرتك يا ${teacher.nickname || teacher.full_name}`)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-100"
-                            >
-                              <MessageCircle size={12} />
-                              <span>واتساب</span>
-                            </a>
-                          )}
+                          <span className="font-mono font-bold text-slate-900">{teacher.phone}</span>
+                          <button
+                            onClick={() => copyToClipboard(teacher.phone, `card_t_phone_${teacher.id}`)}
+                            className="text-slate-400 hover:text-slate-700"
+                            title="نسخ"
+                          >
+                            {copiedKey === `card_t_phone_${teacher.id}` ? <CheckCheck size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                          </button>
                         </div>
-                        {assistants.length > 0 && (
-                          <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-bold">
-                            {assistants.length} مساعد
-                          </span>
+                        {teacher.whatsapp_phone && (
+                          <a
+                            href={getDirectWhatsAppUrl(teacher.whatsapp_phone, `مرحباً بحضرتك يا ${teacher.nickname || teacher.full_name}`)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1 hover:bg-emerald-100"
+                          >
+                            <MessageCircle size={13} />
+                            <span>واتساب</span>
+                          </a>
                         )}
                       </div>
 
-                      {/* Card Actions Footer */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                      {/* Bottom Action strip */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => setSelectedTeacher(teacher)}
-                          className="flex-1 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                          className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                         >
-                          <Eye size={13} />
-                          <span>التفاصيل</span>
+                          <Eye size={14} />
+                          <span>عرض الملف الكامل</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => printTeacherApplication(teacher)}
-                          className="p-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors"
-                          title="طباعة"
+                          className="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors"
+                          title="طباعة الاستمارة"
                         >
-                          <Printer size={15} />
+                          <Printer size={16} />
                         </button>
                         {teacher.status !== 'approved' && (
                           <button
                             type="button"
                             disabled={updatingId === teacher.id}
                             onClick={() => handleUpdateStatus('teacher', teacher.id, 'approved')}
-                            className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
+                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
                             title="اعتماد"
                           >
-                            <CheckCircle2 size={15} />
+                            <CheckCircle2 size={16} />
                           </button>
                         )}
                         {teacher.status !== 'rejected' && (
@@ -1696,20 +2178,20 @@ export default function OnlineRegistrationsPage() {
                             type="button"
                             disabled={updatingId === teacher.id}
                             onClick={() => handleUpdateStatus('teacher', teacher.id, 'rejected')}
-                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
+                            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
                             title="رفض"
                           >
-                            <XCircle size={15} />
+                            <XCircle size={16} />
                           </button>
                         )}
                         <button
                           type="button"
                           disabled={updatingId === teacher.id}
                           onClick={() => handleDeleteRecord('teacher', teacher.id, teacher.full_name)}
-                          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
                           title="حذف"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
@@ -1717,18 +2199,29 @@ export default function OnlineRegistrationsPage() {
                 })
               : paginatedList.map((student) => {
                   const isElementaryNoPhone = student.phone?.includes('طالب ابتدائي') || student.phone?.includes('لا يوجد');
+                  const isSelected = selectedIds.includes(student.id);
 
                   return (
                     <div 
                       key={student.id}
-                      className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3 text-right"
+                      className={`bg-white rounded-3xl p-5 border transition-all shadow-xs hover:shadow-md flex flex-col justify-between space-y-4 text-right ${
+                        isSelected ? 'border-sky-500 ring-2 ring-sky-100 bg-sky-50/20' : 'border-slate-100 hover:border-slate-300'
+                      }`}
                     >
-                      {/* Top Row: Avatar + Name + Status */}
+                      {/* Top Row: Avatar + Name + Checkbox + Status */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSelect(student.id)}
+                            className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                          >
+                            {isSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
+                          </button>
+
                           <div 
                             onClick={() => student.photo_url ? setPreviewImage({ url: student.photo_url, title: student.full_name }) : setSelectedStudent(student)}
-                            className="w-12 h-12 rounded-xl overflow-hidden bg-sky-50 border border-sky-200 shrink-0 cursor-pointer"
+                            className="w-12 h-12 rounded-2xl overflow-hidden bg-sky-50 border border-sky-200 shrink-0 cursor-pointer shadow-2xs"
                           >
                             {student.photo_url ? (
                               <img src={student.photo_url} alt={student.full_name} className="w-full h-full object-cover" />
@@ -1741,7 +2234,7 @@ export default function OnlineRegistrationsPage() {
                           <div>
                             <h4 
                               onClick={() => setSelectedStudent(student)}
-                              className="font-bold text-slate-800 text-sm hover:text-sky-600 cursor-pointer leading-tight"
+                              className="font-black text-slate-900 text-sm hover:text-sky-600 cursor-pointer leading-tight"
                             >
                               {student.full_name}
                             </h4>
@@ -1755,48 +2248,48 @@ export default function OnlineRegistrationsPage() {
                         {/* Status Badge */}
                         <div>
                           {student.status === 'approved' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 size={11} />
                               <span>معتمد</span>
                             </span>
                           ) : student.status === 'rejected' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                               <XCircle size={11} />
                               <span>مرفوض</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               <Clock size={11} />
-                              <span>قيد المراجعة</span>
+                              <span>مراجعة</span>
                             </span>
                           )}
                         </div>
                       </div>
 
                       {/* School & Address */}
-                      <div className="pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-0.5">
-                        <p className="font-semibold text-slate-700">المدرسة: {student.school_name || 'غير مسجل'}</p>
+                      <div className="pt-2 border-t border-slate-100 text-xs text-slate-600 space-y-1">
+                        <p className="font-bold text-slate-800">المدرسة: {student.school_name || 'غير مسجل'}</p>
                         <p className="text-[11px] text-slate-400 truncate">العنوان: {student.address || 'غير مسجل'}</p>
                       </div>
 
-                      {/* Quick Contacts */}
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1 text-xs">
+                      {/* Contacts Box */}
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-500 text-[11px]">الطالب:</span>
                           {isElementaryNoPhone ? (
-                            <span className="text-[10px] text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded font-bold">
+                            <span className="text-[10px] text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md font-bold">
                               بدون هاتف
                             </span>
                           ) : (
-                            <div className="flex items-center gap-1 font-mono">
-                              <span>{student.phone}</span>
+                            <div className="flex items-center gap-1.5 font-mono">
+                              <span className="font-bold text-slate-900">{student.phone}</span>
                               <a
                                 href={getDirectWhatsAppUrl(student.phone, `أهلاً بك يا ${student.full_name}`)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-emerald-600 hover:text-emerald-700"
                               >
-                                <MessageCircle size={12} />
+                                <MessageCircle size={13} />
                               </a>
                             </div>
                           )}
@@ -1804,47 +2297,47 @@ export default function OnlineRegistrationsPage() {
 
                         <div className="flex items-center justify-between">
                           <span className="text-slate-500 text-[11px]">ولي الأمر:</span>
-                          <div className="flex items-center gap-1 font-mono">
-                            <span>{student.father_phone}</span>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <span className="font-bold text-slate-900">{student.father_phone}</span>
                             <a
                               href={getDirectWhatsAppUrl(student.father_phone, `السلام عليكم، بخصوص تسجيل الطالب/ة ${student.full_name}`)}
                               target="_blank"
                               rel="noreferrer"
                               className="text-emerald-600 hover:text-emerald-700"
                             >
-                              <MessageCircle size={12} />
+                              <MessageCircle size={13} />
                             </a>
                           </div>
                         </div>
                       </div>
 
-                      {/* Card Actions Footer */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                      {/* Bottom Action strip */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => setSelectedStudent(student)}
-                          className="flex-1 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                          className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                         >
-                          <Eye size={13} />
-                          <span>التفاصيل</span>
+                          <Eye size={14} />
+                          <span>عرض الاستمارة</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => printStudentApplication(student)}
-                          className="p-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors"
-                          title="طباعة"
+                          className="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors"
+                          title="طباعة الاستمارة"
                         >
-                          <Printer size={15} />
+                          <Printer size={16} />
                         </button>
                         {student.status !== 'approved' && (
                           <button
                             type="button"
                             disabled={updatingId === student.id}
                             onClick={() => handleUpdateStatus('student', student.id, 'approved')}
-                            className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
+                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
                             title="اعتماد"
                           >
-                            <CheckCircle2 size={15} />
+                            <CheckCircle2 size={16} />
                           </button>
                         )}
                         {student.status !== 'rejected' && (
@@ -1852,20 +2345,20 @@ export default function OnlineRegistrationsPage() {
                             type="button"
                             disabled={updatingId === student.id}
                             onClick={() => handleUpdateStatus('student', student.id, 'rejected')}
-                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
+                            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
                             title="رفض"
                           >
-                            <XCircle size={15} />
+                            <XCircle size={16} />
                           </button>
                         )}
                         <button
                           type="button"
                           disabled={updatingId === student.id}
                           onClick={() => handleDeleteRecord('student', student.id, student.full_name)}
-                          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
                           title="حذف"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
@@ -1876,45 +2369,30 @@ export default function OnlineRegistrationsPage() {
           {/* ============================================================
               PAGINATION BAR (Controls: 10, 20, 25, 50, 100 & Page Nav)
               ============================================================ */}
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border border-slate-200/80 rounded-2xl bg-white shadow-2xs gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs text-slate-500">
-                عرض <span className="font-bold text-slate-800">{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</span> من أصل <span className="font-bold text-slate-800">{totalItems}</span> {activeTab === 'students' ? 'طالب' : 'معلم'}
-                {totalPages > 1 && (
-                  <span className="mr-1">
-                    (صفحة <span className="font-bold text-slate-800">{safeCurrentPage}</span> من <span className="font-bold text-slate-800">{totalPages}</span>)
-                  </span>
-                )}
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border border-slate-200/80 rounded-3xl bg-white shadow-xs gap-4">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              <p>
+                عرض <span className="font-black text-slate-900 font-mono">{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</span> من إجمالي <span className="font-black text-slate-900 font-mono">{totalItems}</span> {activeTab === 'students' ? 'طالب' : 'معلم'}
               </p>
-
-              <div className="flex items-center gap-1.5 text-xs text-slate-600 border-r border-slate-200 pr-3">
-                <span>العدد بالصفحة:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
+              {totalPages > 1 && (
+                <span className="text-slate-400">
+                  (صفحة <span className="font-black text-slate-800">{safeCurrentPage}</span> من <span className="font-black text-slate-800">{totalPages}</span>)
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safeCurrentPage <= 1}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="px-4 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
                 title="الصفحة السابقة"
               >
                 <ChevronRight size={15} />
                 <span>السابق</span>
               </button>
 
-              {/* Page Numbers */}
+              {/* Page Number Buttons */}
               {totalPages > 1 && (
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, idx) => {
@@ -1927,10 +2405,10 @@ export default function OnlineRegistrationsPage() {
                       <button
                         key={p}
                         onClick={() => setCurrentPage(p)}
-                        className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
                           safeCurrentPage === p
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:bg-slate-100'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'text-slate-700 hover:bg-slate-100'
                         }`}
                       >
                         {p}
@@ -1943,7 +2421,7 @@ export default function OnlineRegistrationsPage() {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safeCurrentPage >= totalPages}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="px-4 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
                 title="الصفحة التالية"
               >
                 <span>التالي</span>
@@ -1955,15 +2433,59 @@ export default function OnlineRegistrationsPage() {
       )}
 
       {/* ============================================================
-          STUDENT DETAILS MODAL
+          FLOATING BATCH ACTIONS BAR (Appears When 1+ Items Selected)
+          ============================================================ */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3.5 rounded-3xl shadow-2xl border border-slate-700 flex flex-wrap items-center justify-between gap-4 max-w-xl w-[94%] animate-fade-in-up">
+          <div className="flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">
+              {selectedIds.length}
+            </span>
+            <span className="text-xs sm:text-sm font-bold">تم تحديد {selectedIds.length} استمارة</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isBatchUpdating}
+              onClick={() => handleBatchStatusUpdate('approved')}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
+            >
+              <CheckCircle2 size={14} />
+              <span>اعتماد المحددين</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isBatchUpdating}
+              onClick={() => handleBatchStatusUpdate('rejected')}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
+            >
+              <XCircle size={14} />
+              <span>رفض المحددين</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer transition-colors"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          STUDENT DETAILS MODAL (Sticky Action Bar + Tabs)
           ============================================================ */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 sm:p-8 text-right">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col text-right">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
-              <div className="flex items-center gap-3">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3.5">
                 <div 
                   onClick={() => selectedStudent.photo_url && setPreviewImage({ url: selectedStudent.photo_url, title: selectedStudent.full_name })}
                   className="w-16 h-16 rounded-2xl overflow-hidden bg-sky-50 border-2 border-sky-500 shadow-sm shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
@@ -1982,18 +2504,14 @@ export default function OnlineRegistrationsPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-800">{selectedStudent.full_name}</h3>
+                  <h3 className="text-xl font-black text-slate-900">{selectedStudent.full_name}</h3>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-600 font-semibold">{selectedStudent.academic_grade}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">
-                      {selectedStudent.education_type}
+                    <span className="text-xs font-bold text-sky-800 bg-sky-100 px-2.5 py-0.5 rounded-md">
+                      {selectedStudent.academic_grade} ({selectedStudent.education_type})
                     </span>
-                    {student.gender && (
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${student.gender === 'female' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'}`}>
-                        {student.gender === 'female' ? 'أنثى' : 'ذكر'}
-                      </span>
-                    )}
+                    <span className="text-xs font-mono text-slate-400">
+                      كود: {selectedStudent.id.slice(0, 8).toUpperCase()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -2011,132 +2529,118 @@ export default function OnlineRegistrationsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedStudent(null)}
-                  className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
             </div>
 
-            {/* Modal Body Details Grid */}
-            <div className="space-y-4 text-xs sm:text-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            {/* Modal Body (Scrollable) */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm">
+              {/* General Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                 <div>
-                  <span className="text-slate-400 block text-xs">رقم الهاتف (الطالب):</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {selectedStudent.phone?.includes('طالب ابتدائي') || selectedStudent.phone?.includes('لا يوجد') ? (
-                      <span className="text-xs font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded">
-                        طالب ابتدائي بدون هاتف (التواصل عبر ولي الأمر)
-                      </span>
-                    ) : (
-                      <>
-                        <span className="font-bold font-mono text-slate-800">{selectedStudent.phone}</span>
-                        <a
-                          href={getDirectWhatsAppUrl(selectedStudent.phone, `أهلاً بك يا ${selectedStudent.full_name}`)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-emerald-600 hover:underline flex items-center gap-1 text-xs"
-                        >
-                          <MessageCircle size={14} />
-                          <span>واتساب</span>
-                        </a>
-                      </>
+                  <span className="text-slate-400 block text-xs mb-0.5">الرقم القومي:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold font-mono text-slate-900">{selectedStudent.national_id || 'غير مسجل'}</span>
+                    {selectedStudent.national_id && (
+                      <button
+                        onClick={() => copyToClipboard(selectedStudent.national_id, 'm_st_nid')}
+                        className="text-slate-400 hover:text-slate-700"
+                        title="نسخ"
+                      >
+                        {copiedKey === 'm_st_nid' ? <CheckCheck size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                      </button>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-xs">الرقم القومي:</span>
-                  <span className="font-bold font-mono text-slate-800">{selectedStudent.national_id || 'غير متوفر'}</span>
-                </div>
-
-                <div>
-                  <span className="text-slate-400 block text-xs">تاريخ الميلاد:</span>
-                  <span className="font-bold text-slate-800">{selectedStudent.birth_date || 'غير محدد'}</span>
-                </div>
-
-                <div>
-                  <span className="text-slate-400 block text-xs">النوع (الجنس):</span>
-                  <span className="font-bold text-slate-800">
-                    {selectedStudent.gender === 'female' ? 'أنثى' : 'ذكر'}
+                  <span className="text-slate-400 block text-xs mb-0.5">تاريخ الميلاد والنوع:</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedStudent.birth_date || 'غير محدد'} ({selectedStudent.gender === 'female' ? 'أنثى' : 'ذكر'})
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-xs">هاتف ولي الأمر (الأب):</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-bold font-mono text-slate-800">{selectedStudent.father_phone}</span>
+                  <span className="text-slate-400 block text-xs mb-0.5">هاتف الطالب:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold font-mono text-slate-900">{selectedStudent.phone}</span>
                     <a
-                      href={getDirectWhatsAppUrl(selectedStudent.father_phone, `السلام عليكم، بخصوص تسجيل الطالب/ة ${selectedStudent.full_name}`)}
+                      href={getDirectWhatsAppUrl(selectedStudent.phone, `أهلاً بك يا ${selectedStudent.full_name}`)}
                       target="_blank"
                       rel="noreferrer"
                       className="text-emerald-600 hover:underline flex items-center gap-1 text-xs"
                     >
-                      <MessageCircle size={14} />
+                      <MessageCircle size={13} />
                       <span>واتساب</span>
                     </a>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-xs">هاتف الوالدة:</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-bold font-mono text-slate-800">{selectedStudent.mother_phone || 'غير مسجل'}</span>
-                    {selectedStudent.mother_phone && (
-                      <a
-                        href={getDirectWhatsAppUrl(selectedStudent.mother_phone, `السلام عليكم، بخصوص الطالب/ة ${selectedStudent.full_name}`)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-emerald-600 hover:underline flex items-center gap-1 text-xs"
-                      >
-                        <MessageCircle size={14} />
-                        <span>واتساب</span>
-                      </a>
-                    )}
+                  <span className="text-slate-400 block text-xs mb-0.5">هاتف ولي الأمر (الأب):</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold font-mono text-slate-900">{selectedStudent.father_phone}</span>
+                    <a
+                      href={getDirectWhatsAppUrl(selectedStudent.father_phone, `السلام عليكم، بخصوص تسجيل الطالب/ة ${selectedStudent.full_name}`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-emerald-600 hover:underline flex items-center gap-1 text-xs"
+                    >
+                      <MessageCircle size={13} />
+                      <span>واتساب</span>
+                    </a>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-xs">وظيفة / مهنة ولي الأمر:</span>
-                  <span className="font-bold text-slate-800">{selectedStudent.parent_job || 'غير مسجل'}</span>
+                  <span className="text-slate-400 block text-xs mb-0.5">هاتف والدة الطالب:</span>
+                  <span className="font-bold font-mono text-slate-900">{selectedStudent.mother_phone || 'غير مسجل'}</span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-xs">المدرسة الحالية:</span>
-                  <span className="font-bold text-slate-800">{selectedStudent.school_name || 'غير مسجل'}</span>
+                  <span className="text-slate-400 block text-xs mb-0.5">مهنة / وظيفة ولي الأمر:</span>
+                  <span className="font-bold text-slate-900">{selectedStudent.parent_job || 'غير مسجل'}</span>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <span className="text-slate-400 block text-xs">العنوان بالتفصيل:</span>
-                  <span className="font-bold text-slate-800">{selectedStudent.address || 'غير مسجل'}</span>
+                  <span className="text-slate-400 block text-xs mb-0.5">المدرسة الحالية:</span>
+                  <span className="font-bold text-slate-900">{selectedStudent.school_name || 'غير مسجل'}</span>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <span className="text-slate-400 block text-xs">تاريخ ووقت التقديم (معاد التسجيل):</span>
+                  <span className="text-slate-400 block text-xs mb-0.5">العنوان بالتفصيل:</span>
+                  <span className="font-bold text-slate-900">{selectedStudent.address || 'غير مسجل'}</span>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <span className="text-slate-400 block text-xs mb-0.5">تاريخ ووقت استلام الاستمارة:</span>
                   <span className="font-bold text-sky-700">{formatArabicDateTime(selectedStudent.created_at)}</span>
                 </div>
               </div>
 
               {/* Notes */}
               {selectedStudent.notes && (
-                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs">
-                  <span className="font-bold text-amber-900 block mb-1">ملاحظات الطالب / الرغبات:</span>
-                  <p className="text-amber-800 whitespace-pre-line">{selectedStudent.notes}</p>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                  <span className="font-bold text-slate-800 block mb-1">ملاحظات ورغبات الطالب:</span>
+                  <p className="text-slate-600 leading-relaxed whitespace-pre-line">{selectedStudent.notes}</p>
                 </div>
               )}
             </div>
 
-            {/* Modal Actions */}
-            <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            {/* Sticky Action Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
                 {selectedStudent.status !== 'approved' && (
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus('student', selectedStudent.id, 'approved')}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                   >
                     <CheckCircle2 size={16} />
-                    <span>اعتماد وقبول الطلب</span>
+                    <span>اعتماد وقبول الطالب</span>
                   </button>
                 )}
 
@@ -2144,7 +2648,7 @@ export default function OnlineRegistrationsPage() {
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus('student', selectedStudent.id, 'rejected')}
-                    className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <XCircle size={16} />
                     <span>رفض الطلب</span>
@@ -2155,10 +2659,10 @@ export default function OnlineRegistrationsPage() {
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus('student', selectedStudent.id, 'pending')}
-                    className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-3 py-2.5 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Clock size={16} />
-                    <span>إرجاع لقيد المراجعة</span>
+                    <span>إرجاع للمراجعة</span>
                   </button>
                 )}
               </div>
@@ -2166,7 +2670,7 @@ export default function OnlineRegistrationsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedStudent(null)}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                className="px-4 py-2.5 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs cursor-pointer"
               >
                 إغلاق النافذة
               </button>
@@ -2177,7 +2681,7 @@ export default function OnlineRegistrationsPage() {
       )}
 
       {/* ============================================================
-          TEACHER DETAILS MODAL (WITH GROUPS & SUBJECT OF EACH GROUP)
+          TEACHER DETAILS MODAL (Sticky Action Bar + Groups Matrix)
           ============================================================ */}
       {selectedTeacher && (() => {
         const groups = parseGroupsData(selectedTeacher);
@@ -2186,11 +2690,11 @@ export default function OnlineRegistrationsPage() {
         const targetGrds = (selectedTeacher.target_grades || '').split(/[،,]/).map((g) => g.trim()).filter(Boolean);
 
         return (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in">
-            <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 sm:p-8 text-right">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col text-right">
               
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-3.5">
                   <div 
                     onClick={() => selectedTeacher.photo_url && setPreviewImage({ url: selectedTeacher.photo_url, title: selectedTeacher.full_name })}
@@ -2210,13 +2714,13 @@ export default function OnlineRegistrationsPage() {
                     )}
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-slate-800">
+                    <h3 className="text-xl font-black text-slate-900">
                       {selectedTeacher.nickname ? `${selectedTeacher.nickname}` : selectedTeacher.full_name}
                     </h3>
                     <p className="text-xs text-slate-500 font-semibold">{selectedTeacher.full_name}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {specs.map((s, idx) => (
-                        <span key={idx} className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                        <span key={idx} className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">
                           {s}
                         </span>
                       ))}
@@ -2229,7 +2733,7 @@ export default function OnlineRegistrationsPage() {
                     <div 
                       onClick={() => setPreviewImage({ url: selectedTeacher.logo_url, title: `شعار المعلم - ${selectedTeacher.nickname || selectedTeacher.full_name}` })}
                       className="w-12 h-12 rounded-xl p-1 border border-slate-200 bg-white shadow-xs shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                      title="اضغط لتكبير الشعار"
+                      title="شعار المعلم (اضغط للتكبير)"
                     >
                       <img
                         src={selectedTeacher.logo_url}
@@ -2242,7 +2746,7 @@ export default function OnlineRegistrationsPage() {
                     type="button"
                     onClick={() => printTeacherApplication(selectedTeacher)}
                     className="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                    title="طباعة الاستمارة والجدول"
+                    title="طباعة الاستمارة الرسمية"
                   >
                     <Printer size={16} />
                     <span className="hidden sm:inline">طباعة</span>
@@ -2250,27 +2754,36 @@ export default function OnlineRegistrationsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedTeacher(null)}
-                    className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-9 h-9 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
                   >
                     ✕
                   </button>
                 </div>
               </div>
 
-              {/* Modal Content */}
-              <div className="space-y-5 text-xs sm:text-sm">
+              {/* Modal Body (Scrollable) */}
+              <div className="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm">
                 
                 {/* General Info Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <div>
-                    <span className="text-slate-400 block text-xs">الهاتف الشخصي:</span>
-                    <span className="font-bold font-mono text-slate-800">{selectedTeacher.phone}</span>
+                    <span className="text-slate-400 block text-xs mb-0.5">الهاتف الشخصي:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold font-mono text-slate-900">{selectedTeacher.phone}</span>
+                      <button
+                        onClick={() => copyToClipboard(selectedTeacher.phone, 'm_t_phone')}
+                        className="text-slate-400 hover:text-slate-700"
+                        title="نسخ"
+                      >
+                        {copiedKey === 'm_t_phone' ? <CheckCheck size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                      </button>
+                    </div>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-xs">رقم الواتساب المعتمد:</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="font-bold font-mono text-slate-800">{selectedTeacher.whatsapp_phone || selectedTeacher.phone}</span>
+                    <span className="text-slate-400 block text-xs mb-0.5">رقم الواتساب المعتمد:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold font-mono text-slate-900">{selectedTeacher.whatsapp_phone || selectedTeacher.phone}</span>
                       <a
                         href={getDirectWhatsAppUrl(selectedTeacher.whatsapp_phone || selectedTeacher.phone, `مرحباً بحضرتك يا ${selectedTeacher.nickname || selectedTeacher.full_name}`)}
                         target="_blank"
@@ -2284,22 +2797,22 @@ export default function OnlineRegistrationsPage() {
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-xs">الرقم القومي:</span>
-                    <span className="font-bold font-mono text-slate-800">{selectedTeacher.national_id || 'غير مسجل'}</span>
+                    <span className="text-slate-400 block text-xs mb-0.5">الرقم القومي:</span>
+                    <span className="font-bold font-mono text-slate-900">{selectedTeacher.national_id || 'غير مسجل'}</span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-xs">كود الطلب المرجعي:</span>
+                    <span className="text-slate-400 block text-xs mb-0.5">كود الطلب المرجعي:</span>
                     <span className="font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                       {selectedTeacher.id.slice(0, 8).toUpperCase()}
                     </span>
                   </div>
 
                   <div className="sm:col-span-2">
-                    <span className="text-slate-400 block text-xs mb-1">المراحل والصفوف الدراسية:</span>
+                    <span className="text-slate-400 block text-xs mb-1">المراحل والصفوف الدراسية المستهدفة:</span>
                     <div className="flex flex-wrap gap-1.5">
                       {targetGrds.map((g, idx) => (
-                        <span key={idx} className="bg-white border border-slate-200 text-slate-700 font-semibold px-2.5 py-0.5 rounded-lg text-xs">
+                        <span key={idx} className="bg-white border border-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-xl text-xs">
                           {g}
                         </span>
                       ))}
@@ -2307,21 +2820,19 @@ export default function OnlineRegistrationsPage() {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <span className="text-slate-400 block text-xs">تاريخ ووقت استلام الاستمارة:</span>
+                    <span className="text-slate-400 block text-xs mb-0.5">تاريخ ووقت استلام الاستمارة:</span>
                     <span className="font-bold text-rose-700">{formatArabicDateTime(selectedTeacher.created_at)}</span>
                   </div>
                 </div>
 
-                {/* ============================================================
-                    GROUPS & SCHEDULES SECTION (CLEARLY SHOWING SUBJECT PER GROUP)
-                    ============================================================ */}
-                <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-purple-950 flex items-center gap-2 text-xs sm:text-sm">
+                {/* Groups Matrix (Per-Group Subject Highlight) */}
+                <div className="p-4 rounded-3xl bg-purple-50/60 border border-purple-200">
+                  <div className="flex items-center justify-between mb-3.5">
+                    <h4 className="font-black text-purple-950 flex items-center gap-2 text-sm">
                       <Clock size={17} className="text-purple-600" />
                       <span>جدول الحصص والمجموعات المقترحة لكل مادة:</span>
                     </h4>
-                    <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300">
+                    <span className="text-xs font-bold text-purple-700 bg-purple-100 px-3 py-0.5 rounded-full border border-purple-300">
                       {groups.length} مجموعات مسجلة
                     </span>
                   </div>
@@ -2334,17 +2845,16 @@ export default function OnlineRegistrationsPage() {
                         return (
                           <div 
                             key={grp.id || idx} 
-                            className="p-3.5 rounded-xl bg-white border border-purple-200 shadow-2xs space-y-2"
+                            className="p-3.5 rounded-2xl bg-white border border-purple-200 shadow-2xs space-y-2"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 pb-2">
                               <div className="flex items-center gap-2">
                                 <span className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">
                                   {idx + 1}
                                 </span>
-                                <span className="font-bold text-purple-950 text-sm">المجموعة رقم {idx + 1}</span>
+                                <span className="font-black text-purple-950 text-sm">المجموعة رقم {idx + 1}</span>
                               </div>
 
-                              {/* Group Subject Highlight */}
                               <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1 rounded-xl text-xs font-bold shadow-xs">
                                 <BookOpen size={13} />
                                 <span>مادة المجموعة: {grp.subject}</span>
@@ -2358,7 +2868,7 @@ export default function OnlineRegistrationsPage() {
                               </div>
 
                               <div>
-                                <span className="text-slate-400 block text-[11px]">توقيت الحصة:</span>
+                                <span className="text-slate-400 block text-[11px]">التوقيت (12 ساعة):</span>
                                 <span className="font-bold text-purple-950">
                                   من {formatTime12H(grp.start_time, true)} إلى {formatTime12H(grp.end_time, true)}
                                 </span>
@@ -2366,7 +2876,7 @@ export default function OnlineRegistrationsPage() {
 
                               <div>
                                 <span className="text-slate-400 block text-[11px]">مدة الحصة:</span>
-                                <span className="font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded inline-block">
+                                <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded inline-block">
                                   {duration || 'غير محدد'}
                                 </span>
                               </div>
@@ -2386,13 +2896,13 @@ export default function OnlineRegistrationsPage() {
                 </div>
 
                 {/* Assistants Team */}
-                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                <div className="p-4 rounded-3xl bg-amber-50/60 border border-amber-200">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-amber-950 flex items-center gap-2 text-xs sm:text-sm">
+                    <h4 className="font-black text-amber-950 flex items-center gap-2 text-sm">
                       <Users size={17} className="text-amber-600" />
                       <span>فريق العمل والمساعدين (السكرتارية):</span>
                     </h4>
-                    <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-0.5 rounded-full border border-amber-300">
                       {assistants.length} مساعد
                     </span>
                   </div>
@@ -2400,24 +2910,21 @@ export default function OnlineRegistrationsPage() {
                   {assistants.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {assistants.map((asst, idx) => (
-                        <div key={idx} className="p-3 rounded-xl bg-white border border-amber-200 flex items-center justify-between text-xs shadow-2xs">
+                        <div key={idx} className="p-3 rounded-2xl bg-white border border-amber-200 flex items-center justify-between text-xs shadow-2xs">
                           <div>
-                            <span className="font-bold text-slate-800 block">مساعد {idx + 1}: {asst.name}</span>
+                            <span className="font-bold text-slate-900 block">مساعد {idx + 1}: {asst.name}</span>
                             <span className="font-mono text-slate-600 block mt-0.5">{asst.phone}</span>
                           </div>
                           {asst.phone && (
-                            <div className="flex items-center gap-1.5">
-                              <a
-                                href={getDirectWhatsAppUrl(asst.phone, `السلام عليكم أ/ ${asst.name}`)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center gap-1 text-xs font-semibold"
-                                title="محادثة واتساب"
-                              >
-                                <MessageCircle size={14} />
-                                <span>واتساب</span>
-                              </a>
-                            </div>
+                            <a
+                              href={getDirectWhatsAppUrl(asst.phone, `السلام عليكم أ/ ${asst.name}`)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <MessageCircle size={14} />
+                              <span>واتساب</span>
+                            </a>
                           )}
                         </div>
                       ))}
@@ -2448,7 +2955,7 @@ export default function OnlineRegistrationsPage() {
                           className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold flex items-center gap-1.5 hover:bg-blue-100"
                         >
                           <ExternalLink size={13} />
-                          <span>صفحة الفيسبوك</span>
+                          <span>صفحة فيسبوك</span>
                         </a>
                       )}
                       {selectedTeacher.youtube_link && (
@@ -2459,7 +2966,7 @@ export default function OnlineRegistrationsPage() {
                           className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 font-bold flex items-center gap-1.5 hover:bg-rose-100"
                         >
                           <ExternalLink size={13} />
-                          <span>قناة اليوتيوب</span>
+                          <span>قناة يوتيوب</span>
                         </a>
                       )}
                       {selectedTeacher.telegram_link && (
@@ -2470,30 +2977,30 @@ export default function OnlineRegistrationsPage() {
                           className="px-3 py-1.5 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 font-bold flex items-center gap-1.5 hover:bg-sky-100"
                         >
                           <ExternalLink size={13} />
-                          <span>جروب التليجرام</span>
+                          <span>قناة تليجرام</span>
                         </a>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Notes & Hall Requirements */}
+                {/* Notes */}
                 {selectedTeacher.notes && (
-                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs">
-                    <span className="font-bold text-amber-900 block mb-1">ملاحظات ومتطلبات خاصة بالقاعات:</span>
-                    <p className="text-amber-800 whitespace-pre-line">{selectedTeacher.notes}</p>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                    <span className="font-bold text-slate-800 block mb-1">متطلبات القاعات وملاحظات:</span>
+                    <p className="text-slate-600 leading-relaxed whitespace-pre-line">{selectedTeacher.notes}</p>
                   </div>
                 )}
               </div>
 
-              {/* Modal Actions */}
-              <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              {/* Sticky Action Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2">
                   {selectedTeacher.status !== 'approved' && (
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus('teacher', selectedTeacher.id, 'approved')}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                     >
                       <CheckCircle2 size={16} />
                       <span>اعتماد وقبول المعلم</span>
@@ -2504,7 +3011,7 @@ export default function OnlineRegistrationsPage() {
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus('teacher', selectedTeacher.id, 'rejected')}
-                      className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                     >
                       <XCircle size={16} />
                       <span>رفض الطلب</span>
@@ -2515,10 +3022,10 @@ export default function OnlineRegistrationsPage() {
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus('teacher', selectedTeacher.id, 'pending')}
-                      className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-2.5 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                     >
                       <Clock size={16} />
-                      <span>إرجاع لقيد المراجعة</span>
+                      <span>إرجاع للمراجعة</span>
                     </button>
                   )}
                 </div>
@@ -2526,7 +3033,7 @@ export default function OnlineRegistrationsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedTeacher(null)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs cursor-pointer"
                 >
                   إغلاق النافذة
                 </button>
@@ -2543,11 +3050,11 @@ export default function OnlineRegistrationsPage() {
       {previewImage && (
         <div 
           onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in cursor-pointer"
+          className="fixed inset-0 z-60 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in cursor-pointer"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl p-4 max-w-xl w-full shadow-2xl border border-slate-200 text-center relative"
+            className="bg-white rounded-3xl p-5 max-w-xl w-full shadow-2xl border border-slate-200 text-center relative"
           >
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
               <span className="text-sm font-bold text-slate-800">{previewImage.title}</span>
