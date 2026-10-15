@@ -377,6 +377,56 @@ function validateGroupTimes(startTime, endTime) {
   return { valid: true, duration, durationArabic };
 }
 
+export function formatTime12H(time24, includeWord = false) {
+  if (!time24) return '';
+  const parts = String(time24).split(':');
+  if (parts.length < 2) return time24;
+  let h = parseInt(parts[0], 10);
+  const m = parts[1] || '00';
+  if (isNaN(h)) return time24;
+
+  const isPM = h >= 12;
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+
+  const hStr = String(h12).padStart(2, '0');
+  const period = isPM ? 'م' : 'ص';
+  const word = isPM ? (h === 12 ? 'ظهراً' : 'مساءً') : (h === 0 ? 'منتصف الليل' : 'صباحاً');
+
+  if (includeWord) {
+    return `${hStr}:${m} ${word}`;
+  }
+  return `${hStr}:${m} ${period}`;
+}
+
+export const TIME_OPTIONS_12H = (() => {
+  const options = [];
+  for (let hour = 7; hour <= 23; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const hStr = String(hour).padStart(2, '0');
+      const mStr = String(minute).padStart(2, '0');
+      const time24 = `${hStr}:${mStr}`;
+      
+      const isPM = hour >= 12;
+      let h12 = hour % 12;
+      if (h12 === 0) h12 = 12;
+      const h12Str = String(h12).padStart(2, '0');
+      
+      const periodShort = isPM ? 'م' : 'ص';
+      const periodWord = isPM 
+        ? (hour === 12 ? 'ظهراً' : 'مساءً') 
+        : 'صباحاً';
+
+      options.push({
+        value: time24,
+        label: `${h12Str}:${mStr} ${periodWord} (${periodShort})`,
+        shortLabel: `${h12Str}:${mStr} ${periodShort}`,
+      });
+    }
+  }
+  return options;
+})();
+
 const TEACHER_DRAFT_KEY = 'atlas_teacher_registration_draft';
 
 export default function TeacherRegistrationPage() {
@@ -1119,7 +1169,9 @@ export default function TeacherRegistrationPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {submittedData.groupsList.map((grp, idx) => (
                   <div key={idx} className="p-2 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-purple-950">مجموعة {idx + 1}: {grp.day} ({grp.start_time})</span>
+                    <span className="font-bold text-purple-950">
+                      مجموعة {idx + 1}: {grp.day} (من {formatTime12H(grp.start_time, true)} إلى {formatTime12H(grp.end_time, true)})
+                    </span>
                     <span className="font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
                       {grp.subject || submittedData.specializationsArray?.[0]}
                     </span>
@@ -1988,34 +2040,72 @@ export default function TeacherRegistrationPage() {
                               </select>
                             </div>
 
-                            {/* Start Time */}
+                            {/* Start Time (12-Hour) */}
                             <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1">وقت البداية <span className="text-rose-500">*</span></label>
-                              <input
-                                type="time"
-                                value={group.start_time}
-                                onChange={(e) => handleGroupChange(group.id, 'start_time', e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                              />
+                              <label className="block text-xs font-bold text-slate-700 mb-1">
+                                وقت البداية <span className="text-purple-600 font-normal">(12 ساعة)</span> <span className="text-rose-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <Clock size={14} className="absolute left-2.5 top-3 text-purple-500 pointer-events-none" />
+                                <select
+                                  value={group.start_time}
+                                  onChange={(e) => handleGroupChange(group.id, 'start_time', e.target.value)}
+                                  className="w-full pr-3 pl-8 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer shadow-2xs"
+                                  required
+                                >
+                                  {!TIME_OPTIONS_12H.some((o) => o.value === group.start_time) && group.start_time && (
+                                    <option value={group.start_time}>
+                                      {formatTime12H(group.start_time, true)}
+                                    </option>
+                                  )}
+                                  {TIME_OPTIONS_12H.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
 
-                            {/* End Time */}
+                            {/* End Time (12-Hour) */}
                             <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1">وقت النهاية <span className="text-rose-500">*</span></label>
-                              <input
-                                type="time"
-                                value={group.end_time}
-                                onChange={(e) => handleGroupChange(group.id, 'end_time', e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                              />
+                              <label className="block text-xs font-bold text-slate-700 mb-1">
+                                وقت النهاية <span className="text-purple-600 font-normal">(12 ساعة)</span> <span className="text-rose-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <Clock size={14} className="absolute left-2.5 top-3 text-purple-500 pointer-events-none" />
+                                <select
+                                  value={group.end_time}
+                                  onChange={(e) => handleGroupChange(group.id, 'end_time', e.target.value)}
+                                  className="w-full pr-3 pl-8 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer shadow-2xs"
+                                  required
+                                >
+                                  {!TIME_OPTIONS_12H.some((o) => o.value === group.end_time) && group.end_time && (
+                                    <option value={group.end_time}>
+                                      {formatTime12H(group.end_time, true)}
+                                    </option>
+                                  )}
+                                  {TIME_OPTIONS_12H.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Calculated Duration */}
-                          {timeVal.valid && (
+                          {/* Calculated Duration & 12H Summary */}
+                          {timeVal.valid ? (
                             <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-100/70 px-2.5 py-1 rounded-lg">
                               <Clock size={12} />
-                              <span>مدة الحصة: {timeVal.durationArabic}</span>
+                              <span>
+                                مدة الحصة: {timeVal.durationArabic} (من {formatTime12H(group.start_time, true)} إلى {formatTime12H(group.end_time, true)})
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                              <span>⚠️ {timeVal.message}</span>
                             </div>
                           )}
                         </div>
@@ -2145,8 +2235,8 @@ export default function TeacherRegistrationPage() {
                                 مادة: {grp.subject || formData.specializations[0]}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between text-slate-600 font-mono text-[10px]">
-                              <span>من {grp.start_time} إلى {grp.end_time}</span>
+                            <div className="flex items-center justify-between text-slate-600 text-[11px]">
+                              <span>من {formatTime12H(grp.start_time, true)} إلى {formatTime12H(grp.end_time, true)}</span>
                               <span className="font-sans font-medium text-slate-700">{grp.grade}</span>
                             </div>
                           </div>

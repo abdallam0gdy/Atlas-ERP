@@ -138,6 +138,28 @@ export const calculateGroupDuration = (start, end) => {
   }
 };
 
+export function formatTime12H(time24, includeWord = false) {
+  if (!time24) return '';
+  const parts = String(time24).split(':');
+  if (parts.length < 2) return time24;
+  let h = parseInt(parts[0], 10);
+  const m = parts[1] || '00';
+  if (isNaN(h)) return time24;
+
+  const isPM = h >= 12;
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+
+  const hStr = String(h12).padStart(2, '0');
+  const period = isPM ? 'م' : 'ص';
+  const word = isPM ? (h === 12 ? 'ظهراً' : 'مساءً') : (h === 0 ? 'منتصف الليل' : 'صباحاً');
+
+  if (includeWord) {
+    return `${hStr}:${m} ${word}`;
+  }
+  return `${hStr}:${m} ${period}`;
+}
+
 export const formatArabicDateTime = (dateStr) => {
   if (!dateStr) return 'غير محدد';
   const d = new Date(dateStr);
@@ -537,7 +559,7 @@ export default function OnlineRegistrationsPage() {
                   <td><span class="badge">${g.subject}</span></td>
                   <td>${g.grade}</td>
                   <td>${g.day}</td>
-                  <td>من ${g.start_time} إلى ${g.end_time}</td>
+                  <td>من ${formatTime12H(g.start_time, true)} إلى ${formatTime12H(g.end_time, true)}</td>
                   <td>${calculateGroupDuration(g.start_time, g.end_time)}</td>
                 </tr>
               `).join('')}
@@ -1298,7 +1320,7 @@ export default function OnlineRegistrationsPage() {
                                 >
                                   <div className="flex items-center gap-1 font-semibold text-purple-950 truncate">
                                     <span className="text-purple-600 font-bold">{grp.day}:</span>
-                                    <span className="font-mono text-slate-700">{grp.start_time}</span>
+                                    <span className="font-mono text-slate-700">{formatTime12H(grp.start_time)}</span>
                                   </div>
                                   <div className="flex items-center gap-1 shrink-0">
                                     <span className="font-bold text-purple-800 bg-purple-100/90 px-1.5 py-0.5 rounded text-[10px] border border-purple-300">
@@ -1858,7 +1880,9 @@ export default function OnlineRegistrationsPage() {
 
                               <div>
                                 <span className="text-slate-400 block text-[11px]">توقيت الحصة:</span>
-                                <span className="font-mono font-bold text-slate-800">من {grp.start_time} إلى {grp.end_time}</span>
+                                <span className="font-mono font-bold text-slate-800">
+                                  من {formatTime12H(grp.start_time, true)} إلى {formatTime12H(grp.end_time, true)}
+                                </span>
                               </div>
 
                               <div>
