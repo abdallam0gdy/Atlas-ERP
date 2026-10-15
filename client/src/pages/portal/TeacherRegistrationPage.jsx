@@ -938,6 +938,13 @@ export default function TeacherRegistrationPage() {
       const specializationString = formData.specializations.join(' ، ');
       const targetGradesString = formData.target_grades.join(' ، ');
 
+      const sanitizedGroups = groups.map((g) => ({
+        ...g,
+        subject: (g.subject && formData.specializations.includes(g.subject))
+          ? g.subject
+          : (formData.specializations[0] || ''),
+      }));
+
       const payload = {
         id: teacherId,
         full_name: sanitizeInputText(formData.full_name, 100),
@@ -952,7 +959,7 @@ export default function TeacherRegistrationPage() {
         assistant_name: validAssistants[0]?.name || (hasNoAssistant ? 'إدارة شخصية بدون سكرتارية' : null),
         assistant_phone: validAssistants[0]?.phone || null,
         assistants_data: validAssistants.length > 0 ? validAssistants : null,
-        groups_data: groups,
+        groups_data: sanitizedGroups,
         bio: sanitizeInputText(formData.bio, 1000),
         facebook_link: formatSocialUrl(formData.facebook_link, 'facebook'),
         youtube_link: formatSocialUrl(formData.youtube_link, 'youtube'),
@@ -1006,7 +1013,7 @@ export default function TeacherRegistrationPage() {
         specializationsArray: formData.specializations,
         targetGradesArray: formData.target_grades,
         assistantsList: validAssistants,
-        groupsList: groups,
+        groupsList: sanitizedGroups,
         id: teacherId,
         created_at: new Date().toLocaleDateString('ar-EG'),
       });
@@ -1873,12 +1880,22 @@ export default function TeacherRegistrationPage() {
                           key={group.id}
                           className="p-5 rounded-2xl bg-purple-50/40 border border-purple-200/90 relative text-right shadow-2xs"
                         >
-                          <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center justify-between mb-4 pb-2 border-b border-purple-100">
                             <span className="text-xs font-bold text-purple-900 flex items-center gap-2">
                               <span className="w-6 h-6 rounded-full bg-purple-200 text-purple-800 text-xs flex items-center justify-center font-bold">
                                 {idx + 1}
                               </span>
                               <span>المجموعة رقم {idx + 1}</span>
+                              {formData.specializations.length === 1 && (
+                                <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                                  مادة: {formData.specializations[0]}
+                                </span>
+                              )}
+                              {formData.specializations.length > 1 && group.subject && (
+                                <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                                  مادة: {group.subject}
+                                </span>
+                              )}
                             </span>
 
                             {groups.length > 1 && (
@@ -1893,7 +1910,40 @@ export default function TeacherRegistrationPage() {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                          <div className={`grid grid-cols-1 sm:grid-cols-2 ${formData.specializations.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3.5`}>
+                            {/* Subject Selector (If multiple specializations exist) */}
+                            {formData.specializations.length > 1 && (
+                              <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                  مادة المجموعة <span className="text-rose-500">*</span>
+                                </label>
+                                <select
+                                  value={group.subject && formData.specializations.includes(group.subject) ? group.subject : formData.specializations[0] || ''}
+                                  onChange={(e) => handleGroupChange(group.id, 'subject', e.target.value)}
+                                  className="w-full px-3 py-2 rounded-xl border border-purple-300 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-purple-950 shadow-2xs cursor-pointer"
+                                  required
+                                >
+                                  {formData.specializations.map((sub) => (
+                                    <option key={sub} value={sub}>{sub}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Grade */}
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">الصف الدراسي <span className="text-rose-500">*</span></label>
+                              <select
+                                value={group.grade}
+                                onChange={(e) => handleGroupChange(group.id, 'grade', e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              >
+                                {formData.target_grades.map((grd) => (
+                                  <option key={grd} value={grd}>{grd}</option>
+                                ))}
+                              </select>
+                            </div>
+
                             {/* Day */}
                             <div>
                               <label className="block text-xs font-bold text-slate-700 mb-1">اليوم <span className="text-rose-500">*</span></label>
@@ -1928,20 +1978,6 @@ export default function TeacherRegistrationPage() {
                                 onChange={(e) => handleGroupChange(group.id, 'end_time', e.target.value)}
                                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                               />
-                            </div>
-
-                            {/* Grade */}
-                            <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1">الصف الدراسي <span className="text-rose-500">*</span></label>
-                              <select
-                                value={group.grade}
-                                onChange={(e) => handleGroupChange(group.id, 'grade', e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                              >
-                                {formData.target_grades.map((grd) => (
-                                  <option key={grd} value={grd}>{grd}</option>
-                                ))}
-                              </select>
                             </div>
                           </div>
 
