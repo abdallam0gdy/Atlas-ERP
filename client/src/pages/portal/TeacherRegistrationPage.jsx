@@ -526,6 +526,20 @@ export default function TeacherRegistrationPage() {
     } catch (e) {}
   };
 
+  // Ensure every group has a valid subject whenever specializations change
+  useEffect(() => {
+    if (formData.specializations.length > 0) {
+      setGroups((prev) =>
+        prev.map((g) => {
+          if (!g.subject || !formData.specializations.includes(g.subject)) {
+            return { ...g, subject: formData.specializations[0] };
+          }
+          return g;
+        })
+      );
+    }
+  }, [formData.specializations]);
+
   // Auto-save draft to localStorage whenever fields change
   useEffect(() => {
     if (!submittedData) {
@@ -1098,6 +1112,22 @@ export default function TeacherRegistrationPage() {
               </div>
             )}
           </div>
+
+          {submittedData.groupsList?.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-slate-200 text-xs">
+              <span className="font-bold text-purple-900 block mb-2">المواعيد ومادة كل مجموعة:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {submittedData.groupsList.map((grp, idx) => (
+                  <div key={idx} className="p-2 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-purple-950">مجموعة {idx + 1}: {grp.day} ({grp.start_time})</span>
+                    <span className="font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
+                      {grp.subject || submittedData.specializationsArray?.[0]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -2100,7 +2130,28 @@ export default function TeacherRegistrationPage() {
                       <div><strong>المواد:</strong> {formData.specializations.join(' ، ')}</div>
                       <div><strong>المراحل:</strong> {formData.target_grades.join(' ، ')}</div>
                       <div><strong>المساعدين:</strong> {hasNoAssistant ? 'إدارة ذاتية' : `${assistants.length} مساعد`}</div>
-                      <div><strong>المجموعات المقترحة:</strong> {groups.length} مجموعة</div>
+                      <div><strong>إجمالي المجموعات:</strong> {groups.length} مجموعة</div>
+                    </div>
+
+                    {/* Detailed Groups Breakdown */}
+                    <div className="pt-2.5 border-t border-slate-200">
+                      <span className="font-bold text-purple-900 block mb-2 text-xs">جدول ومواعيد المجموعات (مادة كل مجموعة):</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {groups.map((grp, idx) => (
+                          <div key={grp.id || idx} className="p-2.5 rounded-xl bg-purple-50/80 border border-purple-200 text-[11px] space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-purple-950">مجموعة {idx + 1} ({grp.day})</span>
+                              <span className="font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                                مادة: {grp.subject || formData.specializations[0]}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-slate-600 font-mono text-[10px]">
+                              <span>من {grp.start_time} إلى {grp.end_time}</span>
+                              <span className="font-sans font-medium text-slate-700">{grp.grade}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
