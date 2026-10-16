@@ -623,7 +623,7 @@ export default function StudentRegistrationPage() {
         <div className="max-w-2xl mx-auto bg-slate-50 rounded-2xl p-6 border border-slate-200 text-right mb-8 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
             <span className="text-xs text-slate-500 font-medium">رقم الطلب المرجعي:</span>
-            <span className="font-mono font-bold text-sky-700 bg-sky-100 px-2.5 py-0.5 rounded text-xs">
+            <span className="font-mono font-bold text-[#0C3C82] bg-[#E7EEFF] px-2.5 py-0.5 rounded text-xs">
               {submittedData.id.slice(0, 8).toUpperCase()}
             </span>
           </div>
@@ -692,7 +692,7 @@ export default function StudentRegistrationPage() {
                 notes: '',
               });
             }}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-700 hover:to-blue-800 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-600/20 transition-all cursor-pointer"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#0C3C82] hover:bg-[#00275C] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#0C3C82]/20 transition-all cursor-pointer"
           >
             <GraduationCap size={18} />
             <span>تسجيل طالب آخر</span>
@@ -708,12 +708,12 @@ export default function StudentRegistrationPage() {
       {/* Mobile Top Stepper (< lg) */}
       <div className="lg:hidden mb-6 bg-white rounded-3xl p-4 sm:p-5 shadow-lg border border-slate-100">
         <div className="flex items-center justify-between text-xs font-bold mb-2">
-          <span className="text-sky-600">الخطوة {currentStep} من {STUDENT_STEPS.length}</span>
+          <span className="text-[#0C3C82] font-black">الخطوة {currentStep} من {STUDENT_STEPS.length}</span>
           <span className="text-slate-800 font-extrabold">{STUDENT_STEPS[currentStep - 1].title}</span>
         </div>
         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-sky-500 to-blue-600 transition-all duration-300"
+            className="h-full bg-gradient-to-r from-[#0EA5E9] to-[#0C3C82] transition-all duration-300"
             style={{ width: `${(currentStep / STUDENT_STEPS.length) * 100}%` }}
           />
         </div>
@@ -729,9 +729,9 @@ export default function StudentRegistrationPage() {
                 onClick={() => handleStepJump(step.id)}
                 className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
                   isDone 
-                    ? 'bg-emerald-500 text-white' 
+                    ? 'bg-emerald-600 text-white' 
                     : isCurrent 
-                    ? 'bg-sky-600 text-white ring-4 ring-sky-100' 
+                    ? 'bg-[#0C3C82] text-white ring-4 ring-[#AEC6FF]' 
                     : 'bg-slate-100 text-slate-400'
                 }`}
               >
@@ -748,12 +748,12 @@ export default function StudentRegistrationPage() {
         <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-6 space-y-5">
           <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
             <div className="flex items-center gap-3 pb-5 mb-5 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-[#E7EEFF] text-[#0C3C82] flex items-center justify-center font-bold shadow-inner">
                 <GraduationCap size={24} />
               </div>
               <div>
-                <span className="text-[11px] font-bold text-sky-600 tracking-wider">استمارة تسجيل الطلاب</span>
-                <h3 className="text-base font-black text-slate-800">مراحل التقديم والقبول</h3>
+                <span className="text-[11px] font-bold text-[#D8232A] tracking-wider">استمارة تسجيل الطلاب</span>
+                <h3 className="text-base font-black text-slate-900">مراحل التقديم والقبول</h3>
               </div>
             </div>
 
@@ -761,11 +761,11 @@ export default function StudentRegistrationPage() {
             <div className="mb-6">
               <div className="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
                 <span>نسبة استكمال الاستمارة</span>
-                <span className="font-mono text-sky-600 font-bold">{Math.round((currentStep / STUDENT_STEPS.length) * 100)}%</span>
+                <span className="font-mono text-[#0C3C82] font-bold">{Math.round((currentStep / STUDENT_STEPS.length) * 100)}%</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5">
                 <div 
-                  className="h-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-[#0EA5E9] to-[#0C3C82] rounded-full transition-all duration-500"
                   style={{ width: `${(currentStep / STUDENT_STEPS.length) * 100}%` }}
                 />
               </div>
@@ -785,7 +785,7 @@ export default function StudentRegistrationPage() {
                     onClick={() => handleStepJump(step.id)}
                     className={`w-full text-right p-3.5 rounded-2xl transition-all flex items-center gap-3.5 cursor-pointer ${
                       isCurrent 
-                        ? 'bg-gradient-to-r from-sky-50 to-blue-50/50 border border-sky-200 text-slate-900 shadow-sm'
+                        ? 'bg-[#F0F3FF] border-2 border-[#0C3C82] text-slate-900 shadow-sm'
                         : isDone
                         ? 'hover:bg-slate-50 text-slate-700'
                         : 'text-slate-400 hover:text-slate-600'
@@ -793,9 +793,9 @@ export default function StudentRegistrationPage() {
                   >
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-all ${
                       isDone 
-                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
                         : isCurrent
-                        ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30 ring-2 ring-sky-200'
+                        ? 'bg-[#0C3C82] text-white shadow-md shadow-[#0C3C82]/30 ring-2 ring-[#0EA5E9]'
                         : 'bg-slate-100 text-slate-400'
                     }`}>
                       {isDone ? <Check size={16} /> : <StepIcon size={16} />}
@@ -803,7 +803,7 @@ export default function StudentRegistrationPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-bold truncate ${isCurrent ? 'text-sky-700 font-black' : isDone ? 'text-slate-800' : 'text-slate-500'}`}>
+                        <span className={`text-xs font-bold truncate ${isCurrent ? 'text-[#0C3C82] font-black' : isDone ? 'text-slate-800' : 'text-slate-500'}`}>
                           {step.title}
                         </span>
                         {isDone && (
@@ -812,7 +812,7 @@ export default function StudentRegistrationPage() {
                           </span>
                         )}
                         {isCurrent && (
-                          <span className="text-[10px] font-bold text-sky-600 bg-sky-100 px-1.5 py-0.5 rounded-md animate-pulse">
+                          <span className="text-[10px] font-bold text-[#D8232A] bg-red-50 px-1.5 py-0.5 rounded-md animate-pulse">
                             الحالية
                           </span>
                         )}
@@ -828,8 +828,8 @@ export default function StudentRegistrationPage() {
           </div>
 
           {/* Student Help Card */}
-          <div className="bg-gradient-to-br from-[#071E40] to-[#0C3C82] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
-            <div className="flex items-center gap-2 text-sky-300 font-bold">
+          <div className="bg-gradient-to-br from-[#00275C] to-[#0C3C82] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
+            <div className="flex items-center gap-2 text-[#32B4F9] font-bold">
               <Sparkles size={16} />
               <span>مساعدة في حجز المجموعات</span>
             </div>
@@ -838,7 +838,7 @@ export default function StudentRegistrationPage() {
             </p>
             <div className="pt-1 flex items-center justify-between text-[11px] text-white/80 border-t border-white/10">
               <span>شؤون الطلاب: 01288817183</span>
-              <span className="font-mono text-emerald-400">متاح الآن</span>
+              <span className="font-mono text-emerald-400 font-bold">متاح الآن</span>
             </div>
           </div>
         </aside>
@@ -849,15 +849,15 @@ export default function StudentRegistrationPage() {
             
             {/* Step Header */}
             <div className="flex items-center gap-3.5 pb-6 mb-7 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-[#E7EEFF] text-[#0C3C82] flex items-center justify-center font-bold shadow-inner">
                 {(() => {
                   const CurrentIcon = STUDENT_STEPS[currentStep - 1].icon;
                   return <CurrentIcon size={24} />;
                 })()}
               </div>
               <div>
-                <span className="text-xs font-bold text-sky-600">الخطوة {currentStep} من {STUDENT_STEPS.length}</span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-800">
+                <span className="text-xs font-bold text-[#D8232A]">الخطوة {currentStep} من {STUDENT_STEPS.length}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-[#00275C]">
                   {STUDENT_STEPS[currentStep - 1].title}
                 </h2>
                 <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
@@ -1204,34 +1204,34 @@ export default function StudentRegistrationPage() {
                   ============================================================ */}
               {currentStep === 4 && (
                 <div className="space-y-6 animate-fade-in">
-                  <div className="p-5 rounded-2xl bg-sky-50/60 border border-sky-200 text-right">
-                    <div className="flex items-center justify-between pb-3 mb-4 border-b border-sky-200">
-                      <span className="font-extrabold text-slate-800 text-sm">مراجعة بيانات استمارة الطالب:</span>
-                      <span className="text-sky-700 font-bold bg-sky-100 px-2.5 py-0.5 rounded text-xs">مراجعة نهائية</span>
+                  <div className="p-5 rounded-2xl bg-[#F0F3FF] border border-[#CBD5E1] text-right">
+                    <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#CBD5E1]">
+                      <span className="font-extrabold text-[#00275C] text-sm">مراجعة بيانات استمارة الطالب:</span>
+                      <span className="text-[#0C3C82] font-bold bg-[#E7EEFF] px-2.5 py-0.5 rounded text-xs">مراجعة نهائية</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs sm:text-sm">
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">اسم الطالب:</span>
                         <span className="font-bold text-slate-800">{formData.full_name}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">الصف الدراسي:</span>
                         <span className="font-bold text-slate-800">{formData.academic_grade}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">نوع التعليم:</span>
                         <span className="font-bold text-slate-800">{formData.education_type}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">تاريخ الميلاد:</span>
                         <span className="font-bold text-slate-800">{parsedNid?.formattedArabic || 'غير محدد'}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">المدرسة:</span>
                         <span className="font-bold text-slate-800">{formData.school_name}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">هاتف الطالب:</span>
                         <span className="font-mono text-slate-800">
                           {hasNoPhone ? (
@@ -1241,15 +1241,15 @@ export default function StudentRegistrationPage() {
                           )}
                         </span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">هاتف الأب:</span>
                         <span className="font-mono text-slate-800">{formData.father_phone}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">هاتف الأم:</span>
                         <span className="font-mono text-slate-800">{formData.mother_phone}</span>
                       </div>
-                      <div className="sm:col-span-2 flex justify-between py-1 border-b border-sky-100 sm:border-0">
+                      <div className="sm:col-span-2 flex justify-between py-1 border-b border-slate-200 sm:border-0">
                         <span className="text-slate-500">العنوان السكني:</span>
                         <span className="font-bold text-slate-800">{formData.address}</span>
                       </div>
@@ -1283,7 +1283,7 @@ export default function StudentRegistrationPage() {
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
-                    <p className="font-bold text-slate-800">📌 إشعار تأكيد الحجز:</p>
+                    <p className="font-bold text-[#00275C]">📌 إشعار تأكيد الحجز:</p>
                     <p>بالضغط على تأكيد وإرسال الاستمارة، يتم إنشاء ملف الطالب فورياً في قاعدة بيانات أكاديمية أطلس، وسيتم التواصل معكم لتسليم كود الحضور وبطاقة الطالب الذكية.</p>
                   </div>
                 </div>
@@ -1308,7 +1308,7 @@ export default function StudentRegistrationPage() {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-700 hover:to-blue-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-sky-600/30 transition-all cursor-pointer"
+                    className="px-7 py-3.5 rounded-2xl bg-[#D8232A] hover:bg-[#B91C22] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D8232A]/25 transition-all cursor-pointer active:scale-95"
                   >
                     <span>المتابعة للخطوة التالية</span>
                     <ChevronLeft size={18} />
@@ -1317,7 +1317,7 @@ export default function StudentRegistrationPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting || isPhotoUploading}
-                    className="px-8 py-4 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 hover:from-sky-700 hover:to-indigo-800 text-white font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-sky-600/30 transition-all cursor-pointer disabled:opacity-50"
+                    className="px-8 py-4 rounded-2xl bg-[#D8232A] hover:bg-[#B91C22] text-white font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-[#D8232A]/30 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                   >
                     {isSubmitting ? (
                       <>
@@ -1332,7 +1332,7 @@ export default function StudentRegistrationPage() {
                     ) : (
                       <>
                         <Send size={18} />
-                        <span>تأكيد وإرسال استمارة التسجيل نهائياً</span>
+                        <span>سجّل الآن واستلم الكود الذكي</span>
                       </>
                     )}
                   </button>

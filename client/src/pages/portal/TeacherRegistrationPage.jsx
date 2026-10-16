@@ -1098,7 +1098,7 @@ export default function TeacherRegistrationPage() {
     return (
       <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100 text-center animate-fade-in-up max-w-4xl mx-auto">
         {submittedData.photo_url ? (
-          <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-rose-500 p-1 bg-white shadow-lg mx-auto mb-5">
+          <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-[#0C3C82] p-1 bg-white shadow-lg mx-auto mb-5">
             <img 
               src={submittedData.photo_url} 
               alt="صورة المعلم" 
@@ -1106,28 +1106,28 @@ export default function TeacherRegistrationPage() {
             />
           </div>
         ) : (
-          <div className="w-20 h-20 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-rose-500/20">
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-700 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20">
             <CheckCircle2 size={44} />
           </div>
         )}
 
-        <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 text-xs font-bold px-3 py-1 rounded-full border border-rose-200 mb-3">
-          <Sparkles size={13} />
+        <span className="inline-flex items-center gap-1.5 bg-[#E7EEFF] text-[#0C3C82] text-xs font-bold px-3 py-1 rounded-full border border-[#CBD5E1] mb-3">
+          <Sparkles size={13} className="text-[#32B4F9]" />
           تم استلام استمارة الانضمام بنجاح
         </span>
 
-        <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">
+        <h2 className="text-2xl sm:text-3xl font-black text-[#00275C] mb-2">
           أهلاً ومرحباً بحضرتك في أكاديمية أطلس! 🌟
         </h2>
-        <p className="text-slate-500 text-xs sm:text-sm max-w-lg mx-auto mb-8">
+        <p className="text-slate-600 text-xs sm:text-sm max-w-lg mx-auto mb-8">
           يسعدنا ويشرفنا انضمامكم لنخبة كبار معلمين أكاديمية أطلس التعليمية. تم حفظ بياناتكم وسيقوم المدير التنفيذي بالتواصل مع سيادتكم لتنسيق المواعيد والقاعات وجدول الحصص.
         </p>
 
         {/* Teacher Summary Card */}
-        <div className="max-w-2xl mx-auto bg-slate-50 rounded-2xl p-6 border border-slate-200 text-right mb-8 shadow-sm">
+        <div className="max-w-2xl mx-auto bg-[#F9F9FF] rounded-2xl p-6 border border-[#CBD5E1] text-right mb-8 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
             <span className="text-xs text-slate-500 font-medium">رقم الطلب المرجعي:</span>
-            <span className="font-mono font-bold text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded text-xs">
+            <span className="font-mono font-bold text-[#0C3C82] bg-[#E7EEFF] px-2.5 py-0.5 rounded text-xs">
               {submittedData.id.slice(0, 8).toUpperCase()}
             </span>
           </div>
@@ -1165,14 +1165,14 @@ export default function TeacherRegistrationPage() {
 
           {submittedData.groupsList?.length > 0 && (
             <div className="mt-4 pt-3 border-t border-slate-200 text-xs">
-              <span className="font-bold text-purple-900 block mb-2">المواعيد ومادة كل مجموعة:</span>
+              <span className="font-bold text-[#00275C] block mb-2">المواعيد ومادة كل مجموعة:</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {submittedData.groupsList.map((grp, idx) => (
-                  <div key={idx} className="p-2 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-purple-950">
+                  <div key={idx} className="p-2 rounded-xl bg-[#F0F3FF] border border-[#CBD5E1] flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-[#00275C]">
                       مجموعة {idx + 1}: {grp.day} (من {formatTime12H(grp.start_time, true)} إلى {formatTime12H(grp.end_time, true)})
                     </span>
-                    <span className="font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
+                    <span className="font-bold text-[#0C3C82] bg-[#E7EEFF] px-2 py-0.5 rounded">
                       {grp.subject || submittedData.specializationsArray?.[0]}
                     </span>
                   </div>
@@ -1220,7 +1220,7 @@ export default function TeacherRegistrationPage() {
                 }
               ]);
             }}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#0C3C82] hover:bg-[#00275C] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#0C3C82]/20 transition-all cursor-pointer"
           >
             <UserCheck size={18} />
             <span>تسجيل استمارة جديدة</span>
@@ -1236,12 +1236,12 @@ export default function TeacherRegistrationPage() {
       {/* Mobile Top Stepper (< lg) */}
       <div className="lg:hidden mb-6 bg-white rounded-3xl p-4 sm:p-5 shadow-lg border border-slate-100">
         <div className="flex items-center justify-between text-xs font-bold mb-2">
-          <span className="text-rose-600">الخطوة {currentStep} من {STEPS.length}</span>
+          <span className="text-[#0C3C82] font-black">الخطوة {currentStep} من {STEPS.length}</span>
           <span className="text-slate-800 font-extrabold">{STEPS[currentStep - 1].title}</span>
         </div>
         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-300"
+            className="h-full bg-gradient-to-r from-[#0EA5E9] to-[#0C3C82] transition-all duration-300"
             style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
           />
         </div>
@@ -1257,9 +1257,9 @@ export default function TeacherRegistrationPage() {
                 onClick={() => handleStepJump(step.id)}
                 className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
                   isDone 
-                    ? 'bg-emerald-500 text-white' 
+                    ? 'bg-emerald-600 text-white' 
                     : isCurrent 
-                    ? 'bg-rose-600 text-white ring-4 ring-rose-100' 
+                    ? 'bg-[#0C3C82] text-white ring-4 ring-[#AEC6FF]' 
                     : 'bg-slate-100 text-slate-400'
                 }`}
               >
@@ -1276,12 +1276,12 @@ export default function TeacherRegistrationPage() {
         <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-6 space-y-5">
           <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
             <div className="flex items-center gap-3 pb-5 mb-5 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-[#E7EEFF] text-[#0C3C82] flex items-center justify-center font-bold shadow-inner">
                 <UserCheck size={24} />
               </div>
               <div>
-                <span className="text-[11px] font-bold text-rose-600 tracking-wider">استمارة الكادر التعليمي</span>
-                <h3 className="text-base font-black text-slate-800">خطوات الانضمام والاعتماد</h3>
+                <span className="text-[11px] font-bold text-[#D8232A] tracking-wider">استمارة الكادر التعليمي</span>
+                <h3 className="text-base font-black text-slate-900">خطوات الانضمام والاعتماد</h3>
               </div>
             </div>
 
@@ -1289,11 +1289,11 @@ export default function TeacherRegistrationPage() {
             <div className="mb-6">
               <div className="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
                 <span>نسبة إنجاز الاستمارة</span>
-                <span className="font-mono text-rose-600 font-bold">{Math.round((currentStep / STEPS.length) * 100)}%</span>
+                <span className="font-mono text-[#0C3C82] font-bold">{Math.round((currentStep / STEPS.length) * 100)}%</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5">
                 <div 
-                  className="h-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-[#0EA5E9] to-[#0C3C82] rounded-full transition-all duration-500"
                   style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
                 />
               </div>
@@ -1313,7 +1313,7 @@ export default function TeacherRegistrationPage() {
                     onClick={() => handleStepJump(step.id)}
                     className={`w-full text-right p-3.5 rounded-2xl transition-all flex items-center gap-3.5 cursor-pointer ${
                       isCurrent 
-                        ? 'bg-gradient-to-r from-rose-50 to-amber-50/40 border border-rose-200 text-slate-900 shadow-sm'
+                        ? 'bg-[#F0F3FF] border-2 border-[#0C3C82] text-slate-900 shadow-sm'
                         : isDone
                         ? 'hover:bg-slate-50 text-slate-700'
                         : 'text-slate-400 hover:text-slate-600'
@@ -1321,9 +1321,9 @@ export default function TeacherRegistrationPage() {
                   >
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-all ${
                       isDone 
-                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
                         : isCurrent
-                        ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-200'
+                        ? 'bg-[#0C3C82] text-white shadow-md shadow-[#0C3C82]/30 ring-2 ring-[#0EA5E9]'
                         : 'bg-slate-100 text-slate-400'
                     }`}>
                       {isDone ? <Check size={16} /> : <StepIcon size={16} />}
@@ -1331,7 +1331,7 @@ export default function TeacherRegistrationPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-bold truncate ${isCurrent ? 'text-rose-700 font-black' : isDone ? 'text-slate-800' : 'text-slate-500'}`}>
+                        <span className={`text-xs font-bold truncate ${isCurrent ? 'text-[#0C3C82] font-black' : isDone ? 'text-slate-800' : 'text-slate-500'}`}>
                           {step.title}
                         </span>
                         {isDone && (
@@ -1340,7 +1340,7 @@ export default function TeacherRegistrationPage() {
                           </span>
                         )}
                         {isCurrent && (
-                          <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-md animate-pulse">
+                          <span className="text-[10px] font-bold text-[#D8232A] bg-red-50 px-1.5 py-0.5 rounded-md animate-pulse">
                             الحالية
                           </span>
                         )}
@@ -1356,17 +1356,17 @@ export default function TeacherRegistrationPage() {
           </div>
 
           {/* Support Card */}
-          <div className="bg-gradient-to-br from-slate-900 to-[#1e1429] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
-            <div className="flex items-center gap-2 text-amber-300 font-bold">
+          <div className="bg-gradient-to-br from-[#00275C] to-[#0C3C82] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
+            <div className="flex items-center gap-2 text-[#32B4F9] font-bold">
               <Sparkles size={16} />
               <span>تحتاج مساعدة أو تنسيق مسبق؟</span>
             </div>
-            <p className="text-slate-300 leading-relaxed text-[11px]">
+            <p className="text-sky-100 leading-relaxed text-[11px]">
               فريق إدارة شؤون هيئة التدريس متاح على مدار الساعة لتسهيل إجراءات التسجيل وتجهيز القاعات.
             </p>
-            <div className="pt-1 flex items-center justify-between text-[11px] text-white/70 border-t border-white/10">
+            <div className="pt-1 flex items-center justify-between text-[11px] text-white/80 border-t border-white/10">
               <span>هاتف الدعم: 01016083050</span>
-              <span className="font-mono text-emerald-400">متاح الآن</span>
+              <span className="font-mono text-emerald-400 font-bold">متاح الآن</span>
             </div>
           </div>
         </aside>
@@ -1377,15 +1377,15 @@ export default function TeacherRegistrationPage() {
             
             {/* Step Header */}
             <div className="flex items-center gap-3.5 pb-6 mb-7 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-[#E7EEFF] text-[#0C3C82] flex items-center justify-center font-bold shadow-inner">
                 {(() => {
                   const CurrentIcon = STEPS[currentStep - 1].icon;
                   return <CurrentIcon size={24} />;
                 })()}
               </div>
               <div>
-                <span className="text-xs font-bold text-rose-600">الخطوة {currentStep} من {STEPS.length}</span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-800">
+                <span className="text-xs font-bold text-[#D8232A]">الخطوة {currentStep} من {STEPS.length}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-[#00275C]">
                   {STEPS[currentStep - 1].title}
                 </h2>
                 <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
@@ -1413,7 +1413,7 @@ export default function TeacherRegistrationPage() {
                     {/* Full Name */}
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        الاسم بالكامل ثلاثي أو رباعي <span className="text-rose-500">*</span>
+                        الاسم بالكامل ثلاثي أو رباعي <span className="text-[#D8232A]">*</span>
                       </label>
                       <input
                         type="text"
@@ -1422,14 +1422,14 @@ export default function TeacherRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="مثال: أحمد عبد الله محمود"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] transition-all bg-white"
                       />
                     </div>
 
                     {/* Nickname / Title */}
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        اسم الشهرة أو اللقب (للطلاب) <span className="text-rose-500">*</span>
+                        اسم الشهرة أو اللقب (للطلاب) <span className="text-[#D8232A]">*</span>
                       </label>
                       <input
                         type="text"
@@ -1438,14 +1438,14 @@ export default function TeacherRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="مثال: مستر / أحمد عبد الله"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] transition-all bg-white"
                       />
                     </div>
 
                     {/* Personal Phone */}
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        رقم الهاتف الشخصي (موبايل) <span className="text-rose-500">*</span>
+                        رقم الهاتف الشخصي (موبايل) <span className="text-[#D8232A]">*</span>
                       </label>
                       <input
                         type="tel"
@@ -1454,14 +1454,14 @@ export default function TeacherRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="010xxxxxxxx"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] transition-all bg-white"
                       />
                     </div>
 
                     {/* WhatsApp */}
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        رقم الواتساب للتواصل وإرسال الجداول <span className="text-rose-500">*</span>
+                        رقم الواتساب للتواصل وإرسال الجداول <span className="text-[#D8232A]">*</span>
                       </label>
                       <input
                         type="tel"
@@ -1470,7 +1470,7 @@ export default function TeacherRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="010xxxxxxxx"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] transition-all bg-white"
                       />
                     </div>
 
@@ -1478,10 +1478,10 @@ export default function TeacherRegistrationPage() {
                     <div className="sm:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="block text-xs sm:text-sm font-bold text-slate-700">
-                          الرقم القومي للمعلم (14 رقماً) <span className="text-rose-500">*</span>
+                          الرقم القومي للمعلم (14 رقماً) <span className="text-[#D8232A]">*</span>
                         </label>
                         <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <Fingerprint size={12} className="text-rose-600" />
+                          <Fingerprint size={12} className="text-[#0C3C82]" />
                           <span>14 رقماً يبدأ بـ 2 أو 3</span>
                         </span>
                       </div>
@@ -1493,7 +1493,7 @@ export default function TeacherRegistrationPage() {
                         required
                         maxLength={14}
                         placeholder="مثال: 29001010101234"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] transition-all bg-white"
                       />
 
                       {parsedTeacherNid && (
@@ -1548,23 +1548,23 @@ export default function TeacherRegistrationPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
                       <div>
                         <div className="flex items-center gap-2">
-                          <BookOpen className="text-rose-600" size={18} />
-                          <label className="text-sm font-extrabold text-slate-800">
-                            المواد التعليمية والتخصصات المعتمدة <span className="text-rose-500">*</span>
+                          <BookOpen className="text-[#0C3C82]" size={18} />
+                          <label className="text-sm font-extrabold text-[#00275C]">
+                            المواد التعليمية والتخصصات المعتمدة <span className="text-[#D8232A]">*</span>
                           </label>
                         </div>
                         <p className="text-xs text-slate-500 mt-1">
                           اختر مادة أو أكثر من الأقسام التالية — يمكنك البحث السريع لتحديد مادتك فوراً:
                         </p>
                       </div>
-                      <span className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100 self-start sm:self-auto shrink-0">
+                      <span className="text-xs font-bold text-[#0C3C82] bg-[#E7EEFF] px-3 py-1.5 rounded-xl border border-[#CBD5E1] self-start sm:self-auto shrink-0">
                         المحدد: {formData.specializations.length} مادة
                       </span>
                     </div>
 
                     {/* Selected Subjects Chips Bar */}
                     {formData.specializations.length > 0 ? (
-                      <div className="p-3 bg-white rounded-2xl border border-rose-100 shadow-xs">
+                      <div className="p-3 bg-white rounded-2xl border border-[#CBD5E1] shadow-xs">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[11px] font-bold text-slate-600">
                             المواد التي تم تحديدها لملفك التدريسي:
@@ -1575,13 +1575,13 @@ export default function TeacherRegistrationPage() {
                           {formData.specializations.map((sub) => (
                             <span
                               key={sub}
-                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-rose-50 to-amber-50 text-rose-700 border border-rose-200 text-xs font-bold shadow-2xs"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E7EEFF] text-[#0C3C82] border border-[#CBD5E1] text-xs font-bold shadow-2xs"
                             >
                               <span>{sub}</span>
                               <button
                                 type="button"
                                 onClick={() => toggleSubject(sub)}
-                                className="w-4 h-4 rounded-full hover:bg-rose-200/60 flex items-center justify-center text-rose-600 cursor-pointer"
+                                className="w-4 h-4 rounded-full hover:bg-blue-200/60 flex items-center justify-center text-[#0C3C82] cursor-pointer"
                                 title="إلغاء المادة"
                               >
                                 <X size={12} />
@@ -1607,7 +1607,7 @@ export default function TeacherRegistrationPage() {
                           value={subjectSearch}
                           onChange={(e) => setSubjectSearch(e.target.value)}
                           placeholder="ابحث عن مادتك بسرعة... (مثال: فيزياء، لغة فرنسية، Math، ICT، فقه)"
-                          className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white shadow-2xs"
+                          className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white shadow-2xs"
                         />
                         {subjectSearch && (
                           <button
@@ -1627,7 +1627,7 @@ export default function TeacherRegistrationPage() {
                           onClick={() => setActiveSubjectTab('all')}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
                             activeSubjectTab === 'all'
-                              ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/30'
+                              ? 'bg-[#0C3C82] text-white shadow-sm shadow-[#0C3C82]/30'
                               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                           }`}
                         >
@@ -1642,7 +1642,7 @@ export default function TeacherRegistrationPage() {
                               onClick={() => setActiveSubjectTab(cat.id)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
                                 isActive
-                                  ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/30'
+                                  ? 'bg-[#0C3C82] text-white shadow-sm shadow-[#0C3C82]/30'
                                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                               }`}
                             >
@@ -1665,7 +1665,7 @@ export default function TeacherRegistrationPage() {
                             <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
                               <div className="flex items-center gap-2">
                                 <span className="text-base">{cat.icon}</span>
-                                <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">
+                                <h4 className="text-xs sm:text-sm font-extrabold text-[#00275C]">
                                   {cat.title}
                                 </h4>
                               </div>
@@ -1684,11 +1684,11 @@ export default function TeacherRegistrationPage() {
                                     onClick={() => toggleSubject(sub)}
                                     className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
                                       isSelected
-                                        ? 'bg-gradient-to-r from-rose-600 to-rose-700 text-white border-rose-600 shadow-md shadow-rose-600/20 ring-2 ring-rose-200 font-bold'
+                                        ? 'bg-[#0C3C82] text-white border-[#0C3C82] shadow-md shadow-[#0C3C82]/20 ring-2 ring-[#AEC6FF] font-bold'
                                         : 'bg-slate-50/70 hover:bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
                                     }`}
                                   >
-                                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-white text-rose-600 font-black' : 'bg-slate-200 text-slate-500'}`}>
+                                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-white text-[#0C3C82] font-black' : 'bg-slate-200 text-slate-500'}`}>
                                       {isSelected ? '✓' : '+'}
                                     </span>
                                     <span>{sub}</span>
@@ -1706,9 +1706,9 @@ export default function TeacherRegistrationPage() {
 
                       {/* Display Custom Subjects if any */}
                       {customSubjects.length > 0 && (
-                        <div className="bg-white rounded-2xl p-4 border border-dashed border-rose-200 shadow-2xs">
+                        <div className="bg-white rounded-2xl p-4 border border-dashed border-[#CBD5E1] shadow-2xs">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-rose-700">مواد مخصصة إضافية تمت إضافتها:</span>
+                            <span className="text-xs font-bold text-[#0C3C82]">مواد مخصصة إضافية تمت إضافتها:</span>
                             <span className="text-[10px] text-slate-400">مخصصة من قبلك</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -1717,7 +1717,7 @@ export default function TeacherRegistrationPage() {
                                 key={sub}
                                 type="button"
                                 onClick={() => toggleSubject(sub)}
-                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 text-white border border-rose-600 flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#0C3C82] text-white border border-[#0C3C82] flex items-center gap-1.5 shadow-xs cursor-pointer"
                               >
                                 <span>✓</span>
                                 <span>{sub}</span>
@@ -1735,7 +1735,7 @@ export default function TeacherRegistrationPage() {
                         <button
                           type="button"
                           onClick={() => setShowCustomSubjectField(true)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-800 bg-white border border-rose-200 hover:border-rose-300 px-3.5 py-2 rounded-xl transition-all shadow-2xs cursor-pointer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0C3C82] hover:text-[#00275C] bg-white border border-[#CBD5E1] hover:border-[#0C3C82] px-3.5 py-2 rounded-xl transition-all shadow-2xs cursor-pointer"
                         >
                           <Plus size={14} />
                           <span>إضافة مادة تعليمية أخرى غير موجودة بالقائمة</span>
@@ -1747,12 +1747,12 @@ export default function TeacherRegistrationPage() {
                             value={customSubjectInput}
                             onChange={(e) => setCustomSubjectInput(e.target.value)}
                             placeholder="اسم المادة المخصصة..."
-                            className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white shadow-2xs"
+                            className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white shadow-2xs"
                           />
                           <button
                             type="button"
                             onClick={handleAddCustomSubject}
-                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm"
+                            className="px-4 py-2 bg-[#0C3C82] hover:bg-[#00275C] text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm"
                           >
                             إضافة
                           </button>
@@ -1771,10 +1771,10 @@ export default function TeacherRegistrationPage() {
                   {/* Section B: Target Grades */}
                   <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
                     <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-bold text-slate-800">
-                        الصفوف والمراحل الدراسية <span className="text-rose-500">*</span>
+                      <label className="block text-sm font-bold text-[#00275C]">
+                        الصفوف والمراحل الدراسية <span className="text-[#D8232A]">*</span>
                       </label>
-                      <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full border border-sky-100">
+                      <span className="text-xs font-semibold text-[#0C3C82] bg-[#E7EEFF] px-2.5 py-1 rounded-full border border-[#CBD5E1]">
                         المحدد: {formData.target_grades.length} صف
                       </span>
                     </div>
@@ -1787,7 +1787,7 @@ export default function TeacherRegistrationPage() {
                       <button
                         type="button"
                         onClick={() => selectStageCluster('الثانوي')}
-                        className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-[#E7EEFF] text-[#0C3C82] hover:bg-blue-100 font-bold transition-colors cursor-pointer"
                       >
                         + كل المرحلة الثانوية
                       </button>
@@ -1817,7 +1817,7 @@ export default function TeacherRegistrationPage() {
                             onClick={() => toggleGrade(grade)}
                             className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer ${
                               isSelected
-                                ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/30 ring-2 ring-sky-200'
+                                ? 'bg-[#0C3C82] text-white border-[#0C3C82] shadow-md shadow-[#0C3C82]/20 ring-2 ring-[#AEC6FF] font-bold'
                                 : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                             }`}
                           >
@@ -1839,13 +1839,13 @@ export default function TeacherRegistrationPage() {
                 <div className="space-y-6 animate-fade-in">
                   
                   {/* Self Management Toggle */}
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer text-xs sm:text-sm font-bold text-amber-950">
+                  <div className="p-4 rounded-2xl bg-[#F0F3FF] border border-[#CBD5E1] flex items-center justify-between">
+                    <label className="flex items-center gap-3 cursor-pointer text-xs sm:text-sm font-bold text-[#00275C]">
                       <input
                         type="checkbox"
                         checked={hasNoAssistant}
                         onChange={(e) => setHasNoAssistant(e.target.checked)}
-                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        className="w-4 h-4 rounded text-[#0C3C82] focus:ring-[#0EA5E9] cursor-pointer"
                       />
                       <span>لا يوجد فريق عمل أو سكرتارية (أدير الحجز والتواصل بنفسي)</span>
                     </label>
@@ -1857,7 +1857,7 @@ export default function TeacherRegistrationPage() {
                         <span className="text-xs font-bold text-slate-600">
                           قائمة المساعدين والسكرتارية (يمكن إضافة أي عدد بدون حد أقصى)
                         </span>
-                        <span className="text-xs font-semibold text-amber-700 bg-amber-100/70 px-2.5 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-[#0C3C82] bg-[#E7EEFF] px-2.5 py-0.5 rounded-full border border-[#CBD5E1]">
                           {assistants.length} مساعد مسجل
                         </span>
                       </div>
@@ -1870,17 +1870,17 @@ export default function TeacherRegistrationPage() {
                           >
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-bold">
+                                <span className="w-6 h-6 rounded-full bg-[#E7EEFF] text-[#0C3C82] text-xs flex items-center justify-center font-bold">
                                   {index + 1}
                                 </span>
-                                <span>المساعد / السكرتير {index + 1} {index === 0 && <span className="text-rose-500">*</span>}</span>
+                                <span>المساعد / السكرتير {index + 1} {index === 0 && <span className="text-[#D8232A]">*</span>}</span>
                               </span>
 
                               {assistants.length > 1 && (
                                 <button
                                   type="button"
                                   onClick={() => removeAssistant(index)}
-                                  className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2.5 py-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  className="text-xs text-[#D8232A] hover:text-red-700 flex items-center gap-1 px-2.5 py-1 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 size={14} />
                                   <span>حذف المساعد</span>
@@ -1891,27 +1891,27 @@ export default function TeacherRegistrationPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                                  اسم المساعد {index === 0 && <span className="text-rose-500">*</span>}
+                                  اسم المساعد {index === 0 && <span className="text-[#D8232A]">*</span>}
                                 </label>
                                 <input
                                   type="text"
                                   value={assistant.name}
                                   onChange={(e) => handleAssistantChange(index, 'name', e.target.value)}
                                   placeholder="مثال: أ/ محمد هاني"
-                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                                 />
                               </div>
 
                               <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                                  رقم هاتف المساعد {index === 0 && <span className="text-rose-500">*</span>}
+                                  رقم هاتف المساعد {index === 0 && <span className="text-[#D8232A]">*</span>}
                                 </label>
                                 <input
                                   type="tel"
                                   value={assistant.phone}
                                   onChange={(e) => handleAssistantChange(index, 'phone', e.target.value)}
                                   placeholder="011xxxxxxxx"
-                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                                 />
                               </div>
                             </div>
@@ -1922,7 +1922,7 @@ export default function TeacherRegistrationPage() {
                       <button
                         type="button"
                         onClick={addAssistant}
-                        className="w-full py-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-dashed border-amber-300 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                        className="w-full py-3 rounded-2xl bg-[#F0F3FF] hover:bg-[#E7EEFF] border-2 border-dashed border-[#CBD5E1] text-[#0C3C82] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                       >
                         <Plus size={16} />
                         <span>إضافة مساعد جديد في فريق العمل</span>
@@ -1941,13 +1941,13 @@ export default function TeacherRegistrationPage() {
                   
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-800">جدول المجموعات ومواعيد الحصص الأسبوعية</h4>
+                      <h4 className="text-sm font-bold text-[#00275C]">جدول المجموعات ومواعيد الحصص الأسبوعية</h4>
                       <p className="text-xs text-slate-500">حدد مواعيد الحصص والقاعات المقترحة لكل صف دراسي</p>
                     </div>
                     <button
                       type="button"
                       onClick={addGroup}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 px-3.5 py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#0C3C82] hover:bg-[#00275C] px-3.5 py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
                     >
                       <Plus size={14} />
                       <span>إضافة مجموعة</span>
@@ -1960,21 +1960,21 @@ export default function TeacherRegistrationPage() {
                       return (
                         <div
                           key={group.id}
-                          className="p-5 rounded-2xl bg-purple-50/40 border border-purple-200/90 relative text-right shadow-2xs"
+                          className="p-5 rounded-2xl bg-[#F0F3FF] border border-[#CBD5E1] relative text-right shadow-2xs"
                         >
-                          <div className="flex items-center justify-between mb-4 pb-2 border-b border-purple-100">
-                            <span className="text-xs font-bold text-purple-900 flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-purple-200 text-purple-800 text-xs flex items-center justify-center font-bold">
+                          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200">
+                            <span className="text-xs font-bold text-[#00275C] flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-[#E7EEFF] text-[#0C3C82] text-xs flex items-center justify-center font-bold">
                                 {idx + 1}
                               </span>
                               <span>المجموعة رقم {idx + 1}</span>
                               {formData.specializations.length === 1 && (
-                                <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                                <span className="text-[10px] font-bold text-[#0C3C82] bg-[#E7EEFF] px-2 py-0.5 rounded-md border border-[#CBD5E1]">
                                   مادة: {formData.specializations[0]}
                                 </span>
                               )}
                               {formData.specializations.length > 1 && group.subject && (
-                                <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                                <span className="text-[10px] font-bold text-[#0C3C82] bg-[#E7EEFF] px-2 py-0.5 rounded-md border border-[#CBD5E1]">
                                   مادة: {group.subject}
                                 </span>
                               )}
@@ -1984,7 +1984,7 @@ export default function TeacherRegistrationPage() {
                               <button
                                 type="button"
                                 onClick={() => removeGroup(group.id)}
-                                className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2.5 py-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                className="text-xs text-[#D8232A] hover:text-red-700 flex items-center gap-1 px-2.5 py-1 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                               >
                                 <Trash2 size={14} />
                                 <span>حذف المجموعة</span>
@@ -1997,12 +1997,12 @@ export default function TeacherRegistrationPage() {
                             {formData.specializations.length > 1 && (
                               <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                                  مادة المجموعة <span className="text-rose-500">*</span>
+                                  مادة المجموعة <span className="text-[#D8232A]">*</span>
                                 </label>
                                 <select
                                   value={group.subject && formData.specializations.includes(group.subject) ? group.subject : formData.specializations[0] || ''}
                                   onChange={(e) => handleGroupChange(group.id, 'subject', e.target.value)}
-                                  className="w-full px-3 py-2 rounded-xl border border-purple-300 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-purple-950 shadow-2xs cursor-pointer"
+                                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white text-[#00275C] shadow-2xs cursor-pointer"
                                   required
                                 >
                                   {formData.specializations.map((sub) => (
@@ -2014,11 +2014,11 @@ export default function TeacherRegistrationPage() {
 
                             {/* Grade */}
                             <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1">الصف الدراسي <span className="text-rose-500">*</span></label>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">الصف الدراسي <span className="text-[#D8232A]">*</span></label>
                               <select
                                 value={group.grade}
                                 onChange={(e) => handleGroupChange(group.id, 'grade', e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                               >
                                 {formData.target_grades.map((grd) => (
                                   <option key={grd} value={grd}>{grd}</option>
@@ -2028,11 +2028,11 @@ export default function TeacherRegistrationPage() {
 
                             {/* Day */}
                             <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1">اليوم <span className="text-rose-500">*</span></label>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">اليوم <span className="text-[#D8232A]">*</span></label>
                               <select
                                 value={group.day}
                                 onChange={(e) => handleGroupChange(group.id, 'day', e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                               >
                                 {DAYS_OF_WEEK.map((d) => (
                                   <option key={d} value={d}>{d}</option>
@@ -2043,14 +2043,14 @@ export default function TeacherRegistrationPage() {
                             {/* Start Time (12-Hour) */}
                             <div>
                               <label className="block text-xs font-bold text-slate-700 mb-1">
-                                وقت البداية <span className="text-purple-600 font-normal">(12 ساعة)</span> <span className="text-rose-500">*</span>
+                                وقت البداية <span className="text-[#0C3C82] font-normal">(12 ساعة)</span> <span className="text-[#D8232A]">*</span>
                               </label>
                               <div className="relative">
-                                <Clock size={14} className="absolute left-2.5 top-3 text-purple-500 pointer-events-none" />
+                                <Clock size={14} className="absolute left-2.5 top-3 text-[#0C3C82] pointer-events-none" />
                                 <select
                                   value={group.start_time}
                                   onChange={(e) => handleGroupChange(group.id, 'start_time', e.target.value)}
-                                  className="w-full pr-3 pl-8 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer shadow-2xs"
+                                  className="w-full pr-3 pl-8 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white cursor-pointer shadow-2xs"
                                   required
                                 >
                                   {!TIME_OPTIONS_12H.some((o) => o.value === group.start_time) && group.start_time && (
@@ -2070,14 +2070,14 @@ export default function TeacherRegistrationPage() {
                             {/* End Time (12-Hour) */}
                             <div>
                               <label className="block text-xs font-bold text-slate-700 mb-1">
-                                وقت النهاية <span className="text-purple-600 font-normal">(12 ساعة)</span> <span className="text-rose-500">*</span>
+                                وقت النهاية <span className="text-[#0C3C82] font-normal">(12 ساعة)</span> <span className="text-[#D8232A]">*</span>
                               </label>
                               <div className="relative">
-                                <Clock size={14} className="absolute left-2.5 top-3 text-purple-500 pointer-events-none" />
+                                <Clock size={14} className="absolute left-2.5 top-3 text-[#0C3C82] pointer-events-none" />
                                 <select
                                   value={group.end_time}
                                   onChange={(e) => handleGroupChange(group.id, 'end_time', e.target.value)}
-                                  className="w-full pr-3 pl-8 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white cursor-pointer shadow-2xs"
+                                  className="w-full pr-3 pl-8 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white cursor-pointer shadow-2xs"
                                   required
                                 >
                                   {!TIME_OPTIONS_12H.some((o) => o.value === group.end_time) && group.end_time && (
@@ -2097,14 +2097,14 @@ export default function TeacherRegistrationPage() {
 
                           {/* Calculated Duration & 12H Summary */}
                           {timeVal.valid ? (
-                            <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-100/70 px-2.5 py-1 rounded-lg">
+                            <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0C3C82] bg-[#E7EEFF] px-2.5 py-1 rounded-lg">
                               <Clock size={12} />
                               <span>
                                 مدة الحصة: {timeVal.durationArabic} (من {formatTime12H(group.start_time, true)} إلى {formatTime12H(group.end_time, true)})
                               </span>
                             </div>
                           ) : (
-                            <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                            <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#D8232A] bg-red-50 px-2.5 py-1 rounded-lg border border-red-200">
                               <span>⚠️ {timeVal.message}</span>
                             </div>
                           )}
@@ -2116,7 +2116,7 @@ export default function TeacherRegistrationPage() {
                   <button
                     type="button"
                     onClick={addGroup}
-                    className="w-full py-3 rounded-2xl bg-purple-50 hover:bg-purple-100 border-2 border-dashed border-purple-300 text-purple-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="w-full py-3 rounded-2xl bg-[#F0F3FF] hover:bg-[#E7EEFF] border-2 border-dashed border-[#CBD5E1] text-[#0C3C82] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <Plus size={16} />
                     <span>إضافة موعد أو مجموعة أخرى</span>
@@ -2134,7 +2134,7 @@ export default function TeacherRegistrationPage() {
                   {/* Bio */}
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                      النبذة التعريفية وسنوات الخبرة <span className="text-rose-500">*</span>
+                      النبذة التعريفية وسنوات الخبرة <span className="text-[#D8232A]">*</span>
                     </label>
                     <textarea
                       name="bio"
@@ -2143,7 +2143,7 @@ export default function TeacherRegistrationPage() {
                       required
                       rows={3}
                       placeholder="اكتب نبذة مختصرة عن مؤهلاتك العلمية، سنوات الخبرة، المدارس أو المنصات التي عملت بها..."
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none bg-white"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] resize-none bg-white"
                     />
                   </div>
 
@@ -2159,7 +2159,7 @@ export default function TeacherRegistrationPage() {
                         value={formData.facebook_link}
                         onChange={handleChange}
                         placeholder="https://facebook.com/..."
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                       />
                     </div>
 
@@ -2173,7 +2173,7 @@ export default function TeacherRegistrationPage() {
                         value={formData.youtube_link}
                         onChange={handleChange}
                         placeholder="https://youtube.com/@..."
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                       />
                     </div>
 
@@ -2187,7 +2187,7 @@ export default function TeacherRegistrationPage() {
                         value={formData.telegram_link}
                         onChange={handleChange}
                         placeholder="https://t.me/..."
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] bg-white"
                       />
                     </div>
                   </div>
@@ -2203,14 +2203,14 @@ export default function TeacherRegistrationPage() {
                       onChange={handleChange}
                       rows={2}
                       placeholder="مثال: الحاجة لشاشات سمارت، سعة قاعة معينة، تجهيزات صوتية..."
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none bg-white"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-[#0C3C82] resize-none bg-white"
                     />
                   </div>
 
                   {/* Comprehensive Review Card */}
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                      <span className="font-bold text-slate-800 text-sm">ملخص الاستمارة قبل التأكيد النهائي:</span>
+                  <div className="p-5 rounded-2xl bg-[#F0F3FF] border border-[#CBD5E1] text-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#CBD5E1]">
+                      <span className="font-bold text-[#00275C] text-sm">ملخص الاستمارة قبل التأكيد النهائي:</span>
                       <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded">جاهز للإرسال</span>
                     </div>
 
@@ -2224,14 +2224,14 @@ export default function TeacherRegistrationPage() {
                     </div>
 
                     {/* Detailed Groups Breakdown */}
-                    <div className="pt-2.5 border-t border-slate-200">
-                      <span className="font-bold text-purple-900 block mb-2 text-xs">جدول ومواعيد المجموعات (مادة كل مجموعة):</span>
+                    <div className="pt-2.5 border-t border-[#CBD5E1]">
+                      <span className="font-bold text-[#00275C] block mb-2 text-xs">جدول ومواعيد المجموعات (مادة كل مجموعة):</span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {groups.map((grp, idx) => (
-                          <div key={grp.id || idx} className="p-2.5 rounded-xl bg-purple-50/80 border border-purple-200 text-[11px] space-y-1">
+                          <div key={grp.id || idx} className="p-2.5 rounded-xl bg-white border border-[#CBD5E1] text-[11px] space-y-1 shadow-xs">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-purple-950">مجموعة {idx + 1} ({grp.day})</span>
-                              <span className="font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                              <span className="font-bold text-[#00275C]">مجموعة {idx + 1} ({grp.day})</span>
+                              <span className="font-bold text-[#0C3C82] bg-[#E7EEFF] px-2 py-0.5 rounded-md border border-[#CBD5E1]">
                                 مادة: {grp.subject || formData.specializations[0]}
                               </span>
                             </div>
@@ -2293,7 +2293,7 @@ export default function TeacherRegistrationPage() {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                    className="px-7 py-3.5 rounded-2xl bg-[#D8232A] hover:bg-[#B91C22] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D8232A]/25 transition-all cursor-pointer active:scale-95"
                   >
                     <span>المتابعة للخطوة التالية</span>
                     <ChevronLeft size={18} />
@@ -2302,7 +2302,7 @@ export default function TeacherRegistrationPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting || isPhotoUploading || isLogoUploading}
-                    className="px-8 py-4 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-700 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-rose-600/30 transition-all cursor-pointer disabled:opacity-50"
+                    className="px-8 py-4 rounded-2xl bg-[#D8232A] hover:bg-[#B91C22] text-white font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-[#D8232A]/30 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                   >
                     {isSubmitting ? (
                       <>
@@ -2317,7 +2317,7 @@ export default function TeacherRegistrationPage() {
                     ) : (
                       <>
                         <Send size={18} />
-                        <span>تأكيد وإرسال استمارة المعلم رسمياً</span>
+                        <span>انضم الآن واعتماد جدول الحصص</span>
                       </>
                     )}
                   </button>
