@@ -138,11 +138,11 @@ const DAYS_OF_WEEK = [
 ];
 
 const STEPS = [
-  { id: 1, title: 'البيانات الشخصية والمهنية', subtitle: 'الاسم، الهواتف، الصورة واللوجو', icon: User },
-  { id: 2, title: 'المواد والمراحل الدراسية', subtitle: 'التخصصات والصفوف التعليمية', icon: BookOpen },
-  { id: 3, title: 'فريق العمل والسكرتارية', subtitle: 'إدارة المساعدين (غير محدد بعدد)', icon: Users },
-  { id: 4, title: 'المجموعات ومواعيد الحصص', subtitle: 'جدول وأوقات الحصص المقترحة', icon: Clock },
-  { id: 5, title: 'السيرة الذاتية والمراجعة', subtitle: 'النبذة، المنصات، وتأكيد الاستمارة', icon: FileText },
+  { id: 1, title: 'أهلاً بحضرتك! البيانات الأساسية', subtitle: 'الاسم، الهواتف، الصورة واللوجو المميز', icon: User },
+  { id: 2, title: 'تخصص حضرتك والمراحل', subtitle: 'المواد التعليمية والصفوف الدراسية', icon: BookOpen },
+  { id: 3, title: 'فريق السكرتارية والمساعدين', subtitle: 'إضافة المساعدين وتحديد صلاحياتهم', icon: Users },
+  { id: 4, title: 'تنسيق المواعيد والمجموعات', subtitle: 'أيام وساعات الحصص المقترحة', icon: Clock },
+  { id: 5, title: 'نظرة أخيرة وانضمامك الرسمي', subtitle: 'مراجعة التفاصيل والانضمام لعائلة أطلس', icon: FileText },
 ];
 
 function generateUUID() {
@@ -1097,30 +1097,35 @@ export default function TeacherRegistrationPage() {
   if (submittedData) {
     return (
       <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100 text-center animate-fade-in-up max-w-4xl mx-auto">
-        {submittedData.photo_url ? (
-          <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-[#0C3C82] p-1 bg-white shadow-lg mx-auto mb-5">
+        <div className="relative inline-block mx-auto mb-4">
+          <div className="w-32 h-32 sm:w-36 sm:h-36 mx-auto relative">
             <img 
-              src={submittedData.photo_url} 
-              alt="صورة المعلم" 
-              className="w-full h-full object-cover rounded-xl"
+              src="/images/teacher-character.png" 
+              alt="أستاذنا الفاضل" 
+              className="w-full h-full object-contain filter drop-shadow-xl"
             />
           </div>
-        ) : (
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-700 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20">
-            <CheckCircle2 size={44} />
-          </div>
-        )}
+          {submittedData.photo_url && (
+            <div className="absolute -bottom-2 -left-2 w-14 h-14 rounded-2xl overflow-hidden border-2 border-[#0C3C82] p-0.5 bg-white shadow-lg">
+              <img 
+                src={submittedData.photo_url} 
+                alt="صورة المعلم" 
+                className="w-full h-full object-cover rounded-xl"
+              />
+            </div>
+          )}
+        </div>
 
-        <span className="inline-flex items-center gap-1.5 bg-[#E7EEFF] text-[#0C3C82] text-xs font-bold px-3 py-1 rounded-full border border-[#CBD5E1] mb-3">
-          <Sparkles size={13} className="text-[#32B4F9]" />
-          تم استلام استمارة الانضمام بنجاح
+        <span className="inline-flex items-center gap-1.5 bg-[#E7EEFF] text-[#0C3C82] text-xs sm:text-sm font-extrabold px-4 py-1.5 rounded-full border border-[#CBD5E1] mb-3 shadow-sm">
+          <Sparkles size={15} className="text-[#32B4F9]" />
+          أهلاً ومرحباً بحضرتك يا أستاذنا في عائلة أطلس! 🌟
         </span>
 
         <h2 className="text-2xl sm:text-3xl font-black text-[#00275C] mb-2">
-          أهلاً ومرحباً بحضرتك في أكاديمية أطلس! 🌟
+          شرفتنا ونورتنا! تم استلام بيانات حضرتك بنجاح ✨
         </h2>
-        <p className="text-slate-600 text-xs sm:text-sm max-w-lg mx-auto mb-8">
-          يسعدنا ويشرفنا انضمامكم لنخبة كبار معلمين أكاديمية أطلس التعليمية. تم حفظ بياناتكم وسيقوم المدير التنفيذي بالتواصل مع سيادتكم لتنسيق المواعيد والقاعات وجدول الحصص.
+        <p className="text-slate-600 text-xs sm:text-sm max-w-lg mx-auto mb-8 leading-relaxed">
+          سعداء جداً وممتنون لانضمام قامة تعليمية كبيرة مثل حضرتك لصرح أطلس التعليمي. تم حفظ جميع تفاصيل المجموعات والمواعيد، وسيقوم المدير التنفيذي بالتواصل مع سيادتكم لتجهيز القاعات واستقبال طلابكم بأعلى مستوى.
         </p>
 
         {/* Teacher Summary Card */}
@@ -1355,19 +1360,29 @@ export default function TeacherRegistrationPage() {
             </nav>
           </div>
 
-          {/* Support Card */}
-          <div className="bg-gradient-to-br from-[#00275C] to-[#0C3C82] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
-            <div className="flex items-center gap-2 text-[#32B4F9] font-bold">
-              <Sparkles size={16} />
-              <span>تحتاج مساعدة أو تنسيق مسبق؟</span>
+          {/* Teacher Character Card */}
+          <div className="bg-gradient-to-br from-[#00275C] via-[#0C3C82] to-[#0A58CA] text-white rounded-3xl p-5 shadow-xl border border-white/10 relative overflow-hidden text-center">
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-28 h-28 -mt-1 mb-2 relative">
+                <img
+                  src="/images/teacher-character.png"
+                  alt="أستاذنا الفاضل"
+                  className="w-full h-full object-contain filter drop-shadow-[0_10px_15px_rgba(0,0,0,0.3)] hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-md text-[#32B4F9] text-[11px] font-black px-3 py-1 rounded-full mb-2 border border-white/15">
+                <Sparkles size={13} className="text-amber-300" />
+                <span>شريك النجاح والتميز ✨</span>
+              </div>
+              <p className="text-sky-100 text-[11px] leading-relaxed mb-3">
+                نسّق جدولك ومجموعاتك براحتك، وفريقنا بالكامل في خدمتك لتجهيز القاعات وأحدث الشاشات الذكية.
+              </p>
+              <div className="w-full pt-2.5 flex items-center justify-between text-[11px] text-white/90 border-t border-white/15">
+                <span className="font-medium">شؤون هيئة التدريس:</span>
+                <a href="tel:01016083050" className="font-mono text-amber-300 font-extrabold hover:underline">01016083050</a>
+              </div>
             </div>
-            <p className="text-sky-100 leading-relaxed text-[11px]">
-              فريق إدارة شؤون هيئة التدريس متاح على مدار الساعة لتسهيل إجراءات التسجيل وتجهيز القاعات.
-            </p>
-            <div className="pt-1 flex items-center justify-between text-[11px] text-white/80 border-t border-white/10">
-              <span>هاتف الدعم: 01016083050</span>
-              <span className="font-mono text-emerald-400 font-bold">متاح الآن</span>
-            </div>
+            <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#32B4F9]/20 rounded-full blur-2xl pointer-events-none" />
           </div>
         </aside>
 
@@ -2271,6 +2286,14 @@ export default function TeacherRegistrationPage() {
                     />
                   </div>
 
+                  <div className="p-4 rounded-xl bg-sky-50 border border-sky-100 text-xs text-slate-700 space-y-1">
+                    <p className="font-bold text-[#00275C] flex items-center gap-1.5">
+                      <span>🌟 خطوة واحدة وتكتمل إجراءات انضمامك!</span>
+                    </p>
+                    <p className="leading-relaxed">
+                      بمجرد إرسال الاستمارة، يتم حفظ بيانات حضرتك وحجز المواعيد المبدئية، وسيتواصل مع سيادتكم المدير التنفيذي لترتيب كافة التجهيزات بالقاعات لاستقبال طلابكم الكرام.
+                    </p>
+                  </div>
                 </div>
               )}
 

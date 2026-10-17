@@ -40,7 +40,7 @@ export default function TeacherPortalLayout() {
 
       {/* Main Brand Header — Teacher Ad Campaign Identity */}
       <div className="w-full text-white pt-5 pb-6 px-3 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5 text-center md:text-right">
           
           {/* Logo & Identity */}
           <div className="flex flex-col sm:flex-row items-center gap-3.5">
@@ -66,26 +66,33 @@ export default function TeacherPortalLayout() {
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
                   نسّق جدولك ومجموعاتك
                 </h1>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-[#D8232A] text-white px-2.5 py-0.5 rounded-full shadow-sm">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-[#D8232A] text-white px-2.5 py-0.5 rounded-full shadow-sm animate-pulse">
                   <Sparkles size={11} />
                   بوابة المعلمين
                 </span>
               </div>
               <p className="text-sky-200/90 text-xs sm:text-sm font-semibold mt-0.5 tracking-wide">
-                منظومة أطلس التعليمية — Atlas Educational ERP
+                أهلاً ومرحباً بحضرتك يا أستاذنا في صرح أطلس التعليمي
               </p>
               <p className="text-white/70 text-[11px] sm:text-xs mt-1">
-                بوابة انضمام وتنسيق مواعيد وقاعات السادة أعضاء هيئة التدريس
+                نسّق مواعيدك وقاعاتك بكل سهولة، وفريق الإدارة هيجهزلك كل حاجة بأعلى معايير الجودة
               </p>
             </div>
           </div>
 
-          {/* Teacher Badge */}
-          <div className="hidden sm:flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15 text-white/90 text-xs shadow-md">
-            <CalendarDays size={22} className="text-[#32B4F9]" />
+          {/* Teacher Campaign Character Illustration & Interactive Badge */}
+          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-2 pl-4 rounded-3xl border border-white/15 text-white/90 shadow-xl transition-transform hover:scale-102">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-[#0C3C82] to-[#00275C] border border-white/20 p-1 shrink-0 flex items-center justify-center shadow-inner">
+              <img 
+                src="/images/teacher-character.png" 
+                alt="بوابة المعلمين" 
+                className="w-full h-full object-contain"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </div>
             <div className="text-right">
-              <span className="block font-bold text-white text-xs">تنسيق المجموعات الذكي</span>
-              <span className="text-[10px] text-sky-200">اعتماد مباشر من الإدارة</span>
+              <span className="block font-black text-white text-xs sm:text-sm">نوّرتنا يا أستاذنا! 🌟</span>
+              <span className="text-[11px] text-sky-200 block">تنسيق فوري للمجموعات والقاعات المجهزة</span>
             </div>
           </div>
 

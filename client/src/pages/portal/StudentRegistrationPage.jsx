@@ -38,10 +38,10 @@ const ACADEMIC_GRADES = [
 ];
 
 const STUDENT_STEPS = [
-  { id: 1, title: 'بيانات الطالب والصورة', subtitle: 'الاسم، الصورة بخلفية بيضاء، والرقم القومي', icon: User },
-  { id: 2, title: 'بيانات ولي الأمر', subtitle: 'أرقام هواتف الأب والأم والوظيفة', icon: Phone },
-  { id: 3, title: 'المسار الدراسي والمدرسة', subtitle: 'الصف، نوع التعليم، واسم المدرسة', icon: School },
-  { id: 4, title: 'المراجعة وتأكيد الحجز', subtitle: 'مراجعة كافة البيانات وتأكيد الطلب', icon: CheckCircle2 },
+  { id: 1, title: 'بياناتك وصورتك الجميلة', subtitle: 'اسمك وصورتك عشان نطلع كودك الذكي فوراً', icon: User },
+  { id: 2, title: 'أرقام تواصل ولي الأمر', subtitle: 'هواتف بابا وماما عشان نتابعهم بدرجاتك أول بأول', icon: Phone },
+  { id: 3, title: 'سنتك الدراسية ومدرستك', subtitle: 'في سنة كام ومدرستك إيه عشان نظبطلك مواعيدك', icon: School },
+  { id: 4, title: 'راجع بياناتك واستلم الكود', subtitle: 'نظرة سريعة، وتكة واحدة وتكون مسجل!', icon: CheckCircle2 },
 ];
 
 function containsSuspiciousPayload(str) {
@@ -593,30 +593,35 @@ export default function StudentRegistrationPage() {
   if (submittedData) {
     return (
       <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100 text-center animate-fade-in-up max-w-4xl mx-auto">
-        {submittedData.photo_url ? (
-          <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-emerald-500 p-1 bg-white shadow-lg mx-auto mb-5">
+        <div className="relative inline-block mx-auto mb-4">
+          <div className="w-32 h-32 sm:w-36 sm:h-36 mx-auto relative">
             <img 
-              src={submittedData.photo_url} 
-              alt="صورة الطالب" 
-              className="w-full h-full object-cover rounded-xl"
+              src="/images/student-character.png" 
+              alt="بطل أطلس" 
+              className="w-full h-full object-contain filter drop-shadow-xl"
             />
           </div>
-        ) : (
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20">
-            <CheckCircle2 size={44} />
-          </div>
-        )}
+          {submittedData.photo_url && (
+            <div className="absolute -bottom-2 -left-2 w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-500 p-0.5 bg-white shadow-lg">
+              <img 
+                src={submittedData.photo_url} 
+                alt="صورة الطالب" 
+                className="w-full h-full object-cover rounded-xl"
+              />
+            </div>
+          )}
+        </div>
 
-        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 mb-3">
-          <Sparkles size={13} />
-          تم استلام استمارة التسجيل بنجاح
+        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs sm:text-sm font-extrabold px-4 py-1.5 rounded-full border border-emerald-200 mb-3 shadow-sm">
+          <Sparkles size={15} className="text-emerald-500" />
+          ألف مبروك يا بطل! تم استلام بياناتك بنجاح 🎉
         </span>
 
         <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">
-          أهلاً بك في أكاديمية أطلس التعليمية! 🎉
+          منورنا في صرح التفوق والنجاح! 🚀
         </h2>
-        <p className="text-slate-500 text-xs sm:text-sm max-w-lg mx-auto mb-8">
-          تم تسجيل بياناتك بنجاح على النظام، وسيتم مراجعة الطلب من إدارة الأكاديمية والتواصل معك فوراً لتأكيد المواعيد وتسليم كود الطالب.
+        <p className="text-slate-600 text-xs sm:text-sm max-w-lg mx-auto mb-8 leading-relaxed">
+          بياناتك وصلت بالسلامة وفريق أطلس بيراجعها حالياً. هنبعتلك كود حضورك الذكي ونتواصل معاك عشان تضمن مكانك وتبدأ رحلة تفوقك بدون أي تعب!
         </p>
 
         {/* Registration Summary Card */}
@@ -827,19 +832,29 @@ export default function StudentRegistrationPage() {
             </nav>
           </div>
 
-          {/* Student Help Card */}
-          <div className="bg-gradient-to-br from-[#00275C] to-[#0C3C82] text-white rounded-3xl p-5 shadow-lg border border-white/10 text-xs space-y-2.5">
-            <div className="flex items-center gap-2 text-[#32B4F9] font-bold">
-              <Sparkles size={16} />
-              <span>مساعدة في حجز المجموعات</span>
+          {/* Student Character Card */}
+          <div className="bg-gradient-to-br from-[#00275C] via-[#0C3C82] to-[#0A58CA] text-white rounded-3xl p-5 shadow-xl border border-white/10 relative overflow-hidden text-center">
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-28 h-28 -mt-1 mb-2 relative">
+                <img
+                  src="/images/student-character.png"
+                  alt="بطل أطلس"
+                  className="w-full h-full object-contain filter drop-shadow-[0_10px_15px_rgba(0,0,0,0.3)] hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-md text-[#32B4F9] text-[11px] font-black px-3 py-1 rounded-full mb-2 border border-white/15">
+                <Sparkles size={13} className="text-amber-300" />
+                <span>جاهز لكودك الذكي؟ 🚀</span>
+              </div>
+              <p className="text-sky-100 text-[11px] leading-relaxed mb-3">
+                دقيقة واحدة تسجل فيها بياناتك وتضمن مكانك وسط أوائل الجمهورية بدون أي طوابير!
+              </p>
+              <div className="w-full pt-2.5 flex items-center justify-between text-[11px] text-white/90 border-t border-white/15">
+                <span className="font-medium">فريق شؤون الطلاب:</span>
+                <a href="tel:01288817183" className="font-mono text-amber-300 font-extrabold hover:underline">01288817183</a>
+              </div>
             </div>
-            <p className="text-sky-100 leading-relaxed text-[11px]">
-              للاستفسار عن أسماء المدرسين والمواعيد وقاعات الحضور، يسعدنا تواصلكم مع شؤون الطلاب.
-            </p>
-            <div className="pt-1 flex items-center justify-between text-[11px] text-white/80 border-t border-white/10">
-              <span>شؤون الطلاب: 01288817183</span>
-              <span className="font-mono text-emerald-400 font-bold">متاح الآن</span>
-            </div>
+            <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#32B4F9]/20 rounded-full blur-2xl pointer-events-none" />
           </div>
         </aside>
 
@@ -916,7 +931,7 @@ export default function StudentRegistrationPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="block text-xs sm:text-sm font-bold text-slate-700">
-                          رقم هاتف الطالب (موبايل) {!hasNoPhone && <span className="text-rose-500">*</span>}
+                          رقم موبايلك الشخصي {!hasNoPhone && <span className="text-rose-500">*</span>}
                         </label>
                         <label className="inline-flex items-center gap-1.5 text-xs text-sky-700 font-bold bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-lg border border-sky-200/70 cursor-pointer select-none transition-all">
                           <input
@@ -931,7 +946,7 @@ export default function StudentRegistrationPage() {
                             }}
                             className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 w-3.5 h-3.5 cursor-pointer"
                           />
-                          <span>الطالب ليس لديه هاتف</span>
+                          <span>معنديش موبايل خاص حالياً (بتابع مع بابا وماما) 😊</span>
                         </label>
                       </div>
                       <input
@@ -941,7 +956,7 @@ export default function StudentRegistrationPage() {
                         onChange={handleChange}
                         disabled={hasNoPhone}
                         required={!hasNoPhone}
-                        placeholder={hasNoPhone ? 'تم تحديد: لا يوجد هاتف خاص بالطالب (صغار السن / ابتدائي)' : '010xxxxxxxx'}
+                        placeholder={hasNoPhone ? 'تم الاختيار: لا يوجد موبايل خاص بالطالب حالياً' : '010xxxxxxxx (رقم موبايلك)'}
                         className={`w-full px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all ${
                           hasNoPhone 
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed italic' 
@@ -1282,9 +1297,13 @@ export default function StudentRegistrationPage() {
                     />
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
-                    <p className="font-bold text-[#00275C]">📌 إشعار تأكيد الحجز:</p>
-                    <p>بالضغط على تأكيد وإرسال الاستمارة، يتم إنشاء ملف الطالب فورياً في قاعدة بيانات أكاديمية أطلس، وسيتم التواصل معكم لتسليم كود الحضور وبطاقة الطالب الذكية.</p>
+                  <div className="p-4 rounded-xl bg-sky-50 border border-sky-100 text-xs text-slate-700 space-y-1">
+                    <p className="font-bold text-[#00275C] flex items-center gap-1.5">
+                      <span>🚀 خطوة واحدة وتضمن مكانك!</span>
+                    </p>
+                    <p className="leading-relaxed">
+                      بمجرد الضغط على تأكيد وإرسال، هيتم حفظ بياناتك فوراً وتجهيز كود حضورك الذكي بدون أي طوابير أو انتظار. فريقنا هيتواصل معاك لتأكيد المواعيد والقاعات!
+                    </p>
                   </div>
                 </div>
               )}
