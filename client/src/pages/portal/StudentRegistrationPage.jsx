@@ -17,7 +17,8 @@ import {
   ChevronRight,
   ShieldCheck,
   FileCheck,
-  Lock
+  Lock,
+  Users
 } from 'lucide-react';
 import ImageUploadField from '../../components/portal/ImageUploadField';
 import TurnstileWidget from '../../components/portal/TurnstileWidget';
@@ -256,6 +257,11 @@ export default function StudentRegistrationPage() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [submittedData, setSubmittedData] = useState(null);
 
+  // Live real-time check states for National ID & Student Phone
+  const [nidLiveCheck, setNidLiveCheck] = useState({ loading: false, exists: false, checked: false, message: '' });
+  const [phoneLiveCheck, setPhoneLiveCheck] = useState({ loading: false, exists: false, checked: false, message: '' });
+  const [isCheckingStep1, setIsCheckingStep1] = useState(false);
+
   // Bot Protection & Cloudflare Turnstile States
   const [turnstileToken, setTurnstileToken] = useState('');
   const [honeypot, setHoneypot] = useState('');
@@ -269,6 +275,26 @@ export default function StudentRegistrationPage() {
     } catch (e) {}
   };
 
+  const scrollToTop = () => {
+    try {
+      const banner = document.getElementById('form-error-banner');
+      if (banner) {
+        banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    } catch (e) {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const triggerError = (msg) => {
+    setErrorMessage(msg);
+    if (msg) {
+      setTimeout(() => {
+        scrollToTop();
+      }, 30);
+    }
+  };
+
   // Auto-save draft to localStorage whenever fields change
   useEffect(() => {
     if (!submittedData) {
@@ -279,6 +305,101 @@ export default function StudentRegistrationPage() {
       } catch (e) {}
     }
   }, [formData, hasNoPhone, currentStep, submittedData]);
+
+  // Live verification of National ID in Step 1 (Debounced)
+  useEffect(() => {
+    const rawNid = formData.national_id ? normalizeArabicNumbers(formData.national_id.trim()) : '';
+    if (rawNid.length !== 14) {
+      setNidLiveCheck({ loading: false, exists: false, checked: false, message: '' });
+      return;
+    }
+
+    const nidInfo = parseEgyptianNationalId(rawNid);
+    if (!nidInfo) {
+      setNidLiveCheck({ loading: false, exists: false, checked: false, message: '' });
+      return;
+    }
+
+    setNidLiveCheck(prev => ({ ...prev, loading: true, message: 'جاري التحقق الفوري من الرقم القومي...' }));
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('online_students')
+          .select('id, full_name')
+          .eq('national_id', nidInfo.clean)
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setNidLiveCheck({
+            loading: false,
+            exists: true,
+            checked: true,
+            message: `⚠️ هذا الرقم القومي مسجل بالفعل لطالب مسبقاً (${data[0].full_name || 'مسجل'}).`,
+          });
+        } else {
+          setNidLiveCheck({
+            loading: false,
+            exists: false,
+            checked: true,
+            message: '✓ الرقم القومي صالح ومتاح للتسجيل.',
+          });
+        }
+      } catch (err) {
+        setNidLiveCheck({ loading: false, exists: false, checked: false, message: '' });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.national_id]);
+
+  // Live verification of Student Phone in Step 1 (Debounced)
+  useEffect(() => {
+    if (hasNoPhone) {
+      setPhoneLiveCheck({ loading: false, exists: false, checked: false, message: '' });
+      return;
+    }
+
+    const clean = cleanEgyptianPhone(formData.phone);
+    if (clean.length !== 11 || !isValidRealEgyptianPhone(clean)) {
+      setPhoneLiveCheck({ loading: false, exists: false, checked: false, message: '' });
+      return;
+    }
+
+    setPhoneLiveCheck(prev => ({ ...prev, loading: true, message: 'جاري فحص رقم الموبايل...' }));
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('online_students')
+          .select('id, full_name')
+          .eq('phone', clean)
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setPhoneLiveCheck({
+            loading: false,
+            exists: true,
+            checked: true,
+            message: `⚠️ رقم الموبايل مسجل بالفعل لطالب مسبقاً (${data[0].full_name || 'مسجل'}).`,
+          });
+        } else {
+          setPhoneLiveCheck({
+            loading: false,
+            exists: false,
+            checked: true,
+            message: '✓ رقم الموبايل متاح للتسجيل.',
+          });
+        }
+      } catch (err) {
+        setPhoneLiveCheck({ loading: false, exists: false, checked: false, message: '' });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.phone, hasNoPhone]);
 
   const clearDraft = () => {
     try {
@@ -302,31 +423,31 @@ export default function StudentRegistrationPage() {
 
     if (step === 1) {
       if (containsSuspiciousPayload(formData.full_name) || containsSuspiciousPayload(formData.address)) {
-        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في بيانات الطالب. يرجى إدخال نصوص عادية فقط.');
+        triggerError('تم رصد رموز أو مدخلات غير آمنة في بيانات الطالب. يرجى إدخال نصوص عادية فقط.');
         return false;
       }
       if (!isValidArabicPersonName(formData.full_name)) {
-        setErrorMessage('يرجى إدخال اسم الطالب ثلاثي أو رباعي بالكامل وبأحرف صحيحة فقط (دون أرقام أو رموز خاصة)');
+        triggerError('يرجى إدخال اسم الطالب ثلاثي أو رباعي بالكامل وبأحرف صحيحة فقط (دون أرقام أو رموز خاصة)');
         return false;
       }
       if (!formData.photo_url) {
-        setErrorMessage('يرجى رفع الصورة الشخصية للطالب بخلفية بيضاء لاستخراج كود الحضور وبطاقة الطالب');
+        triggerError('يرجى رفع الصورة الشخصية للطالب بخلفية بيضاء لاستخراج كود الحضور وبطاقة الطالب');
         return false;
       }
       if (!hasNoPhone) {
         const cleanPhone = cleanEgyptianPhone(formData.phone);
         if (!isValidRealEgyptianPhone(cleanPhone)) {
-          setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للطالب (010, 011, 012, 015) أو تحديد خيار "الطالب ليس لديه هاتف"');
+          triggerError('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للطالب (010, 011, 012, 015) أو تحديد خيار "الطالب ليس لديه هاتف"');
           return false;
         }
       }
       const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
       if (!parseEgyptianNationalId(cleanNid)) {
-        setErrorMessage('يرجى إدخال رقم قومي مصري صحيح مكون من 14 رقماً ويبدأ بـ 2 أو 3');
+        triggerError('يرجى إدخال رقم قومي مصري صحيح مكون من 14 رقماً ويبدأ بـ 2 أو 3');
         return false;
       }
       if (!formData.address.trim() || formData.address.trim().length < 3) {
-        setErrorMessage('يرجى إدخال العنوان أو المنطقة السكنية بالتفصيل');
+        triggerError('يرجى إدخال العنوان أو المنطقة السكنية بالتفصيل');
         return false;
       }
       return true;
@@ -334,7 +455,7 @@ export default function StudentRegistrationPage() {
 
     if (step === 2) {
       if (containsSuspiciousPayload(formData.parent_job)) {
-        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في وظيفة ولي الأمر');
+        triggerError('تم رصد رموز أو مدخلات غير آمنة في وظيفة ولي الأمر');
         return false;
       }
       const cleanStudentPhone = cleanEgyptianPhone(formData.phone);
@@ -342,32 +463,32 @@ export default function StudentRegistrationPage() {
       const cleanMother = cleanEgyptianPhone(formData.mother_phone);
 
       if (!isValidRealEgyptianPhone(cleanFather)) {
-        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح لولي الأمر (الأب) وتجنب الأرقام المتكررة أو الوهمية');
+        triggerError('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح لولي الأمر (الأب) وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
       if (!hasNoPhone) {
         const cleanStudentPhone = cleanEgyptianPhone(formData.phone);
         if (cleanFather === cleanStudentPhone) {
-          setErrorMessage('لا يمكن أن يكون رقم هاتف ولي الأمر (الأب) مطابقاً لرقم هاتف الطالب. يجب تسجيل أرقام مختلفة للتواصل ومتابعة ولي الأمر.');
+          triggerError('لا يمكن أن يكون رقم هاتف ولي الأمر (الأب) مطابقاً لرقم هاتف الطالب. يجب تسجيل أرقام مختلفة للتواصل ومتابعة ولي الأمر.');
           return false;
         }
         if (cleanMother === cleanStudentPhone) {
-          setErrorMessage('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الطالب. يرجى إدخال رقم والدة الطالب المستقل.');
+          triggerError('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الطالب. يرجى إدخال رقم والدة الطالب المستقل.');
           return false;
         }
       }
 
       if (!isValidRealEgyptianPhone(cleanMother)) {
-        setErrorMessage('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للأم وتجنب الأرقام المتكررة أو الوهمية');
+        triggerError('يرجى إدخال رقم هاتف محمول مصري حقيقي وصحيح للأم وتجنب الأرقام المتكررة أو الوهمية');
         return false;
       }
       if (cleanMother === cleanFather) {
-        setErrorMessage('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الأب. يرجى إدخال رقمين مستقلين للوالدين للاتصال في حالات الطوارئ.');
+        triggerError('لا يمكن أن يكون رقم هاتف الأم مطابقاً لرقم هاتف الأب. يرجى إدخال رقمين مستقلين للوالدين للاتصال في حالات الطوارئ.');
         return false;
       }
 
       if (!formData.parent_job.trim() || formData.parent_job.trim().length < 2) {
-        setErrorMessage('يرجى إدخال وظيفة أو مهنة ولي الأمر');
+        triggerError('يرجى إدخال وظيفة أو مهنة ولي الأمر');
         return false;
       }
       return true;
@@ -375,19 +496,19 @@ export default function StudentRegistrationPage() {
 
     if (step === 3) {
       if (containsSuspiciousPayload(formData.school_name) || containsSuspiciousPayload(formData.notes)) {
-        setErrorMessage('تم رصد رموز أو مدخلات غير آمنة في البيانات التعليمية');
+        triggerError('تم رصد رموز أو مدخلات غير آمنة في البيانات التعليمية');
         return false;
       }
       if (!formData.academic_grade) {
-        setErrorMessage('يرجى اختيار الصف الدراسي المقيد به الطالب');
+        triggerError('يرجى اختيار الصف الدراسي المقيد به الطالب');
         return false;
       }
       if (!formData.education_type) {
-        setErrorMessage('يرجى اختيار نوع التعليم (عام، لغات، أزهر)');
+        triggerError('يرجى اختيار نوع التعليم (عام، لغات، أزهر)');
         return false;
       }
       if (!formData.school_name.trim() || formData.school_name.trim().length < 3) {
-        setErrorMessage('يرجى إدخال اسم المدرسة الحالية المقيد بها الطالب');
+        triggerError('يرجى إدخال اسم المدرسة الحالية المقيد بها الطالب');
         return false;
       }
       return true;
@@ -396,34 +517,96 @@ export default function StudentRegistrationPage() {
     return true;
   };
 
-  const handleNextStep = () => {
-    if (validateStep(currentStep)) {
-      setErrorMessage(null);
-      setCurrentStep((prev) => Math.min(4, prev + 1));
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+  const handleNextStep = async () => {
+    if (!validateStep(currentStep)) {
+      scrollToTop();
+      return;
     }
+
+    // فحص فوري للرقم القومي ورقم الطالب قبل الانتقال للخطوات التالية لمنع تشتت الطالب
+    if (currentStep === 1) {
+      const cleanNid = normalizeArabicNumbers(formData.national_id.trim());
+      const nidInfo = parseEgyptianNationalId(cleanNid);
+      const cleanPhone = cleanEgyptianPhone(formData.phone);
+
+      if (nidLiveCheck.exists) {
+        triggerError(nidLiveCheck.message || 'عفواً، الرقم القومي لهذا الطالب مسجل بالفعل مسبقاً في الأكاديمية.');
+        return;
+      }
+      if (!hasNoPhone && phoneLiveCheck.exists) {
+        triggerError(phoneLiveCheck.message || 'عفواً، رقم هاتف الطالب هذا مسجل مسبقاً في طلب آخر.');
+        return;
+      }
+
+      setIsCheckingStep1(true);
+      try {
+        let checkQuery = supabase
+          .from('online_students')
+          .select('id, full_name, phone, national_id');
+
+        if (!hasNoPhone && cleanPhone) {
+          checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
+        } else {
+          checkQuery = checkQuery.eq('national_id', nidInfo.clean);
+        }
+
+        const { data: existingStudent } = await checkQuery.limit(1);
+
+        if (existingStudent && existingStudent.length > 0) {
+          const isSameNid = existingStudent[0].national_id === nidInfo.clean;
+          const errText = isSameNid
+            ? `عفواً، الرقم القومي لهذا الطالب مسجل بالفعل مسبقاً في الأكاديمية باسم "${existingStudent[0].full_name || ''}". يرجى مراجعة إدارة السنتر في حال وجود تعديل.`
+            : `عفواً، رقم هاتف الطالب هذا (${cleanPhone}) مسجل مسبقاً في طلب آخر باسم "${existingStudent[0].full_name || ''}". يرجى التأكد من الرقم أو مراجعة الأكاديمية.`;
+          triggerError(errText);
+          setIsCheckingStep1(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Real-time check warning:', err);
+      } finally {
+        setIsCheckingStep1(false);
+      }
+    }
+
+    setErrorMessage(null);
+    setCurrentStep((prev) => Math.min(4, prev + 1));
+    scrollToTop();
   };
 
   const handlePrevStep = () => {
     setErrorMessage(null);
     setCurrentStep((prev) => Math.max(1, prev - 1));
-    window.scrollTo({ top: 100, behavior: 'smooth' });
+    scrollToTop();
   };
 
-  const handleStepJump = (targetStep) => {
+  const handleStepJump = async (targetStep) => {
     if (targetStep < currentStep) {
       setErrorMessage(null);
       setCurrentStep(targetStep);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      scrollToTop();
     } else if (targetStep > currentStep) {
       for (let s = currentStep; s < targetStep; s++) {
         if (!validateStep(s)) {
+          scrollToTop();
           return;
         }
       }
+
+      // فحص الخطوة الأولى عند القفز للأمام
+      if (currentStep === 1 && targetStep > 1) {
+        if (nidLiveCheck.exists) {
+          triggerError(nidLiveCheck.message || 'عفواً، الرقم القومي مسجل مسبقاً');
+          return;
+        }
+        if (!hasNoPhone && phoneLiveCheck.exists) {
+          triggerError(phoneLiveCheck.message || 'عفواً، رقم هاتف الطالب مسجل مسبقاً');
+          return;
+        }
+      }
+
       setErrorMessage(null);
       setCurrentStep(targetStep);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      scrollToTop();
     }
   };
 
@@ -432,11 +615,11 @@ export default function StudentRegistrationPage() {
 
     // Bot trap checks
     if (honeypot) {
-      setErrorMessage('تم رفض العملية لاكتشاف نشاط آلي غير مصرح به.');
+      triggerError('تم رفض العملية لاكتشاف نشاط آلي غير مصرح به.');
       return;
     }
     if (Date.now() - mountTimeRef.current < 2500) {
-      setErrorMessage('يرجى التمهل ومراجعة البيانات قبل إرسال الاستمارة.');
+      triggerError('يرجى التمهل ومراجعة البيانات قبل إرسال الاستمارة.');
       return;
     }
     if (!turnstileToken) {
@@ -457,7 +640,7 @@ export default function StudentRegistrationPage() {
       const verifyData = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok || !verifyData.success) {
         resetTurnstile();
-        setErrorMessage(verifyData.message || 'فشل التحقق الأمني من كلاودفير (Turnstile)، يرجى إعادة المحاولة');
+        triggerError(verifyData.message || 'فشل التحقق الأمني من كلاودفير (Turnstile)، يرجى إعادة المحاولة');
         return;
       }
     } catch (err) {
@@ -467,7 +650,7 @@ export default function StudentRegistrationPage() {
     for (let s = 1; s <= 3; s++) {
       if (!validateStep(s)) {
         setCurrentStep(s);
-        window.scrollTo({ top: 100, behavior: 'smooth' });
+        scrollToTop();
         return;
       }
     }
@@ -477,16 +660,14 @@ export default function StudentRegistrationPage() {
     const cleanMother = cleanEgyptianPhone(formData.mother_phone);
 
     if (cleanFather === cleanMother) {
-      setErrorMessage('يجب أن يكون رقما ولي الأمر (الأب) والأم مختلفين ومستقلين عن بعضهما تماماً');
+      triggerError('يجب أن يكون رقما ولي الأمر (الأب) والأم مختلفين ومستقلين عن بعضهما تماماً');
       setCurrentStep(2);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
       return;
     }
 
     if (!hasNoPhone && (cleanPhone === cleanFather || cleanPhone === cleanMother)) {
-      setErrorMessage('يجب أن يكون رقم هاتف الطالب مستقلاً ومختلفاً عن أرقام الأب والأم');
+      triggerError('يجب أن يكون رقم هاتف الطالب مستقلاً ومختلفاً عن أرقام الأب والأم');
       setCurrentStep(2);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
       return;
     }
 
@@ -495,7 +676,7 @@ export default function StudentRegistrationPage() {
     setIsSubmitting(true);
 
     try {
-      // التحقق من عدم وجود تسجيل مسبق لنفس الطالب بالرقم القومي أو الهاتف
+      // التحقق من عدم وجود تسجيل مسبق لنفس الطالب بالرقم القومي أو الهاتف (يسمح بتكرار هاتف ولي الأمر للإخوة)
       let checkQuery = supabase
         .from('online_students')
         .select('id, full_name, phone, national_id');
@@ -511,7 +692,7 @@ export default function StudentRegistrationPage() {
       if (existingStudent && existingStudent.length > 0) {
         const isSameNid = existingStudent[0].national_id === nidInfo.clean;
         resetTurnstile();
-        setErrorMessage(
+        triggerError(
           isSameNid 
             ? 'تم تسجيل استمارة مسبقاً بنفس الرقم القومي لهذا الطالب. في حال وجود تعديل يرجى مراجعة إدارة الأكاديمية.' 
             : 'رقم هاتف الطالب هذا مسجل بالفعل في طلب سابق. يرجى التأكد من الرقم أو مراجعة الأكاديمية.'
@@ -883,7 +1064,7 @@ export default function StudentRegistrationPage() {
 
             {/* Error Message */}
             {errorMessage && (
-              <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-3 animate-shake">
+              <div id="form-error-banner" className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-3 animate-shake shadow-sm">
                 <AlertCircle size={20} className="shrink-0 text-rose-500" />
                 <span className="font-semibold">{errorMessage}</span>
               </div>
@@ -909,8 +1090,18 @@ export default function StudentRegistrationPage() {
                         onChange={handleChange}
                         required
                         placeholder="مثال: محمد أحمد إبراهيم علي"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all bg-white"
+                        className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${
+                          formData.full_name && !isValidArabicPersonName(formData.full_name)
+                            ? 'border-amber-300 focus:ring-amber-500'
+                            : 'border-slate-200 focus:ring-sky-500'
+                        }`}
                       />
+                      {formData.full_name && !isValidArabicPersonName(formData.full_name) && (
+                        <p className="text-[11px] text-amber-600 mt-1.5 font-medium flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          <span>يرجى كتابة اسم الطالب ثلاثي أو رباعي بالكامل باللغة العربية (3 أسماء على الأقل دون أرقام).</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Student Photo */}
@@ -960,9 +1151,29 @@ export default function StudentRegistrationPage() {
                         className={`w-full px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all ${
                           hasNoPhone 
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed italic' 
+                            : phoneLiveCheck.exists
+                            ? 'border-rose-300 bg-rose-50/20'
                             : 'bg-white border-slate-200'
                         }`}
                       />
+
+                      {/* Live Check status for phone */}
+                      {!hasNoPhone && phoneLiveCheck.loading && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-sky-600">
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>جاري التحقق الفوري من رقم الموبايل...</span>
+                        </div>
+                      )}
+                      {!hasNoPhone && phoneLiveCheck.checked && !phoneLiveCheck.loading && (
+                        <div className={`mt-1.5 p-2 rounded-lg text-xs flex items-center gap-1.5 ${
+                          phoneLiveCheck.exists
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {phoneLiveCheck.exists ? <AlertCircle size={14} className="shrink-0 text-rose-600" /> : <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />}
+                          <span className="font-semibold">{phoneLiveCheck.message}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Gender */}
@@ -1001,8 +1212,30 @@ export default function StudentRegistrationPage() {
                         required
                         maxLength={14}
                         placeholder="مثال: 30805120101234"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all bg-white"
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${
+                          nidLiveCheck.exists
+                            ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-500'
+                            : 'border-slate-200 focus:ring-sky-500'
+                        }`}
                       />
+
+                      {/* Live Check status for National ID */}
+                      {nidLiveCheck.loading && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-sky-600">
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>جاري فحص الرقم القومي في قاعدة البيانات...</span>
+                        </div>
+                      )}
+                      {nidLiveCheck.checked && !nidLiveCheck.loading && (
+                        <div className={`mt-1.5 p-2 rounded-lg text-xs flex items-center gap-1.5 ${
+                          nidLiveCheck.exists
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {nidLiveCheck.exists ? <AlertCircle size={14} className="shrink-0 text-rose-600" /> : <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />}
+                          <span className="font-semibold">{nidLiveCheck.message}</span>
+                        </div>
+                      )}
 
                       {parsedNid ? (
                         <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
@@ -1049,12 +1282,26 @@ export default function StudentRegistrationPage() {
                     </span>
                   </div>
 
+                  {/* Sibling Reassurance Note */}
+                  <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs flex items-start gap-2.5 leading-relaxed">
+                    <Users size={18} className="text-sky-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-bold text-sky-950 mb-0.5">ملاحظة هامة للإخوة:</strong>
+                      <span>يُسمح تماماً ومرحب بتسجيل نفس أرقام ولي الأمر (الأب والأم) لأكثر من طالب في حال وجود إخوة بالأكاديمية بدون أي تعارض.</span>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Father Phone */}
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        هاتف ولي الأمر (الأب) <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs sm:text-sm font-bold text-slate-700">
+                          هاتف ولي الأمر (الأب) <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-sky-700 bg-sky-50 px-2 py-0.5 rounded font-bold">
+                          مسموح بتكراره للإخوة
+                        </span>
+                      </div>
                       <input
                         type="tel"
                         name="father_phone"
@@ -1078,9 +1325,14 @@ export default function StudentRegistrationPage() {
 
                     {/* Mother Phone */}
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
-                        هاتف الأم للتواصل والمتابعة <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs sm:text-sm font-bold text-slate-700">
+                          هاتف الأم للتواصل والمتابعة <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-sky-700 bg-sky-50 px-2 py-0.5 rounded font-bold">
+                          مسموح بتكراره للإخوة
+                        </span>
+                      </div>
                       <input
                         type="tel"
                         name="mother_phone"
@@ -1327,10 +1579,20 @@ export default function StudentRegistrationPage() {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="px-7 py-3.5 rounded-2xl bg-[#D8232A] hover:bg-[#B91C22] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D8232A]/25 transition-all cursor-pointer active:scale-95"
+                    disabled={isCheckingStep1}
+                    className="px-7 py-3.5 rounded-2xl bg-[#D8232A] hover:bg-[#B91C22] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D8232A]/25 transition-all cursor-pointer active:scale-95 disabled:opacity-60"
                   >
-                    <span>المتابعة للخطوة التالية</span>
-                    <ChevronLeft size={18} />
+                    {isCheckingStep1 ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>جاري التحقق من البيانات...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>المتابعة للخطوة التالية</span>
+                        <ChevronLeft size={18} />
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button

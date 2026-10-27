@@ -869,34 +869,41 @@ export default function TeacherRegistrationPage() {
     return true;
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNextStep = () => {
     if (validateStep(currentStep)) {
       setErrorMessage(null);
       setCurrentStep((prev) => Math.min(5, prev + 1));
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      scrollToTop();
+    } else {
+      scrollToTop();
     }
   };
 
   const handlePrevStep = () => {
     setErrorMessage(null);
     setCurrentStep((prev) => Math.max(1, prev - 1));
-    window.scrollTo({ top: 100, behavior: 'smooth' });
+    scrollToTop();
   };
 
   const handleStepJump = (targetStep) => {
     if (targetStep < currentStep) {
       setErrorMessage(null);
       setCurrentStep(targetStep);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      scrollToTop();
     } else if (targetStep > currentStep) {
       for (let s = currentStep; s < targetStep; s++) {
         if (!validateStep(s)) {
+          scrollToTop();
           return;
         }
       }
       setErrorMessage(null);
       setCurrentStep(targetStep);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      scrollToTop();
     }
   };
 

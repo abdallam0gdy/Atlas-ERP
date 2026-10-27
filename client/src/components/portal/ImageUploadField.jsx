@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { uploadToImgBB } from '../../lib/imgbb';
-import { Upload, X, Loader2, CheckCircle, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Upload, X, Loader2, CheckCircle, Camera, FolderOpen, AlertCircle } from 'lucide-react';
 
 export default function ImageUploadField({
   label,
@@ -15,15 +15,16 @@ export default function ImageUploadField({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [localPreview, setLocalPreview] = useState(value || null);
+  const [showChoiceMenu, setShowChoiceMenu] = useState(false);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const setUploadingStatus = (status) => {
     setIsUploading(status);
     onUploadingChange?.(status);
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
+  const processFile = async (file) => {
     if (!file) return;
 
     // التحقق من نوع الملف
@@ -33,6 +34,7 @@ export default function ImageUploadField({
     }
 
     setUploadError(null);
+    setShowChoiceMenu(false);
     const localUrl = URL.createObjectURL(file);
     setLocalPreview(localUrl);
     setUploadingStatus(true);
@@ -51,14 +53,40 @@ export default function ImageUploadField({
     }
   };
 
+  const handleFileChange = (e) => {
+    processFile(e.target.files?.[0]);
+  };
+
+  const handleCameraCapture = (e) => {
+    processFile(e.target.files?.[0]);
+  };
+
   const handleRemove = (e) => {
     e.stopPropagation();
     setLocalPreview(null);
     setUploadError(null);
+    setShowChoiceMenu(false);
     onChange('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const handleBoxClick = () => {
+    if (isUploading) return;
+    if (localPreview) return; // if already has preview, don't show menu
+    setShowChoiceMenu(true);
+  };
+
+  const handleChooseFile = (e) => {
+    e.stopPropagation();
+    setShowChoiceMenu(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleChooseCamera = (e) => {
+    e.stopPropagation();
+    setShowChoiceMenu(false);
+    cameraInputRef.current?.click();
   };
 
   return (
@@ -80,26 +108,36 @@ export default function ImageUploadField({
         </p>
       )}
 
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+        disabled={isUploading}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCameraCapture}
+        className="hidden"
+        disabled={isUploading}
+      />
+
       {/* Upload Box */}
       <div
-        onClick={() => !isUploading && fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all ${
+        onClick={handleBoxClick}
+        className={`relative border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
           localPreview
-            ? 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-400'
+            ? 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-400 cursor-default'
             : uploadError
-            ? 'border-rose-300 bg-rose-50/20 hover:border-rose-400'
-            : 'border-slate-300 bg-slate-50/60 hover:bg-slate-50 hover:border-sky-400'
+            ? 'border-rose-300 bg-rose-50/20 hover:border-rose-400 cursor-pointer'
+            : 'border-slate-300 bg-slate-50/60 hover:bg-slate-50 hover:border-sky-400 cursor-pointer'
         }`}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-          disabled={isUploading}
-        />
-
         {localPreview ? (
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-between">
             <div className="flex items-center gap-3">
@@ -145,9 +183,9 @@ export default function ImageUploadField({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={(e) => { e.stopPropagation(); setShowChoiceMenu(true); }}
                 disabled={isUploading}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
               >
                 تغيير الصورة
               </button>
@@ -155,7 +193,7 @@ export default function ImageUploadField({
                 type="button"
                 onClick={handleRemove}
                 disabled={isUploading}
-                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200"
+                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 cursor-pointer"
                 title="حذف الصورة"
               >
                 <X size={16} />
@@ -176,6 +214,68 @@ export default function ImageUploadField({
           </div>
         )}
       </div>
+
+      {/* Choice Menu Overlay */}
+      {showChoiceMenu && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+          onClick={(e) => { e.stopPropagation(); setShowChoiceMenu(false); }}
+        >
+          <div
+            className="bg-white w-full sm:w-auto sm:min-w-[340px] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Menu Header */}
+            <div className="p-4 pb-2 text-center border-b border-slate-100">
+              <div className="w-10 h-1 rounded-full bg-slate-300 mx-auto mb-3 sm:hidden" />
+              <h3 className="text-sm font-bold text-slate-800">اختر طريقة رفع الصورة</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">تصور صورة حالياً من الكاميرا ولا ترفع صورة جاهزة؟</p>
+            </div>
+
+            {/* Choice Buttons */}
+            <div className="p-3 space-y-2">
+              <button
+                type="button"
+                onClick={handleChooseCamera}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-right transition-all cursor-pointer active:scale-[0.98] group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                  <Camera size={22} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-sky-800">📸 التقط صورة من الكاميرا</div>
+                  <div className="text-[11px] text-sky-600/80 mt-0.5">فتح الكاميرا وتصور صورتك دلوقتي</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleChooseFile}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-right transition-all cursor-pointer active:scale-[0.98] group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-slate-500 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                  <FolderOpen size={22} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-800">📁 اختر صورة من الملفات</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">ارفع صورة جاهزة من المعرض أو الجهاز</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Cancel */}
+            <div className="p-3 pt-0">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowChoiceMenu(false); }}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-all cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {uploadError && (
         <div className="mt-2 text-xs text-rose-600 flex items-center gap-1.5 font-medium">

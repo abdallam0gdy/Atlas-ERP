@@ -414,6 +414,19 @@ export default function OnlineRegistrationsPage() {
     });
   }, [students, statusFilter, gradeFilter, searchQuery]);
 
+  // Sibling detection by father_phone
+  const siblingsMap = useMemo(() => {
+    const map = {};
+    students.forEach((s) => {
+      const p = s.father_phone?.trim();
+      if (p && p.length >= 10) {
+        if (!map[p]) map[p] = [];
+        map[p].push(s);
+      }
+    });
+    return map;
+  }, [students]);
+
   // Filtered Teachers
   const filteredTeachers = useMemo(() => {
     return teachers.filter((item) => {
@@ -1393,6 +1406,11 @@ export default function OnlineRegistrationsPage() {
                                     <MessageCircle size={12} />
                                   </a>
                                 </div>
+                                {student.father_phone && siblingsMap[student.father_phone]?.length > 1 && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 mt-0.5" title={`مسجل ${siblingsMap[student.father_phone].length} طلاب بنفس ولي الأمر`}>
+                                    👨‍👩‍👧‍👦 أخوة ({siblingsMap[student.father_phone].length})
+                                  </span>
+                                )}
                               </div>
                             </td>
 
@@ -1717,6 +1735,14 @@ export default function OnlineRegistrationsPage() {
                           <span className="text-slate-500 text-[11px]">ولي الأمر:</span>
                           <span className="font-mono font-bold text-slate-800">{student.father_phone}</span>
                         </div>
+                        {student.father_phone && siblingsMap[student.father_phone]?.length > 1 && (
+                          <div className="pt-1 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
+                            <span className="text-amber-800 font-bold flex items-center gap-1">
+                              <span>👨‍👩‍👧‍👦</span>
+                              <span>يوجد إخوة ({siblingsMap[student.father_phone].length} طلاب)</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Footer Buttons */}
@@ -1940,16 +1966,40 @@ export default function OnlineRegistrationsPage() {
                   <span className="font-bold font-mono text-slate-800">{selectedStudent.national_id || '—'}</span>
                 </div>
                 <div>
+                  <span className="text-slate-400 block text-xs">النوع:</span>
+                  <span className="font-bold text-slate-800">{selectedStudent.gender === 'male' ? '👦 ذكر' : selectedStudent.gender === 'female' ? '👧 أنثى' : selectedStudent.gender || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-xs">تاريخ الميلاد:</span>
+                  <span className="font-bold text-slate-800">{selectedStudent.birth_date ? new Date(selectedStudent.birth_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</span>
+                </div>
+                <div>
                   <span className="text-slate-400 block text-xs">الصف الدراسي والتعليم:</span>
                   <span className="font-bold text-slate-800">{selectedStudent.academic_grade} ({selectedStudent.education_type})</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-xs">هاتف الطالب:</span>
-                  <span className="font-bold font-mono text-slate-800">{selectedStudent.phone}</span>
+                  {selectedStudent.phone ? (
+                    <a href={`tel:${selectedStudent.phone}`} className="font-bold font-mono text-sky-700 hover:underline">{selectedStudent.phone}</a>
+                  ) : (
+                    <span className="text-slate-400 italic text-xs">لا يوجد (صغار السن)</span>
+                  )}
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-xs">هاتف ولي الأمر:</span>
-                  <span className="font-bold font-mono text-slate-800">{selectedStudent.father_phone}</span>
+                  <span className="text-slate-400 block text-xs">هاتف ولي الأمر (الأب):</span>
+                  <a href={`tel:${selectedStudent.father_phone}`} className="font-bold font-mono text-sky-700 hover:underline">{selectedStudent.father_phone}</a>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-xs">هاتف الأم:</span>
+                  {selectedStudent.mother_phone ? (
+                    <a href={`tel:${selectedStudent.mother_phone}`} className="font-bold font-mono text-sky-700 hover:underline">{selectedStudent.mother_phone}</a>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-xs">وظيفة ولي الأمر:</span>
+                  <span className="font-bold text-slate-800">{selectedStudent.parent_job || '—'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-xs">المدرسة:</span>
@@ -1969,6 +2019,44 @@ export default function OnlineRegistrationsPage() {
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
                   <span className="font-bold text-slate-700 block mb-1">ملاحظات:</span>
                   <p className="text-slate-600 whitespace-pre-line">{selectedStudent.notes}</p>
+                </div>
+              )}
+
+              {/* Sibling detection box */}
+              {selectedStudent.father_phone && siblingsMap[selectedStudent.father_phone]?.length > 1 && (
+                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-2">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold">
+                    <span className="text-base">👨‍👩‍👧‍👦</span>
+                    <span>إخوة مسجلون بنفس رقم ولي الأمر ({siblingsMap[selectedStudent.father_phone].length} طلاب):</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {siblingsMap[selectedStudent.father_phone]
+                      .filter((sib) => sib.id !== selectedStudent.id)
+                      .map((sib) => (
+                        <div key={sib.id} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-200/60 shadow-xs">
+                          <div>
+                            <span className="font-bold text-slate-800">{sib.full_name}</span>
+                            <span className="text-[11px] text-slate-500 mr-2">({sib.academic_grade})</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              sib.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                              sib.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
+                              'bg-amber-50 text-amber-800'
+                            }`}>
+                              {sib.status === 'approved' ? 'معتمد' : sib.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudent(sib)}
+                              className="text-[11px] text-sky-700 font-bold hover:underline cursor-pointer"
+                            >
+                              عرض ملفه
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
             </div>
