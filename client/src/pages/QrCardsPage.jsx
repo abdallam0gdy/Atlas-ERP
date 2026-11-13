@@ -25,7 +25,7 @@ export default function QrCardsPage() {
     setLoading(true);
     try {
       const [sRes, gRes] = await Promise.all([
-        api.get('/students?limit=200'),
+        api.get('/students?limit=5000'),
         api.get('/master/grades'),
       ]);
       setStudents(sRes.data.data.students || []);
