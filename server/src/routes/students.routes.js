@@ -8,7 +8,11 @@ const {
   bulkImportStudents, exportAllStudents, deleteStudent,
   getOnlineSecretKey, syncOnlineStudents,
 } = require('../controllers/students.controller');
-const { printSticker } = require('../controllers/barcode.controller');
+const {
+  printSticker,
+  printThermalRoll,
+  printCardsSheet,
+} = require('../controllers/barcode.controller');
 
 // All routes require authentication
 router.use(authenticate);
@@ -43,6 +47,18 @@ router.get('/export-all',
 router.post('/bulk-import',
   authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT'),
   bulkImportStudents
+);
+
+// GET /api/students/print-thermal-roll — Continuous thermal roll print (50x25mm)
+router.get('/print-thermal-roll',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
+  printThermalRoll
+);
+
+// GET /api/students/print-cards-sheet — A4 sheet cards print (8 cards per page)
+router.get('/print-cards-sheet',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'CASHIER', 'RECEPTION_ASSISTANT'),
+  printCardsSheet
 );
 
 // GET /api/students/:id/print-sticker — Thermal sticker print

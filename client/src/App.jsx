@@ -1,33 +1,44 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { MainLayout, ProtectedRoute } from './components/Layout';
-import LoginPage from './pages/LoginPage';
-import ComingSoonPage from './pages/ComingSoonPage';
-import DashboardPage from './pages/DashboardPage';
-import StudentsPage from './pages/StudentsPage';
-import StudentDetailPage from './pages/StudentDetailPage';
-import TeachersPage from './pages/TeachersPage';
-import TeacherDetailPage from './pages/TeacherDetailPage';
-import GroupsPage from './pages/GroupsPage';
-import GroupDetailPage from './pages/GroupDetailPage';
-import GatePage from './pages/GatePage';
-import SubjectsPage from './pages/SubjectsPage';
-import QrCardsPage from './pages/QrCardsPage';
-import InventoryPage from './pages/InventoryPage';
-import PosPage from './pages/PosPage';
-import FinancePage from './pages/FinancePage';
-import BookletsPage from './pages/BookletsPage';
-import ProfilePage from './pages/ProfilePage';
-import StudentSubscriptionsPage from './pages/StudentSubscriptionsPage';
-import PackagesPage from './pages/PackagesPage';
-import UsersManagementPage from './pages/UsersManagementPage';
-import SettingsPage from './pages/SettingsPage';
-import OnlineRegistrationsPage from './pages/OnlineRegistrationsPage';
-import StudentPortalLayout from './components/portal/StudentPortalLayout';
-import TeacherPortalLayout from './components/portal/TeacherPortalLayout';
-import StudentRegistrationPage from './pages/portal/StudentRegistrationPage';
-import TeacherRegistrationPage from './pages/portal/TeacherRegistrationPage';
+import { Loader2 } from 'lucide-react';
+
+// Lazy-loaded pages for fast initial page load and low memory usage
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ComingSoonPage = lazy(() => import('./pages/ComingSoonPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const StudentsPage = lazy(() => import('./pages/StudentsPage'));
+const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage'));
+const TeachersPage = lazy(() => import('./pages/TeachersPage'));
+const TeacherDetailPage = lazy(() => import('./pages/TeacherDetailPage'));
+const GroupsPage = lazy(() => import('./pages/GroupsPage'));
+const GroupDetailPage = lazy(() => import('./pages/GroupDetailPage'));
+const GatePage = lazy(() => import('./pages/GatePage'));
+const SubjectsPage = lazy(() => import('./pages/SubjectsPage'));
+const QrCardsPage = lazy(() => import('./pages/QrCardsPage'));
+const InventoryPage = lazy(() => import('./pages/InventoryPage'));
+const PosPage = lazy(() => import('./pages/PosPage'));
+const FinancePage = lazy(() => import('./pages/FinancePage'));
+const BookletsPage = lazy(() => import('./pages/BookletsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const StudentSubscriptionsPage = lazy(() => import('./pages/StudentSubscriptionsPage'));
+const PackagesPage = lazy(() => import('./pages/PackagesPage'));
+const UsersManagementPage = lazy(() => import('./pages/UsersManagementPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const OnlineRegistrationsPage = lazy(() => import('./pages/OnlineRegistrationsPage'));
+const StudentPortalLayout = lazy(() => import('./components/portal/StudentPortalLayout'));
+const TeacherPortalLayout = lazy(() => import('./components/portal/TeacherPortalLayout'));
+const StudentRegistrationPage = lazy(() => import('./pages/portal/StudentRegistrationPage'));
+const TeacherRegistrationPage = lazy(() => import('./pages/portal/TeacherRegistrationPage'));
+
+const PageLoader = () => (
+  <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 text-slate-500 animate-fade-in" dir="rtl">
+    <Loader2 size={36} className="animate-spin text-[#0C3C82] mb-3" />
+    <span className="text-xs font-bold text-slate-500">جاري تحميل الصفحة...</span>
+  </div>
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +54,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
           {/* Public Root Landing / Coming Soon Page */}
           <Route path="/" element={<ComingSoonPage />} />
 
@@ -142,6 +154,7 @@ function App() {
           {/* Default catch-all redirect to public Coming Soon page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
 
       <Toaster

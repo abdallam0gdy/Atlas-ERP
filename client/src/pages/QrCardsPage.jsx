@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
-import QRCode from 'qrcode';
 import {
   QrCode, Printer, Search, Filter, Loader2,
   RefreshCw, User, Receipt, ChevronLeft, ChevronRight,
@@ -123,506 +122,84 @@ export default function QrCardsPage() {
   const paginatedStudents = pageSize === 'all' ? filteredStudents : filteredStudents.slice(startIndex, endIndex);
 
   // ============================================================
-  // HIGH-PERFORMANCE ISOLATED PRINTING ENGINE (ZERO RAM LEAK)
+  // ULTRA HIGH-SPEED SERVER-RENDERED THERMAL ROLL PRINTING (ZERO RAM)
   // ============================================================
 
   // 1. Thermal Roll Printing (50x25mm / Continuous Roll)
-  const executeThermalRollPrint = async (targetStudents) => {
+  const executeThermalRollPrint = (targetStudents, isScopeAll = false) => {
     if (!targetStudents || targetStudents.length === 0) {
       toast.error('لا يوجد طلاب محددين للطباعة');
       return;
     }
 
-    setIsGeneratingPrint(true);
-    const toastId = toast.loading(`جاري تجهيز ${targetStudents.length} استيكر حراري للطباعة...`);
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams();
+    if (token) params.set('token', token);
 
-    try {
-      // Generate crisp SVGs asynchronously
-      const itemsHtml = await Promise.all(
-        targetStudents.map(async (student) => {
-          const qrVal = getStudentQrValue(student);
-          let qrSvg = '';
-          try {
-            qrSvg = await QRCode.toString(qrVal, {
-              type: 'svg',
-              margin: 0,
-              errorCorrectionLevel: 'M',
-            });
-          } catch {
-            qrSvg = '';
-          }
-
-          const studentName = student.full_name_ar || student.full_name || 'بدون اسم';
-          const gradeName = student.grade_name || '';
-          const phone = student.phone || student.father_phone || student.parent_phone || '';
-
-          return `
-            <div class="sticker">
-              <img src="/atlas-logo.png" class="watermark" alt="" aria-hidden="true" />
-              <div class="info">
-                <div>
-                  <div class="name">${studentName}</div>
-                  <div class="grade">${gradeName}</div>
-                </div>
-                <div class="meta">
-                  <div class="code">كود: ${qrVal}</div>
-                  ${phone ? `<div class="phone">هاتف: ${phone}</div>` : ''}
-                </div>
-              </div>
-              <div class="qr-box">
-                ${qrSvg}
-              </div>
-            </div>
-          `;
-        })
-      );
-
-      const printWin = window.open('', '_blank', 'width=550,height=600');
-      if (!printWin) {
-        toast.error('يرجى السماح بفتح النوافذ المنبثقة (Popups) لإتمام الطباعة', { id: toastId });
-        return;
+    // Single student print
+    if (targetStudents.length === 1) {
+      const student = targetStudents[0];
+      const win = window.open(`/api/students/${student.id}/print-sticker?${params.toString()}`, '_blank');
+      if (!win) {
+        toast.error('يرجى السماح بفتح النوافذ المنبثقة (Popups)');
       }
+      return;
+    }
 
-      const fullHtml = `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-          <meta charset="UTF-8">
-          <title>طباعة رول حراري (${targetStudents.length} طالب) - أكاديمية أطلس</title>
-          <style>
-            @page {
-              size: 50mm 25mm;
-              margin: 0;
-            }
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            html, body {
-              width: 50mm;
-              background: #ffffff;
-              color: #000000;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', Tahoma, Arial, sans-serif;
-              direction: rtl;
-            }
-            .sticker {
-              width: 50mm;
-              height: 25mm;
-              max-height: 25mm;
-              overflow: hidden;
-              position: relative;
-              display: flex;
-              flex-direction: row;
-              align-items: center;
-              justify-content: space-between;
-              padding: 1.8mm 2.2mm;
-              page-break-after: always;
-              break-after: page;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            @media screen {
-              body {
-                padding: 15px;
-                background: #f1f5f9;
-              }
-              .sticker {
-                margin: 8px auto;
-                background: #ffffff;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                border: 1px dashed #cbd5e1;
-                border-radius: 4px;
-              }
-            }
-            .watermark {
-              position: absolute;
-              top: 50%;
-              right: 4mm;
-              transform: translateY(-50%);
-              width: 18mm;
-              height: 18mm;
-              object-fit: contain;
-              opacity: 0.16;
-              pointer-events: none;
-              z-index: 1;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .info {
-              position: relative;
-              z-index: 2;
-              flex: 1;
-              height: 21mm;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              padding-left: 1.5mm;
-              overflow: hidden;
-              text-align: right;
-            }
-            .name {
-              font-size: 8pt;
-              font-weight: 900;
-              line-height: 1.15;
-              color: #000000;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-            .grade {
-              font-size: 6.5pt;
-              font-weight: 700;
-              color: #334155;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              margin-top: 0.3mm;
-            }
-            .meta {
-              display: flex;
-              flex-direction: column;
-              gap: 0.2mm;
-            }
-            .code {
-              font-size: 7.2pt;
-              font-family: 'Courier New', Courier, monospace;
-              font-weight: 900;
-              color: #000000;
-              letter-spacing: 0.2px;
-              white-space: nowrap;
-            }
-            .phone {
-              font-size: 6.2pt;
-              font-family: 'Courier New', Courier, monospace;
-              font-weight: 700;
-              color: #475569;
-              white-space: nowrap;
-            }
-            .qr-box {
-              position: relative;
-              z-index: 10;
-              width: 20.5mm;
-              height: 20.5mm;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              flex-shrink: 0;
-              background: #ffffff;
-              padding: 0.3mm;
-            }
-            .qr-box svg {
-              width: 100%;
-              height: 100%;
-              display: block;
-              shape-rendering: crispEdges;
-            }
-          </style>
-        </head>
-        <body>
-          ${itemsHtml.join('')}
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 150);
-            };
-          </script>
-        </body>
-        </html>
-      `;
+    // Batch print
+    if (!isScopeAll && targetStudents.length < students.length) {
+      params.set('ids', targetStudents.map((s) => s.id).join(','));
+    } else {
+      if (selectedGrade !== 'all') params.set('grade_id', selectedGrade);
+      if (search.trim()) params.set('search', search.trim());
+    }
 
-      printWin.document.open();
-      printWin.document.write(fullHtml);
-      printWin.document.close();
-
-      toast.success(`تم إرسال ${targetStudents.length} استيكر للطباعة`, { id: toastId });
+    const win = window.open(`/api/students/print-thermal-roll?${params.toString()}`, '_blank');
+    if (!win) {
+      toast.error('يرجى السماح بفتح النوافذ المنبثقة (Popups) لإتمام الطباعة');
+    } else {
+      toast.success(`تم تجهيز رول الطباعة الحراري (${targetStudents.length} طالب)`);
       setPrintModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('حدث خطأ أثناء تجهيز الطباعة', { id: toastId });
-    } finally {
-      setIsGeneratingPrint(false);
     }
   };
 
-  // 2. A4 Sheet Printing (8 - 10 ID Cards per A4 Sheet)
-  const executeA4SheetPrint = async (targetStudents) => {
+  // 2. High-Speed Server-Rendered A4 Sheet Printing (8 ID Cards per sheet)
+  const executeA4SheetPrint = (targetStudents, isScopeAll = false) => {
     if (!targetStudents || targetStudents.length === 0) {
       toast.error('لا يوجد طلاب محددين للطباعة');
       return;
     }
 
-    setIsGeneratingPrint(true);
-    const toastId = toast.loading(`جاري تجهيز ${targetStudents.length} كارت على ورق A4...`);
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams();
+    if (token) params.set('token', token);
 
-    try {
-      const itemsHtml = await Promise.all(
-        targetStudents.map(async (student) => {
-          const qrVal = getStudentQrValue(student);
-          let qrSvg = '';
-          try {
-            qrSvg = await QRCode.toString(qrVal, {
-              type: 'svg',
-              margin: 0,
-              errorCorrectionLevel: 'M',
-            });
-          } catch {
-            qrSvg = '';
-          }
+    if (targetStudents.length === 1) {
+      params.set('ids', targetStudents[0].id);
+    } else if (!isScopeAll && targetStudents.length < students.length) {
+      params.set('ids', targetStudents.map((s) => s.id).join(','));
+    } else {
+      if (selectedGrade !== 'all') params.set('grade_id', selectedGrade);
+      if (search.trim()) params.set('search', search.trim());
+    }
 
-          const studentName = student.full_name_ar || student.full_name || 'بدون اسم';
-          const gradeName = student.grade_name || '';
-          const phone = student.phone || student.father_phone || student.parent_phone || '—';
-
-          return `
-            <div class="card">
-              <img src="/atlas-logo.png" class="card-watermark" alt="" aria-hidden="true" />
-              <div class="card-header">
-                <div class="card-brand">
-                  <div class="brand-badge">أ</div>
-                  <div>
-                    <div class="brand-title">أكاديمية أطلس التعليمية</div>
-                    <div class="brand-sub">Atlas Academy Card</div>
-                  </div>
-                </div>
-                <div class="code-badge">#${student.student_code}</div>
-              </div>
-              <div class="card-body">
-                <div class="qr-wrapper">
-                  ${qrSvg}
-                </div>
-                <div class="details">
-                  <div class="student-name">${studentName}</div>
-                  <div class="student-grade">${gradeName}</div>
-                  <div class="student-code">${qrVal}</div>
-                  <div class="student-phone">${phone}</div>
-                </div>
-              </div>
-            </div>
-          `;
-        })
-      );
-
-      const printWin = window.open('', '_blank', 'width=850,height=900');
-      if (!printWin) {
-        toast.error('يرجى السماح بفتح النوافذ المنبثقة (Popups) لإتمام الطباعة', { id: toastId });
-        return;
-      }
-
-      const fullHtml = `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-          <meta charset="UTF-8">
-          <title>طباعة شيت مجمع (${targetStudents.length} كارت A4) - أكاديمية أطلس</title>
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 7mm 8mm;
-            }
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            html, body {
-              background: #ffffff;
-              color: #000000;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', Tahoma, Arial, sans-serif;
-              direction: rtl;
-            }
-            .grid-container {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 4mm;
-              width: 100%;
-            }
-            .card {
-              border: 1.5px solid #cbd5e1;
-              border-radius: 8px;
-              padding: 3.5mm;
-              position: relative;
-              background: #ffffff;
-              overflow: hidden;
-              page-break-inside: avoid;
-              break-inside: avoid;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              min-height: 48mm;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .card-watermark {
-              position: absolute;
-              left: 4mm;
-              top: 50%;
-              transform: translateY(-50%) rotate(-6deg);
-              width: 28mm;
-              height: 28mm;
-              object-fit: contain;
-              opacity: 0.12;
-              pointer-events: none;
-              z-index: 1;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .card-header {
-              position: relative;
-              z-index: 2;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              border-bottom: 1px solid #f1f5f9;
-              padding-bottom: 2mm;
-              margin-bottom: 2mm;
-            }
-            .card-brand {
-              display: flex;
-              align-items: center;
-              gap: 2mm;
-            }
-            .brand-badge {
-              width: 6mm;
-              height: 6mm;
-              border-radius: 4px;
-              background: #0C3C82;
-              color: #ffffff;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: 900;
-              font-size: 8pt;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .brand-title {
-              font-size: 8.5pt;
-              font-weight: 900;
-              color: #0C3C82;
-            }
-            .brand-sub {
-              font-size: 6.5pt;
-              color: #64748b;
-            }
-            .code-badge {
-              font-family: 'Courier New', Courier, monospace;
-              font-weight: 900;
-              font-size: 8.5pt;
-              background: #eff6ff;
-              color: #0C3C82;
-              padding: 1mm 2mm;
-              border-radius: 4px;
-              border: 1px solid #bfdbfe;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .card-body {
-              position: relative;
-              z-index: 2;
-              display: flex;
-              align-items: center;
-              gap: 3mm;
-            }
-            .qr-wrapper {
-              width: 22mm;
-              height: 22mm;
-              padding: 0.5mm;
-              background: #ffffff;
-              border: 1px solid #e2e8f0;
-              border-radius: 4px;
-              flex-shrink: 0;
-            }
-            .qr-wrapper svg {
-              width: 100%;
-              height: 100%;
-              display: block;
-              shape-rendering: crispEdges;
-            }
-            .details {
-              flex: 1;
-              min-width: 0;
-              display: flex;
-              flex-direction: column;
-              gap: 0.8mm;
-              text-align: right;
-            }
-            .student-name {
-              font-size: 9pt;
-              font-weight: 900;
-              color: #0f172a;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-            .student-grade {
-              font-size: 7.5pt;
-              font-weight: 700;
-              color: #475569;
-            }
-            .student-code {
-              font-size: 7.5pt;
-              font-family: 'Courier New', Courier, monospace;
-              font-weight: 900;
-              color: #0C3C82;
-            }
-            .student-phone {
-              font-size: 7pt;
-              font-family: 'Courier New', Courier, monospace;
-              color: #64748b;
-            }
-            @media screen {
-              body {
-                padding: 20px;
-                background: #f8fafc;
-              }
-              .grid-container {
-                max-width: 210mm;
-                margin: 0 auto;
-                background: #ffffff;
-                padding: 10mm;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="grid-container">
-            ${itemsHtml.join('')}
-          </div>
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 150);
-            };
-          </script>
-        </body>
-        </html>
-      `;
-
-      printWin.document.open();
-      printWin.document.write(fullHtml);
-      printWin.document.close();
-
-      toast.success(`تم تجهيز ${targetStudents.length} كارت A4 للطباعة`, { id: toastId });
+    const win = window.open(`/api/students/print-cards-sheet?${params.toString()}`, '_blank');
+    if (!win) {
+      toast.error('يرجى السماح بفتح النوافذ المنبثقة (Popups) لإتمام الطباعة');
+    } else {
+      toast.success(`تم تجهيز شيت طباعة الكروت (${targetStudents.length} كارت)`);
       setPrintModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('حدث خطأ أثناء تجهيز الطباعة', { id: toastId });
-    } finally {
-      setIsGeneratingPrint(false);
     }
   };
 
   // Dispatch print according to selected scope and mode
   const handleStartPrint = () => {
-    const targetStudents = printScope === 'all' ? filteredStudents : paginatedStudents;
+    const isAll = printScope === 'all';
+    const targetStudents = isAll ? filteredStudents : paginatedStudents;
     if (printTargetMode === 'thermal') {
-      executeThermalRollPrint(targetStudents);
+      executeThermalRollPrint(targetStudents, isAll);
     } else {
-      executeA4SheetPrint(targetStudents);
+      executeA4SheetPrint(targetStudents, isAll);
     }
   };
 
