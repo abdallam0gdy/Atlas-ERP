@@ -6,12 +6,25 @@ const { validate, createStudentSchema, updateStudentSchema, paginationSchema } =
 const {
   listStudents, getStudent, createStudent, updateStudent,
   bulkImportStudents, exportAllStudents, deleteStudent,
+  getOnlineSecretKey, syncOnlineStudents,
 } = require('../controllers/students.controller');
 const { printSticker } = require('../controllers/barcode.controller');
 
 // All routes require authentication
 router.use(authenticate);
 router.use(requirePageAccess('students'));
+
+// GET /api/students/online-secret — Background secret key for Supabase RPCs
+router.get('/online-secret',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER'),
+  getOnlineSecretKey
+);
+
+// POST /api/students/sync-online — Sync & code online registered students into local ERP
+router.post('/sync-online',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER'),
+  syncOnlineStudents
+);
 
 // GET /api/students — Search & List
 router.get('/',

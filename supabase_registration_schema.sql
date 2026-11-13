@@ -110,53 +110,37 @@ CREATE INDEX IF NOT EXISTS idx_online_teachers_created ON public.online_teachers
 ALTER TABLE public.online_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.online_teachers ENABLE ROW LEVEL SECURITY;
 
+-- حذف أي سياسات عامة قديمة للقراءة أو التعديل أو الحذف
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname, tablename
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('online_students', 'online_teachers')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', pol.policyname, pol.tablename);
+  END LOOP;
+END
+$$;
+
 -- 1) السماح للزوار والطلاب بإرسال الاستمارة فقط (INSERT Only)
 CREATE POLICY "Public anonymous insert for students"
 ON public.online_students 
 FOR INSERT 
-TO anon 
+TO anon, authenticated
 WITH CHECK (true);
 
 -- 2) السماح للمعلمين بإرسال الاستمارة فقط (INSERT Only)
 CREATE POLICY "Public anonymous insert for teachers"
 ON public.online_teachers 
 FOR INSERT 
-TO anon 
+TO anon, authenticated
 WITH CHECK (true);
 
--- 3) السماح بقراءة وتحديث وحذف الاستمارات من لوحة إدارة المنصة (Dashboard)
-DROP POLICY IF EXISTS "Allow select for online_students" ON public.online_students;
-CREATE POLICY "Allow select for online_students"
-ON public.online_students 
-FOR SELECT 
-USING (true);
+-- ملاحظة هامة:
+-- القراءة والتعديل والحذف والتكويد تتم حصرياً عبر الدوال المحمية بالرمز السري في الخلفية
+-- الموجودة في ملف supabase_security_patch.sql
 
-DROP POLICY IF EXISTS "Allow update for online_students" ON public.online_students;
-CREATE POLICY "Allow update for online_students"
-ON public.online_students 
-FOR UPDATE 
-USING (true);
-
-DROP POLICY IF EXISTS "Allow delete for online_students" ON public.online_students;
-CREATE POLICY "Allow delete for online_students"
-ON public.online_students 
-FOR DELETE 
-USING (true);
-
-DROP POLICY IF EXISTS "Allow select for online_teachers" ON public.online_teachers;
-CREATE POLICY "Allow select for online_teachers"
-ON public.online_teachers 
-FOR SELECT 
-USING (true);
-
-DROP POLICY IF EXISTS "Allow update for online_teachers" ON public.online_teachers;
-CREATE POLICY "Allow update for online_teachers"
-ON public.online_teachers 
-FOR UPDATE 
-USING (true);
-
-DROP POLICY IF EXISTS "Allow delete for online_teachers" ON public.online_teachers;
-CREATE POLICY "Allow delete for online_teachers"
-ON public.online_teachers 
-FOR DELETE 
-USING (true);

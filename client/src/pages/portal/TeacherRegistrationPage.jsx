@@ -986,18 +986,35 @@ export default function TeacherRegistrationPage() {
 
     try {
       // التحقق من عدم وجود تسجيل مسبق للمعلم بنفس الرقم القومي أو الهاتف
-      const { data: existingTeacher } = await supabase
-        .from('online_teachers')
-        .select('id, full_name, phone, national_id')
-        .or(`national_id.eq.${cleanNid},phone.eq.${cleanPhone}`)
-        .limit(1);
+      let isDuplicate = false;
+      let dupReason = 'nid';
 
-      if (existingTeacher && existingTeacher.length > 0) {
-        const isSameNid = existingTeacher[0].national_id === cleanNid;
+      const { data: rpcData, error: rpcError } = await supabase.rpc('check_teacher_exists', {
+        p_national_id: cleanNid,
+        p_phone: cleanPhone,
+      });
+
+      if (!rpcError && rpcData && typeof rpcData.exists === 'boolean') {
+        isDuplicate = rpcData.exists;
+        dupReason = rpcData.reason || 'nid';
+      } else {
+        const { data: existingTeacher } = await supabase
+          .from('online_teachers')
+          .select('id, phone, national_id')
+          .or(`national_id.eq.${cleanNid},phone.eq.${cleanPhone}`)
+          .limit(1);
+
+        if (existingTeacher && existingTeacher.length > 0) {
+          isDuplicate = true;
+          dupReason = existingTeacher[0].national_id === cleanNid ? 'nid' : 'phone';
+        }
+      }
+
+      if (isDuplicate) {
         resetTurnstile();
         setErrorMessage(
-          isSameNid 
-            ? 'تم تسجيل استمارة انضمام مسبقاً بهذا الرقم القومي.' 
+          dupReason === 'nid'
+            ? 'تم تسجيل استمارة انضمام مسبقاً بهذا الرقم القومي.'
             : 'رقم هاتف المعلم مسجل بالفعل في استمارة سابقة.'
         );
         setIsSubmitting(false);

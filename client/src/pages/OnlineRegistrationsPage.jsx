@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import api from '../lib/api';
 import toast from 'react-hot-toast';
 import {
   Users,
@@ -25,7 +26,10 @@ import {
   CheckSquare,
   Square,
   Table as TableIcon,
-  LayoutGrid
+  LayoutGrid,
+  Database,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 
 // ============================================================
@@ -178,10 +182,30 @@ export default function OnlineRegistrationsPage() {
   const [teachers, setTeachers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Automatic Background Secret PIN (No manual password prompt)
+  const adminPinRef = useRef('Abd#01224385098');
+  const pinLoadedRef = useRef(false);
+
+  const getAdminPin = async () => {
+    if (pinLoadedRef.current) return adminPinRef.current;
+    try {
+      const res = await api.get('/students/online-secret');
+      if (res?.data?.data?.pin) {
+        adminPinRef.current = res.data.data.pin;
+      }
+    } catch {
+      // Fallback to default configured background PIN
+    }
+    pinLoadedRef.current = true;
+    return adminPinRef.current;
+  };
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [syncFilter, setSyncFilter] = useState('all'); // 'all' | 'synced' | 'unsynced'
   const [gradeFilter, setGradeFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [dayFilter, setDayFilter] = useState('all');
@@ -211,7 +235,7 @@ export default function OnlineRegistrationsPage() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
-  }, [activeTab, searchQuery, statusFilter, gradeFilter, subjectFilter, dayFilter, pageSize]);
+  }, [activeTab, searchQuery, statusFilter, syncFilter, gradeFilter, subjectFilter, dayFilter, pageSize]);
 
   // Copy to clipboard helper
   const copyToClipboard = (text, key) => {
@@ -222,35 +246,64 @@ export default function OnlineRegistrationsPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Fetch online students and teachers from Supabase
+  // Helper to normalize Arabic names for duplicate detection
+  const normalizeArabicName = (name) => {
+    if (!name) return '';
+    return String(name)
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي');
+  };
+
+  // Fetch online students and teachers from Supabase (via background PIN RPC + fallback)
   const fetchData = async () => {
     try {
       setIsRefreshing(true);
+      const pin = await getAdminPin();
 
-      const [studentsRes, teachersRes] = await Promise.all([
-        supabase
-          .from('online_students')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('online_teachers')
-          .select('*')
-          .order('created_at', { ascending: false }),
+      let studentsData = null;
+      let teachersData = null;
+
+      // 1. Try secure RPC first
+      const [rpcStudents, rpcTeachers] = await Promise.all([
+        supabase.rpc('admin_get_students', { pin }),
+        supabase.rpc('admin_get_teachers', { pin }),
       ]);
 
-      if (studentsRes.error) {
-        console.error('Error fetching students:', studentsRes.error);
-        toast.error('تعذر جلب طلبات الطلاب');
+      if (!rpcStudents.error && Array.isArray(rpcStudents.data)) {
+        studentsData = rpcStudents.data;
       } else {
-        setStudents(studentsRes.data || []);
+        const fallbackStudents = await supabase
+          .from('online_students')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (fallbackStudents.error) {
+          console.error('Error fetching students:', fallbackStudents.error);
+          toast.error('تعذر جلب طلبات الطلاب');
+        } else {
+          studentsData = fallbackStudents.data || [];
+        }
       }
 
-      if (teachersRes.error) {
-        console.error('Error fetching teachers:', teachersRes.error);
-        toast.error('تعذر جلب طلبات المعلمين');
+      if (!rpcTeachers.error && Array.isArray(rpcTeachers.data)) {
+        teachersData = rpcTeachers.data;
       } else {
-        setTeachers(teachersRes.data || []);
+        const fallbackTeachers = await supabase
+          .from('online_teachers')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (fallbackTeachers.error) {
+          console.error('Error fetching teachers:', fallbackTeachers.error);
+          toast.error('تعذر جلب طلبات المعلمين');
+        } else {
+          teachersData = fallbackTeachers.data || [];
+        }
       }
+
+      if (studentsData) setStudents(studentsData);
+      if (teachersData) setTeachers(teachersData);
     } catch (err) {
       console.error('Fetch error:', err);
       toast.error('حدث خطأ أثناء تحميل البيانات');
@@ -264,18 +317,171 @@ export default function OnlineRegistrationsPage() {
     fetchData();
   }, []);
 
-  // Update Status in Supabase
+  // ============================================================
+  // SYNC & CODE STUDENTS TO LOCAL ERP + REMOVE DUPLICATES IN SUPABASE
+  // ============================================================
+  const handleSyncStudentsToSystem = async (studentsToSync, { silentToast = false } = {}) => {
+    if (!Array.isArray(studentsToSync) || studentsToSync.length === 0) {
+      toast.error('لا يوجد طلاب محددين للنقل والتكويد');
+      return null;
+    }
+
+    setIsSyncing(true);
+    try {
+      const pin = await getAdminPin();
+
+      // Also include any duplicate records from our full `students` state that match the target students' national_id or (full_name + father_phone)
+      const targetKeys = new Set();
+      studentsToSync.forEach((s) => {
+        const nid = String(s.national_id || '').trim();
+        const nameKey = `${normalizeArabicName(s.full_name)}|${String(s.father_phone || '').trim()}`;
+        if (nid.length === 14) targetKeys.add(`nid:${nid}`);
+        if (nameKey.length > 5) targetKeys.add(`np:${nameKey}`);
+      });
+
+      const expandedBatch = [...studentsToSync];
+      const inBatchIds = new Set(studentsToSync.map((s) => s.id));
+      students.forEach((s) => {
+        if (inBatchIds.has(s.id)) return;
+        const nid = String(s.national_id || '').trim();
+        const nameKey = `${normalizeArabicName(s.full_name)}|${String(s.father_phone || '').trim()}`;
+        if ((nid.length === 14 && targetKeys.has(`nid:${nid}`)) || targetKeys.has(`np:${nameKey}`)) {
+          expandedBatch.push(s);
+          inBatchIds.add(s.id);
+        }
+      });
+
+      const res = await api.post('/students/sync-online', { students: expandedBatch });
+      const syncResult = res?.data?.data;
+      if (!syncResult) throw new Error('Invalid response from server');
+
+      const { synced = [], duplicate_online_ids = [] } = syncResult;
+
+      // Update Supabase: mark canonical rows as synced + approved + assigned_student_code, and delete duplicate rows
+      const rpcRes = await supabase.rpc('admin_sync_and_clean_students', {
+        pin,
+        p_synced: synced.map((item) => ({
+          id: item.online_id,
+          student_code: item.student_code,
+        })),
+        p_delete_ids: duplicate_online_ids,
+      });
+
+      if (rpcRes.error) {
+        // Fallback if RPC not yet applied in Supabase SQL Editor
+        await Promise.all(
+          synced.map((item) =>
+            supabase
+              .from('online_students')
+              .update({
+                status: 'approved',
+                synced_to_local_server: true,
+                assigned_student_code: item.student_code,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', item.online_id)
+          )
+        );
+
+        if (duplicate_online_ids.length > 0) {
+          await supabase
+            .from('online_students')
+            .delete()
+            .in('id', duplicate_online_ids);
+        }
+      }
+
+      // Update local state immediately
+      const syncedMap = new Map(synced.map((item) => [item.online_id, item.student_code]));
+      const dupSet = new Set(duplicate_online_ids);
+
+      setStudents((prev) =>
+        prev
+          .filter((s) => !dupSet.has(s.id))
+          .map((s) => {
+            if (syncedMap.has(s.id)) {
+              return {
+                ...s,
+                status: 'approved',
+                synced_to_local_server: true,
+                assigned_student_code: syncedMap.get(s.id),
+              };
+            }
+            return s;
+          })
+      );
+
+      if (selectedStudent) {
+        if (dupSet.has(selectedStudent.id)) {
+          setSelectedStudent(null);
+        } else if (syncedMap.has(selectedStudent.id)) {
+          setSelectedStudent((prev) => ({
+            ...prev,
+            status: 'approved',
+            synced_to_local_server: true,
+            assigned_student_code: syncedMap.get(prev.id),
+          }));
+        }
+      }
+
+      if (!silentToast) {
+        const dupMsg =
+          duplicate_online_ids.length > 0
+            ? ` — وتم حذف ${duplicate_online_ids.length} تكرار من سوبابيز تلقائياً`
+            : '';
+        toast.success(`تم تكويد ونقل ${synced.length} طالب للسيستم بنجاح${dupMsg}`);
+      }
+
+      return syncResult;
+    } catch (err) {
+      console.error('Sync students error:', err);
+      toast.error(err?.response?.data?.message || 'حدث خطأ أثناء تكويد ونقل الطلاب للسيستم');
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Sync ALL non-rejected students and clean all duplicates in one click
+  const handleSyncAllStudents = async () => {
+    const eligibleStudents = students.filter((s) => s.status !== 'rejected');
+    if (eligibleStudents.length === 0) {
+      toast.error('لا يوجد طلاب لنقلهم حالياً');
+      return;
+    }
+    await handleSyncStudentsToSystem(eligibleStudents);
+  };
+
+  // Update Status in Supabase (and auto-sync if approving a student)
   const handleUpdateStatus = async (type, id, newStatus) => {
     setUpdatingId(id);
     const table = type === 'student' ? 'online_students' : 'online_teachers';
 
     try {
-      const { error } = await supabase
-        .from(table)
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', id);
+      // If approving a student, automatically code & sync them to the local ERP system and clean duplicates!
+      if (type === 'student' && newStatus === 'approved') {
+        const studentObj = students.find((s) => s.id === id);
+        if (studentObj) {
+          await handleSyncStudentsToSystem([studentObj]);
+          return;
+        }
+      }
 
-      if (error) throw error;
+      const pin = await getAdminPin();
+      const rpcRes = await supabase.rpc('admin_update_status', {
+        pin,
+        p_table: table,
+        p_id: id,
+        p_status: newStatus,
+      });
+
+      if (rpcRes.error) {
+        const { error } = await supabase
+          .from(table)
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        if (error) throw error;
+      }
 
       toast.success(
         newStatus === 'approved' 
@@ -316,12 +522,29 @@ export default function OnlineRegistrationsPage() {
 
     setIsBatchUpdating(true);
     try {
-      const { error } = await supabase
-        .from(table)
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .in('id', selectedIds);
+      // If batch approving students, sync & code them all and clean duplicates!
+      if (activeTab === 'students' && newStatus === 'approved') {
+        const selectedStudentObjs = students.filter((s) => selectedIds.includes(s.id));
+        await handleSyncStudentsToSystem(selectedStudentObjs);
+        setSelectedIds([]);
+        return;
+      }
 
-      if (error) throw error;
+      const pin = await getAdminPin();
+      const rpcRes = await supabase.rpc('admin_batch_update_status', {
+        pin,
+        p_table: table,
+        p_ids: selectedIds,
+        p_status: newStatus,
+      });
+
+      if (rpcRes.error) {
+        const { error } = await supabase
+          .from(table)
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .in('id', selectedIds);
+        if (error) throw error;
+      }
 
       toast.success(`تم تحديث ${count} طلب بنجاح`);
 
@@ -351,12 +574,20 @@ export default function OnlineRegistrationsPage() {
     const table = type === 'student' ? 'online_students' : 'online_teachers';
 
     try {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('id', id);
+      const pin = await getAdminPin();
+      const rpcRes = await supabase.rpc('admin_delete_record', {
+        pin,
+        p_table: table,
+        p_id: id,
+      });
 
-      if (error) throw error;
+      if (rpcRes.error) {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      }
 
       toast.success('تم حذف الاستمارة بنجاح');
       if (type === 'student') {
@@ -393,11 +624,44 @@ export default function OnlineRegistrationsPage() {
     return Array.from(set).sort();
   }, [teachers]);
 
+  // Duplicate detection in current students list (by national_id or normalized name + father_phone)
+  const duplicateStats = useMemo(() => {
+    const nidMap = new Map();
+    const namePhoneMap = new Map();
+    const duplicateIds = new Set();
+
+    students.forEach((s) => {
+      const nid = String(s.national_id || '').trim();
+      const np = `${normalizeArabicName(s.full_name)}|${String(s.father_phone || '').trim()}`;
+
+      if (nid.length === 14) {
+        if (nidMap.has(nid)) {
+          duplicateIds.add(s.id);
+        } else {
+          nidMap.set(nid, s.id);
+        }
+      } else if (np.length > 5) {
+        if (namePhoneMap.has(np)) {
+          duplicateIds.add(s.id);
+        } else {
+          namePhoneMap.set(np, s.id);
+        }
+      }
+    });
+
+    return {
+      duplicateCount: duplicateIds.size,
+      duplicateIds,
+    };
+  }, [students]);
+
   // Filtered Students
   const filteredStudents = useMemo(() => {
     return students.filter((item) => {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
       if (gradeFilter !== 'all' && item.academic_grade !== gradeFilter) return false;
+      if (syncFilter === 'synced' && !item.synced_to_local_server && !item.assigned_student_code) return false;
+      if (syncFilter === 'unsynced' && (item.synced_to_local_server || item.assigned_student_code)) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -407,12 +671,13 @@ export default function OnlineRegistrationsPage() {
         const matchesMother = item.mother_phone?.includes(q);
         const matchesNid = item.national_id?.includes(q);
         const matchesSchool = item.school_name?.toLowerCase().includes(q);
-        return matchesName || matchesPhone || matchesFather || matchesMother || matchesNid || matchesSchool;
+        const matchesCode = String(item.assigned_student_code || '').includes(q);
+        return matchesName || matchesPhone || matchesFather || matchesMother || matchesNid || matchesSchool || matchesCode;
       }
 
       return true;
     });
-  }, [students, statusFilter, gradeFilter, searchQuery]);
+  }, [students, statusFilter, syncFilter, gradeFilter, searchQuery]);
 
   // Sibling detection by father_phone
   const siblingsMap = useMemo(() => {
@@ -479,6 +744,8 @@ export default function OnlineRegistrationsPage() {
   const stats = useMemo(() => {
     const studentPending = students.filter((s) => s.status === 'pending').length;
     const studentApproved = students.filter((s) => s.status === 'approved').length;
+    const studentSynced = students.filter((s) => s.synced_to_local_server || s.assigned_student_code).length;
+    const studentUnsynced = students.filter((s) => s.status !== 'rejected' && !s.synced_to_local_server && !s.assigned_student_code).length;
     const teacherPending = teachers.filter((t) => t.status === 'pending').length;
     const teacherApproved = teachers.filter((t) => t.status === 'approved').length;
 
@@ -491,6 +758,8 @@ export default function OnlineRegistrationsPage() {
       totalStudents: students.length,
       studentPending,
       studentApproved,
+      studentSynced,
+      studentUnsynced,
       totalTeachers: teachers.length,
       teacherPending,
       teacherApproved,
@@ -499,11 +768,12 @@ export default function OnlineRegistrationsPage() {
     };
   }, [students, teachers]);
 
-  const hasActiveFilters = searchQuery || statusFilter !== 'all' || gradeFilter !== 'all' || subjectFilter !== 'all' || dayFilter !== 'all';
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || syncFilter !== 'all' || gradeFilter !== 'all' || subjectFilter !== 'all' || dayFilter !== 'all';
 
   const resetAllFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
+    setSyncFilter('all');
     setGradeFilter('all');
     setSubjectFilter('all');
     setDayFilter('all');
@@ -759,6 +1029,26 @@ export default function OnlineRegistrationsPage() {
 
         {/* Global Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* One-Click Sync & Deduplicate All Students Button */}
+          <button
+            type="button"
+            onClick={handleSyncAllStudents}
+            disabled={isSyncing || students.length === 0}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+            title="نقل وتكويد جميع الطلاب في السيستم المحلي ومسح أي تكرار من سوبابيز تلقائياً"
+          >
+            {isSyncing ? (
+              <RefreshCw size={15} className="animate-spin" />
+            ) : (
+              <Database size={15} />
+            )}
+            <span>
+              {isSyncing
+                ? 'جاري التكويد وتصفية التكرار...'
+                : `تكويد ونقل للسيستم (${stats.studentUnsynced} متبقي${duplicateStats.duplicateCount > 0 ? ` • ${duplicateStats.duplicateCount} مكرر` : ''})`}
+            </span>
+          </button>
+
           {/* Table / Cards View Mode Switcher */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
@@ -861,13 +1151,18 @@ export default function OnlineRegistrationsPage() {
             <span className="text-xl sm:text-2xl font-bold text-slate-800">{stats.totalStudents}</span>
             <span className="text-xs text-slate-400">طالب</span>
           </div>
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 text-[11px]">
-            <span className="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
-              {stats.studentPending} مراجعة
-            </span>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 text-[11px]">
             <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
-              {stats.studentApproved} معتمد
+              {stats.studentSynced} اتنقل للسيستم
             </span>
+            <span className="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
+              {stats.studentUnsynced} لم يُنقل
+            </span>
+            {duplicateStats.duplicateCount > 0 && (
+              <span className="text-rose-700 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
+                {duplicateStats.duplicateCount} مكرر
+              </span>
+            )}
           </div>
         </div>
 
@@ -1119,6 +1414,7 @@ export default function OnlineRegistrationsPage() {
                         <th className="py-3 px-3 font-bold min-w-[150px]">بيانات الاتصال</th>
                         <th className="py-3 px-3 font-bold min-w-[120px]">تاريخ التسجيل</th>
                         <th className="py-3 px-3 font-bold text-center min-w-[90px]">الحالة</th>
+                        <th className="py-3 px-3 font-bold text-center min-w-[150px]">نقل السيستم والكود</th>
                         <th className="py-3 px-3 font-bold text-center min-w-[140px]">الإجراءات</th>
                       </>
                     )}
@@ -1441,6 +1737,65 @@ export default function OnlineRegistrationsPage() {
                               )}
                             </td>
 
+                            {/* Sync to Local System & Student Code Column */}
+                            <td className="py-3 px-3 text-center">
+                              {student.synced_to_local_server || student.assigned_student_code ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                    <CheckCircle2 size={11} className="text-teal-600" />
+                                    <span>اتنقل للسيستم خلاص</span>
+                                  </span>
+                                  {student.assigned_student_code && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono font-extrabold text-xs text-sky-900 bg-sky-100/80 px-2 py-0.5 rounded border border-sky-200">
+                                        كود: #{student.assigned_student_code}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(String(student.assigned_student_code), `code_${student.id}`)}
+                                        className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                                        title="نسخ كود الطالب"
+                                      >
+                                        {copiedKey === `code_${student.id}` ? <CheckCheck size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                      </button>
+                                      {(student.phone || student.father_phone) && (
+                                        <a
+                                          href={getDirectWhatsAppUrl(
+                                            student.phone || student.father_phone,
+                                            `أهلاً بك يا ${student.full_name} في سنتر أطلس التميز 🎓\nتم تفعيل حسابك على السيستم بنجاح ✅\nكود الطالب الخاص بك هو: *${student.assigned_student_code}*`
+                                          )}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-emerald-600 hover:text-emerald-700"
+                                          title="إرسال الكود للطالب واتساب"
+                                        >
+                                          <MessageCircle size={12} />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                    <span>لم يُنقل بعد</span>
+                                  </span>
+                                  {student.status !== 'rejected' && (
+                                    <button
+                                      type="button"
+                                      disabled={isSyncing || updatingId === student.id}
+                                      onClick={() => handleSyncStudentsToSystem([student])}
+                                      className="px-2 py-0.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                                      title="تكويد الطالب ونقله للسيستم ومسح أي تكرار له"
+                                    >
+                                      <Database size={11} />
+                                      <span>نقل وتكويد</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+
                             {/* Actions */}
                             <td className="py-3 px-3 text-center">
                               <div className="flex items-center justify-center gap-1">
@@ -1705,7 +2060,7 @@ export default function OnlineRegistrationsPage() {
                           </div>
                         </div>
 
-                        <div>
+                        <div className="flex flex-col items-end gap-1">
                           {student.status === 'approved' ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 size={10} />
@@ -1720,6 +2075,11 @@ export default function OnlineRegistrationsPage() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               <Clock size={10} />
                               <span>مراجعة</span>
+                            </span>
+                          )}
+                          {(student.synced_to_local_server || student.assigned_student_code) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                              <span>اتنقل #{student.assigned_student_code || ''}</span>
                             </span>
                           )}
                         </div>
@@ -1935,7 +2295,14 @@ export default function OnlineRegistrationsPage() {
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-slate-900">{selectedStudent.full_name}</h3>
-                  <span className="text-xs text-slate-500 font-mono">كود: {selectedStudent.id.slice(0, 8).toUpperCase()}</span>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <span className="text-xs text-slate-500 font-mono">استمارة: {selectedStudent.id.slice(0, 8).toUpperCase()}</span>
+                    {(selectedStudent.synced_to_local_server || selectedStudent.assigned_student_code) && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-extrabold bg-teal-100 text-teal-900 border border-teal-300 font-mono">
+                        ✓ اتنقل للسيستم — كود #{selectedStudent.assigned_student_code}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

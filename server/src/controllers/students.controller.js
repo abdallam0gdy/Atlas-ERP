@@ -576,6 +576,277 @@ const deleteStudent = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/students/online-secret
+ * Returns the background secret key for authenticated admin users to access Supabase RPCs automatically
+ */
+const getOnlineSecretKey = async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      pin: process.env.ONLINE_ADMIN_PIN || 'Abd#01224385098',
+    },
+  });
+};
+
+/**
+ * POST /api/students/sync-online
+ * Sync & code online-registered students into the local ERP database,
+ * deduplicating by national_id / name+father_phone and returning assigned student_code & barcode_id.
+ */
+const syncOnlineStudents = async (req, res, next) => {
+  const client = await db.getClient();
+  try {
+    const { students: rawStudents } = req.body;
+    if (!Array.isArray(rawStudents) || rawStudents.length === 0) {
+      return res.status(400).json({ success: false, message: 'قائمة الطلاب المراد تكويدهم فارغة' });
+    }
+
+    // Ensure all profile columns exist on students table
+    await client.query(`
+      ALTER TABLE students
+        ADD COLUMN IF NOT EXISTS father_phone VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS mother_phone VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS gender VARCHAR(10) DEFAULT 'male',
+        ADD COLUMN IF NOT EXISTS national_id VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+        ADD COLUMN IF NOT EXISTS school_name VARCHAR(150);
+    `);
+
+    // 1. Deduplicate incoming online students batch
+    // Keep the most complete/preferred record per national_id (or per normalized full_name + father_phone)
+    const uniqueMap = new Map();
+    const duplicateOnlineIds = [];
+
+    const scoreRecord = (rec) => {
+      let score = 0;
+      if (rec.synced_to_local_server) score += 100;
+      if (rec.assigned_student_code) score += 80;
+      if (rec.status === 'approved') score += 40;
+      if (rec.photo_url) score += 20;
+      if (rec.national_id && String(rec.national_id).replace(/\D/g, '').length === 14) score += 15;
+      if (rec.mother_phone) score += 5;
+      if (rec.school_name) score += 5;
+      return score;
+    };
+
+    for (const item of rawStudents) {
+      if (!item || !item.full_name) continue;
+      const cleanNid = String(item.national_id || '').replace(/\D/g, '');
+      const normName = String(item.full_name || '').trim().replace(/\s+/g, ' ');
+      const cleanFather = String(item.father_phone || '').replace(/\D/g, '');
+
+      const dedupKey = cleanNid.length === 14
+        ? `NID:${cleanNid}`
+        : `NAME_FATHER:${normName}|${cleanFather}`;
+
+      if (!uniqueMap.has(dedupKey)) {
+        uniqueMap.set(dedupKey, { primary: item, allIds: [item.id] });
+      } else {
+        const entry = uniqueMap.get(dedupKey);
+        entry.allIds.push(item.id);
+        if (scoreRecord(item) > scoreRecord(entry.primary)) {
+          duplicateOnlineIds.push(entry.primary.id);
+          entry.primary = item;
+        } else {
+          duplicateOnlineIds.push(item.id);
+        }
+      }
+    }
+
+    // Fetch all grades for name/id resolution
+    const gradesRes = await client.query('SELECT id, name_ar, grade_order FROM academic_grades ORDER BY grade_order ASC');
+    const gradesMap = new Map();
+    gradesRes.rows.forEach((g) => {
+      gradesMap.set(g.id, g);
+      gradesMap.set(g.name_ar.trim().toLowerCase(), g);
+    });
+
+    await client.query('BEGIN');
+
+    const synced = [];
+    let newCount = 0;
+    let existingCount = 0;
+
+    for (const [, { primary: s }] of uniqueMap.entries()) {
+      const fullName = String(s.full_name || '').trim().replace(/\s+/g, ' ');
+      const cleanNid = String(s.national_id || '').replace(/\D/g, '') || null;
+      const rawPhone = String(s.phone || '').trim();
+      const hasValidStudentPhone = rawPhone && !rawPhone.includes('لا يوجد') && rawPhone.replace(/\D/g, '').length >= 10;
+      const cleanFather = String(s.father_phone || '').replace(/\D/g, '') || null;
+      const cleanMother = String(s.mother_phone || '').replace(/\D/g, '') || null;
+      const studentPhone = hasValidStudentPhone ? rawPhone.replace(/\D/g, '') : (cleanFather || '01000000000');
+      const parentPhone = cleanFather || cleanMother || studentPhone;
+      const parentName = s.parent_job ? `ولي الأمر (${s.parent_job.trim()})` : 'ولي أمر الطالب';
+      const gender = s.gender === 'female' ? 'female' : 'male';
+      const birthDate = s.birth_date || null;
+      const schoolName = s.school_name ? String(s.school_name).trim().slice(0, 150) : null;
+      const photoUrl = s.photo_url || null;
+      const address = s.address ? String(s.address).trim() : null;
+
+      // Build comprehensive notes
+      const noteParts = [];
+      if (s.notes) noteParts.push(String(s.notes).trim());
+      if (s.education_type === 'أزهر' && (!s.notes || !s.notes.includes('أزهر'))) {
+        noteParts.push('[تعليم أزهري]');
+      }
+      const finalNotes = noteParts.length > 0 ? noteParts.join(' | ') : null;
+
+      // Resolve academic grade
+      const gradeInput = String(s.academic_grade || '').trim().toLowerCase();
+      let matchedGrade = gradesMap.get(gradeInput);
+      if (!matchedGrade) {
+        for (const [key, g] of gradesMap.entries()) {
+          if (typeof key === 'string' && gradeInput && (key.includes(gradeInput) || gradeInput.includes(key))) {
+            matchedGrade = g;
+            break;
+          }
+        }
+      }
+      if (!matchedGrade) {
+        matchedGrade = gradesRes.rows[0];
+      }
+
+      const eduInput = String(s.education_type || '').trim();
+      const educationType = eduInput.includes('لغات') || eduInput.toUpperCase() === 'LANGUAGES' ? 'LANGUAGES' : 'PUBLIC';
+
+      // Check if student already exists in local DB (by national_id first, then by exact full_name + father_phone)
+      let existingRes = { rows: [] };
+      if (cleanNid && cleanNid.length === 14) {
+        existingRes = await client.query(
+          `SELECT id, student_code, barcode_id, full_name
+           FROM students
+           WHERE national_id = $1
+           ORDER BY created_at ASC
+           LIMIT 1`,
+          [cleanNid]
+        );
+      }
+
+      if (existingRes.rows.length === 0 && fullName && cleanFather) {
+        existingRes = await client.query(
+          `SELECT id, student_code, barcode_id, full_name
+           FROM students
+           WHERE TRIM(full_name) = $1
+             AND (father_phone = $2 OR parent_phone = $2)
+           ORDER BY created_at ASC
+           LIMIT 1`,
+          [fullName, cleanFather]
+        );
+      }
+
+      if (existingRes.rows.length > 0) {
+        const existingStudent = existingRes.rows[0];
+        // Update existing student record with any new/complete fields from the online form
+        await client.query(
+          `UPDATE students
+           SET full_name_ar = COALESCE(full_name_ar, $1),
+               phone = COALESCE(NULLIF(phone, '01000000000'), $2),
+               parent_phone = COALESCE(parent_phone, $3),
+               parent_name = COALESCE(parent_name, $4),
+               father_phone = COALESCE(father_phone, $5),
+               mother_phone = COALESCE(mother_phone, $6),
+               gender = COALESCE(gender, $7),
+               national_id = COALESCE(national_id, $8),
+               date_of_birth = COALESCE(date_of_birth, $9),
+               school_name = COALESCE(school_name, $10),
+               photo_url = COALESCE(photo_url, $11),
+               address = COALESCE(address, $12),
+               notes = COALESCE(notes, $13)
+           WHERE id = $14`,
+          [
+            fullName, studentPhone, parentPhone, parentName,
+            cleanFather, cleanMother, gender, cleanNid,
+            birthDate, schoolName, photoUrl, address, finalNotes,
+            existingStudent.id,
+          ]
+        );
+
+        existingCount++;
+        synced.push({
+          online_id: s.id,
+          local_id: existingStudent.id,
+          student_code: existingStudent.student_code,
+          barcode_id: existingStudent.barcode_id,
+          full_name: existingStudent.full_name,
+          national_id: cleanNid,
+          already_existed: true,
+        });
+      } else {
+        // Generate new student_code and barcode_id
+        const gradeStr = String(matchedGrade.grade_order).padStart(2, '0');
+        const codeResult = await client.query("SELECT nextval('student_code_seq') as code");
+        const studentCode = parseInt(codeResult.rows[0].code, 10);
+        const barcodeId = `ATL-G${gradeStr}-${studentCode}`;
+
+        const insertRes = await client.query(
+          `INSERT INTO students (
+             barcode_id, student_code, full_name, full_name_ar, phone, parent_phone, parent_name,
+             father_phone, mother_phone, gender, national_id, date_of_birth,
+             grade_id, status_id, billing_model, education_type, enrollment_type,
+             school_name, photo_url, address, notes
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULL, 'PACKAGE_BUNDLE', $14, 'PACKAGE', $15, $16, $17, $18)
+           RETURNING id, student_code, barcode_id, full_name`,
+          [
+            barcodeId, studentCode, fullName, fullName, studentPhone, parentPhone, parentName,
+            cleanFather, cleanMother, gender, cleanNid, birthDate,
+            matchedGrade.id, educationType,
+            schoolName, photoUrl, address, finalNotes,
+          ]
+        );
+
+        const created = insertRes.rows[0];
+        newCount++;
+        synced.push({
+          online_id: s.id,
+          local_id: created.id,
+          student_code: created.student_code,
+          barcode_id: created.barcode_id,
+          full_name: created.full_name,
+          national_id: cleanNid,
+          already_existed: false,
+        });
+      }
+    }
+
+    if (synced.length > 0) {
+      await client.query(
+        `INSERT INTO audit_log (user_id, action, entity_type, entity_id, new_data)
+         VALUES ($1, 'SYNC_ONLINE', 'student', NULL, $2)`,
+        [
+          req.user.id,
+          JSON.stringify({
+            totalSynced: synced.length,
+            newCount,
+            existingCount,
+            duplicatesDetected: duplicateOnlineIds.length,
+          }),
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: `تم تكويد ونقل ${synced.length} طالب للسيستم بنجاح (${newCount} كود جديد${existingCount > 0 ? `، وربط ${existingCount} مسجل مسبقاً` : ''}${duplicateOnlineIds.length > 0 ? `، وتصفية ${duplicateOnlineIds.length} استمارة مكررة` : ''})`,
+      data: {
+        synced,
+        duplicate_online_ids: duplicateOnlineIds,
+        newCount,
+        existingCount,
+        duplicatesRemovedCount: duplicateOnlineIds.length,
+      },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listStudents,
   getStudent,
@@ -584,5 +855,7 @@ module.exports = {
   bulkImportStudents,
   exportAllStudents,
   deleteStudent,
+  getOnlineSecretKey,
+  syncOnlineStudents,
 };
 

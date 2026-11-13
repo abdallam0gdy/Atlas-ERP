@@ -32,27 +32,27 @@ sshpass -p "$SERVER_PASS" rsync -avz \
   --exclude 'server/uploads' \
   --exclude 'server/backups' \
   --exclude '.env' \
-  -e "ssh -o StrictHostKeyChecking=no" \
+  -e "ssh -F /dev/null -o StrictHostKeyChecking=no" \
   ./ "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/"
 
 # 3. Copy client and server .env
 echo "🔑 2/4 جاري نقل إعدادات البيئة (Client & Server .env)..."
 if [ -f client/.env ]; then
-  sshpass -p "$SERVER_PASS" scp -o StrictHostKeyChecking=no client/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/client/.env"
+  sshpass -p "$SERVER_PASS" scp -F /dev/null -o StrictHostKeyChecking=no client/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/client/.env"
 fi
 if [ -f server/.env ]; then
-  sshpass -p "$SERVER_PASS" scp -o StrictHostKeyChecking=no server/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/server/.env"
+  sshpass -p "$SERVER_PASS" scp -F /dev/null -o StrictHostKeyChecking=no server/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/server/.env"
 fi
 
 # 4. Remote Backup and Build
 echo "💾 3/4 جاري أخذ نسخة احتياطية من قاعدة البيانات..."
-sshpass -p "$SERVER_PASS" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
+sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
   mkdir -p /home/atlas/backups && \
   docker exec atlas_postgres pg_dump -U postgres -d atlas_erp_local > /home/atlas/backups/pre_deploy_backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
 "
 
 echo "🐳 4/4 جاري إعادة بناء وتشغيل الحاويات في السيرفر..."
-sshpass -p "$SERVER_PASS" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
+sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
   cd $REMOTE_PATH && \
   docker compose up -d --build
 "

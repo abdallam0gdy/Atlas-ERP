@@ -323,20 +323,30 @@ export default function StudentRegistrationPage() {
     setNidLiveCheck(prev => ({ ...prev, loading: true, message: 'جاري التحقق الفوري من الرقم القومي...' }));
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from('online_students')
-          .select('id, full_name')
-          .eq('national_id', nidInfo.clean)
-          .limit(1);
+        let isDuplicate = false;
+        const { data: rpcData, error: rpcError } = await supabase.rpc('check_student_exists', {
+          p_national_id: nidInfo.clean,
+          p_phone: null,
+        });
 
-        if (error) throw error;
+        if (!rpcError && rpcData && typeof rpcData.exists === 'boolean') {
+          isDuplicate = rpcData.exists;
+        } else {
+          const { data, error } = await supabase
+            .from('online_students')
+            .select('id')
+            .eq('national_id', nidInfo.clean)
+            .limit(1);
+          if (error) throw error;
+          isDuplicate = Boolean(data && data.length > 0);
+        }
 
-        if (data && data.length > 0) {
+        if (isDuplicate) {
           setNidLiveCheck({
             loading: false,
             exists: true,
             checked: true,
-            message: `⚠️ هذا الرقم القومي مسجل بالفعل لطالب مسبقاً (${data[0].full_name || 'مسجل'}).`,
+            message: '⚠️ هذا الرقم القومي مسجل بالفعل لطالب مسبقاً في الأكاديمية.',
           });
         } else {
           setNidLiveCheck({
@@ -370,20 +380,30 @@ export default function StudentRegistrationPage() {
     setPhoneLiveCheck(prev => ({ ...prev, loading: true, message: 'جاري فحص رقم الموبايل...' }));
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from('online_students')
-          .select('id, full_name')
-          .eq('phone', clean)
-          .limit(1);
+        let isDuplicate = false;
+        const { data: rpcData, error: rpcError } = await supabase.rpc('check_student_exists', {
+          p_national_id: null,
+          p_phone: clean,
+        });
 
-        if (error) throw error;
+        if (!rpcError && rpcData && typeof rpcData.exists === 'boolean') {
+          isDuplicate = rpcData.exists;
+        } else {
+          const { data, error } = await supabase
+            .from('online_students')
+            .select('id')
+            .eq('phone', clean)
+            .limit(1);
+          if (error) throw error;
+          isDuplicate = Boolean(data && data.length > 0);
+        }
 
-        if (data && data.length > 0) {
+        if (isDuplicate) {
           setPhoneLiveCheck({
             loading: false,
             exists: true,
             checked: true,
-            message: `⚠️ رقم الموبايل مسجل بالفعل لطالب مسبقاً (${data[0].full_name || 'مسجل'}).`,
+            message: '⚠️ رقم الموبايل مسجل بالفعل لطالب مسبقاً في الأكاديمية.',
           });
         } else {
           setPhoneLiveCheck({
@@ -540,23 +560,39 @@ export default function StudentRegistrationPage() {
 
       setIsCheckingStep1(true);
       try {
-        let checkQuery = supabase
-          .from('online_students')
-          .select('id, full_name, phone, national_id');
+        let isDuplicate = false;
+        let dupReason = 'nid';
 
-        if (!hasNoPhone && cleanPhone) {
-          checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
+        const { data: rpcData, error: rpcError } = await supabase.rpc('check_student_exists', {
+          p_national_id: nidInfo.clean,
+          p_phone: !hasNoPhone && cleanPhone ? cleanPhone : null,
+        });
+
+        if (!rpcError && rpcData && typeof rpcData.exists === 'boolean') {
+          isDuplicate = rpcData.exists;
+          dupReason = rpcData.reason || 'nid';
         } else {
-          checkQuery = checkQuery.eq('national_id', nidInfo.clean);
+          let checkQuery = supabase
+            .from('online_students')
+            .select('id, phone, national_id');
+
+          if (!hasNoPhone && cleanPhone) {
+            checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
+          } else {
+            checkQuery = checkQuery.eq('national_id', nidInfo.clean);
+          }
+
+          const { data: existingStudent } = await checkQuery.limit(1);
+          if (existingStudent && existingStudent.length > 0) {
+            isDuplicate = true;
+            dupReason = existingStudent[0].national_id === nidInfo.clean ? 'nid' : 'phone';
+          }
         }
 
-        const { data: existingStudent } = await checkQuery.limit(1);
-
-        if (existingStudent && existingStudent.length > 0) {
-          const isSameNid = existingStudent[0].national_id === nidInfo.clean;
-          const errText = isSameNid
-            ? `عفواً، الرقم القومي لهذا الطالب مسجل بالفعل مسبقاً في الأكاديمية باسم "${existingStudent[0].full_name || ''}". يرجى مراجعة إدارة السنتر في حال وجود تعديل.`
-            : `عفواً، رقم هاتف الطالب هذا (${cleanPhone}) مسجل مسبقاً في طلب آخر باسم "${existingStudent[0].full_name || ''}". يرجى التأكد من الرقم أو مراجعة الأكاديمية.`;
+        if (isDuplicate) {
+          const errText = dupReason === 'nid'
+            ? 'عفواً، الرقم القومي لهذا الطالب مسجل بالفعل مسبقاً في الأكاديمية. يرجى مراجعة إدارة السنتر في حال وجود تعديل.'
+            : `عفواً، رقم هاتف الطالب هذا (${cleanPhone}) مسجل مسبقاً في طلب آخر. يرجى التأكد من الرقم أو مراجعة الأكاديمية.`;
           triggerError(errText);
           setIsCheckingStep1(false);
           return;
@@ -677,24 +713,40 @@ export default function StudentRegistrationPage() {
 
     try {
       // التحقق من عدم وجود تسجيل مسبق لنفس الطالب بالرقم القومي أو الهاتف (يسمح بتكرار هاتف ولي الأمر للإخوة)
-      let checkQuery = supabase
-        .from('online_students')
-        .select('id, full_name, phone, national_id');
+      let isDuplicate = false;
+      let dupReason = 'nid';
 
-      if (!hasNoPhone && cleanPhone) {
-        checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
+      const { data: rpcData, error: rpcError } = await supabase.rpc('check_student_exists', {
+        p_national_id: nidInfo.clean,
+        p_phone: !hasNoPhone && cleanPhone ? cleanPhone : null,
+      });
+
+      if (!rpcError && rpcData && typeof rpcData.exists === 'boolean') {
+        isDuplicate = rpcData.exists;
+        dupReason = rpcData.reason || 'nid';
       } else {
-        checkQuery = checkQuery.eq('national_id', nidInfo.clean);
+        let checkQuery = supabase
+          .from('online_students')
+          .select('id, phone, national_id');
+
+        if (!hasNoPhone && cleanPhone) {
+          checkQuery = checkQuery.or(`national_id.eq.${nidInfo.clean},phone.eq.${cleanPhone}`);
+        } else {
+          checkQuery = checkQuery.eq('national_id', nidInfo.clean);
+        }
+
+        const { data: existingStudent } = await checkQuery.limit(1);
+        if (existingStudent && existingStudent.length > 0) {
+          isDuplicate = true;
+          dupReason = existingStudent[0].national_id === nidInfo.clean ? 'nid' : 'phone';
+        }
       }
 
-      const { data: existingStudent } = await checkQuery.limit(1);
-
-      if (existingStudent && existingStudent.length > 0) {
-        const isSameNid = existingStudent[0].national_id === nidInfo.clean;
+      if (isDuplicate) {
         resetTurnstile();
         triggerError(
-          isSameNid 
-            ? 'تم تسجيل استمارة مسبقاً بنفس الرقم القومي لهذا الطالب. في حال وجود تعديل يرجى مراجعة إدارة الأكاديمية.' 
+          dupReason === 'nid'
+            ? 'تم تسجيل استمارة مسبقاً بنفس الرقم القومي لهذا الطالب. في حال وجود تعديل يرجى مراجعة إدارة الأكاديمية.'
             : 'رقم هاتف الطالب هذا مسجل بالفعل في طلب سابق. يرجى التأكد من الرقم أو مراجعة الأكاديمية.'
         );
         setIsSubmitting(false);
