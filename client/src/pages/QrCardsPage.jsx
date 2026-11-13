@@ -125,6 +125,10 @@ export default function QrCardsPage() {
   // ULTRA HIGH-SPEED SERVER-RENDERED THERMAL ROLL PRINTING (ZERO RAM)
   // ============================================================
 
+  const getAuthToken = () => {
+    return localStorage.getItem('atlas_token') || localStorage.getItem('token') || '';
+  };
+
   // 1. Thermal Roll Printing (50x25mm / Continuous Roll)
   const executeThermalRollPrint = (targetStudents, isScopeAll = false) => {
     if (!targetStudents || targetStudents.length === 0) {
@@ -132,9 +136,14 @@ export default function QrCardsPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
+    if (!token) {
+      toast.error('لم يتم العثور على جلسة تسجيل الدخول، يرجى تسجيل الدخول مجدداً');
+      return;
+    }
+
     const params = new URLSearchParams();
-    if (token) params.set('token', token);
+    params.set('token', token);
 
     // Single student print
     if (targetStudents.length === 1) {
@@ -170,9 +179,14 @@ export default function QrCardsPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
+    if (!token) {
+      toast.error('لم يتم العثور على جلسة تسجيل الدخول، يرجى تسجيل الدخول مجدداً');
+      return;
+    }
+
     const params = new URLSearchParams();
-    if (token) params.set('token', token);
+    params.set('token', token);
 
     if (targetStudents.length === 1) {
       params.set('ids', targetStudents[0].id);
