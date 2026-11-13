@@ -137,7 +137,7 @@ const attendanceScanSchema = Joi.object({
 // Pagination
 const paginationSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(500).default(20),
+  limit: Joi.number().integer().min(1).max(5000).default(20),
   search: Joi.string().max(100).allow('', null),
   sort_by: Joi.string().max(50).default('created_at'),
   sort_order: Joi.string().valid('asc', 'desc').default('desc'),

@@ -8,7 +8,7 @@ const { NotFoundError, ConflictError } = require('../utils/errors');
 const listStudents = async (req, res, next) => {
   try {
     const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limitNum = Math.min(10000, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const limitNum = Math.min(5000, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const offset = (pageNum - 1) * limitNum;
     const { search, sort_by, sort_order, grade_id, is_active } = req.query;
 
