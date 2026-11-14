@@ -66,7 +66,7 @@ const listGroups = async (req, res, next) => {
     let paramIndex = 1;
 
     if (search) {
-      whereClause += ` AND (g.name ILIKE $${paramIndex} OR g.name_ar ILIKE $${paramIndex})`;
+      whereClause += ` AND (g.name ILIKE $${paramIndex} OR g.name_ar ILIKE $${paramIndex} OR t.full_name ILIKE $${paramIndex} OR s.name_ar ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }

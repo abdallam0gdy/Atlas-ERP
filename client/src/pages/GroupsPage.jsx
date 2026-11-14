@@ -219,7 +219,7 @@ export default function GroupsPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="بحث باسم المجموعة..."
+              placeholder="بحث باسم المجموعة، المدرس، أو المادة..."
               className="atlas-input pr-10"
             />
           </div>
@@ -240,7 +240,7 @@ export default function GroupsPage() {
             onChange={(e) => setSelectedTeacher(e.target.value)}
             className="atlas-input sm:w-52"
           >
-            <option value="">كل المدرسين</option>
+            <option value="">كل المدرسين ({teachers.length})</option>
             {teachers.map(t => (
               <option key={t.id} value={t.id}>{t.full_name}</option>
             ))}

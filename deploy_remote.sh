@@ -57,6 +57,12 @@ sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_
   docker compose up -d --build
 "
 
+echo "🌱 5/5 جاري تطبيق وتحديث الجداول وحسابات المدرسين والمجموعات في قاعدة بيانات السيرفر..."
+sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
+  cd $REMOTE_PATH && \
+  docker compose exec -T server node src/db/seed_schedule_2026.js
+"
+
 echo ""
 echo "══════════════════════════════════════════════════════════"
 echo "✅ تم اكتمال النشر والتشغيل على السيرفر بنجاح!"
