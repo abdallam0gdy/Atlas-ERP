@@ -203,9 +203,9 @@ export default function StudentBulkImportModal({ isOpen, onClose, onSuccess, gra
   const invalidCount = parsedData.length - validCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50">
       <div
-        className="atlas-card w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border border-slate-200"
+        className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden bg-white shadow-lg rounded-2xl border border-slate-200"
         style={{ direction: 'rtl' }}
       >
         {/* Header */}

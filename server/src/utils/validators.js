@@ -22,10 +22,8 @@ const createStudentSchema = Joi.object({
     'any.required': 'اسم الطالب مطلوب',
   }),
   full_name_ar: Joi.string().max(150).allow('', null),
-  phone: phonePattern.required().messages({
-    'string.empty': 'رقم موبايل الطالب مطلوب',
+  phone: phonePattern.allow('', null).optional().messages({
     'string.pattern.base': 'رقم موبايل الطالب غير صحيح',
-    'any.required': 'رقم موبايل الطالب مطلوب',
   }),
   parent_phone: phonePattern.allow('', null),
   parent_name: Joi.string().max(150).allow('', null),

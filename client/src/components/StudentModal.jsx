@@ -7,7 +7,9 @@ import {
   Sparkles, Check, Loader2, Calendar, MapPin, CreditCard, HeartHandshake
 } from 'lucide-react';
 
-export default function StudentModal({ isOpen, onClose, onSuccess, initialData = null }) {
+let cachedGrades = null;
+
+export default function StudentModal({ isOpen, onClose, onSuccess, initialData = null, grades: propGrades = null }) {
   const isEdit = Boolean(initialData?.id);
 
   const [formData, setFormData] = useState({
@@ -28,14 +30,27 @@ export default function StudentModal({ isOpen, onClose, onSuccess, initialData =
     notes: '',
   });
 
-  const [grades, setGrades] = useState([]);
+  const [grades, setGrades] = useState(propGrades || cachedGrades || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load grades
+  // Load grades (cached for instant modal opening on weak devices)
   useEffect(() => {
     if (!isOpen) return;
-    api.get('/master/grades').then(({ data }) => setGrades(data.data || []));
-  }, [isOpen]);
+    if (propGrades && propGrades.length > 0) {
+      setGrades(propGrades);
+      cachedGrades = propGrades;
+      return;
+    }
+    if (cachedGrades && cachedGrades.length > 0) {
+      setGrades(cachedGrades);
+      return;
+    }
+    api.get('/master/grades').then(({ data }) => {
+      const list = data.data || [];
+      cachedGrades = list;
+      setGrades(list);
+    });
+  }, [isOpen, propGrades]);
 
   // Set initial form data if editing
   useEffect(() => {
@@ -87,10 +102,6 @@ export default function StudentModal({ isOpen, onClose, onSuccess, initialData =
       toast.error('يرجى إدخال اسم الطالب');
       return;
     }
-    if (!formData.phone.trim()) {
-      toast.error('يرجى إدخال رقم موبايل الطالب');
-      return;
-    }
     if (!formData.grade_id) {
       toast.error('يرجى اختيار المرحلة الدراسية');
       return;
@@ -108,7 +119,8 @@ export default function StudentModal({ isOpen, onClose, onSuccess, initialData =
     try {
       const payload = {
         ...formData,
-        parent_phone: formData.parent_phone || formData.father_phone || formData.mother_phone || null,
+        phone: formData.phone ? formData.phone.trim() : null,
+        parent_phone: formData.parent_phone || formData.father_phone || formData.mother_phone || (formData.phone ? formData.phone.trim() : null) || null,
         parent_name: formData.parent_name || 'ولي أمر الطالب',
         date_of_birth: formData.date_of_birth || null,
       };
@@ -132,9 +144,9 @@ export default function StudentModal({ isOpen, onClose, onSuccess, initialData =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" dir="rtl">
       <div
-        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up"
+        className="bg-white rounded-2xl shadow-lg border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -266,14 +278,13 @@ export default function StudentModal({ isOpen, onClose, onSuccess, initialData =
               {/* Student Phone */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  رقم موبايل الطالب <span className="text-red-500">*</span>
+                  رقم موبايل الطالب <span className="text-slate-400 font-normal">(اختياري)</span>
                 </label>
                 <div className="relative">
                   <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="tel"
-                    required
-                    placeholder="01012345678"
+                    placeholder="01012345678 (اختياري)"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="atlas-input pr-9 font-mono"

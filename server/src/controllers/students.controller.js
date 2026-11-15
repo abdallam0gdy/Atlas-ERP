@@ -207,7 +207,8 @@ const createStudent = async (req, res, next) => {
       throw new ConflictError(`الباركود أو كود الطالب (${barcodeId}) مستخدم بالفعل`);
     }
 
-    const parentPhone = data.parent_phone || data.father_phone || data.mother_phone || data.phone || null;
+    const studentPhone = data.phone && data.phone.trim() ? data.phone.trim() : null;
+    const parentPhone = data.parent_phone || data.father_phone || data.mother_phone || studentPhone || null;
     const parentName = data.parent_name || 'ولي أمر الطالب';
 
     const result = await client.query(
@@ -218,7 +219,7 @@ const createStudent = async (req, res, next) => {
        RETURNING *`,
       [
         barcodeId, studentCode, data.full_name, data.full_name_ar || null,
-        data.phone, parentPhone, parentName,
+        studentPhone, parentPhone, parentName,
         data.father_phone || null, data.mother_phone || null,
         data.gender || 'male', data.national_id || null,
         data.date_of_birth ? data.date_of_birth : null,
@@ -295,7 +296,7 @@ const updateStudent = async (req, res, next) => {
         fields.push(`${field} = $${paramIndex}`);
         let val = data[field];
         if (
-          ['status_id', 'grade_id', 'date_of_birth', 'national_id', 'father_phone', 'mother_phone', 'parent_phone', 'parent_name', 'photo_url', 'address', 'notes'].includes(field) &&
+          ['phone', 'status_id', 'grade_id', 'date_of_birth', 'national_id', 'father_phone', 'mother_phone', 'parent_phone', 'parent_name', 'photo_url', 'address', 'notes'].includes(field) &&
           (val === '' || val === undefined)
         ) {
           val = null;

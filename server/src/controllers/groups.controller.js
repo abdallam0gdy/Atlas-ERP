@@ -59,7 +59,7 @@ async function verifyNoClassroomConflict(classroomId, newSchedule, excludeGroupI
  */
 const listGroups = async (req, res, next) => {
   try {
-    const { search, grade_id, teacher_id, status, is_private } = req.query;
+    const { search, grade_id, teacher_id, subject_id, status, is_private } = req.query;
 
     let whereClause = 'WHERE 1=1';
     const params = [];
@@ -80,6 +80,11 @@ const listGroups = async (req, res, next) => {
       params.push(teacher_id);
       paramIndex++;
     }
+    if (subject_id) {
+      whereClause += ` AND g.subject_id = $${paramIndex}`;
+      params.push(subject_id);
+      paramIndex++;
+    }
     if (status) {
       whereClause += ` AND g.status = $${paramIndex}`;
       params.push(status);
@@ -93,20 +98,26 @@ const listGroups = async (req, res, next) => {
 
     const result = await db.query(
       `SELECT g.*,
-              t.full_name as teacher_name,
+              t.full_name as teacher_name, t.specialization as teacher_specialization,
               s.name_ar as subject_name, s.color as subject_color,
               ag.name_ar as grade_name, ag.grade_order,
               cr.name as classroom_name, cr.capacity as classroom_capacity,
               (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.group_id = g.id AND ge.is_active = true) as student_count,
               (EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_in_package,
-              (NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_private
+              (NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_private,
+              ARRAY(
+                SELECT gp.education_type
+                FROM package_groups pg
+                JOIN grade_packages gp ON pg.package_id = gp.id
+                WHERE pg.group_id = g.id
+              ) as package_education_types
        FROM groups g
        LEFT JOIN teachers t ON g.teacher_id = t.id
        LEFT JOIN subjects s ON g.subject_id = s.id
        LEFT JOIN academic_grades ag ON g.grade_id = ag.id
        LEFT JOIN classrooms cr ON g.classroom_id = cr.id
        ${whereClause}
-       ORDER BY ag.grade_order ASC, g.name ASC`,
+       ORDER BY ag.grade_order ASC, s.name_ar ASC, g.name ASC`,
       params
     );
 

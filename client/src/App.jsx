@@ -15,6 +15,7 @@ const TeachersPage = lazy(() => import('./pages/TeachersPage'));
 const TeacherDetailPage = lazy(() => import('./pages/TeacherDetailPage'));
 const GroupsPage = lazy(() => import('./pages/GroupsPage'));
 const GroupDetailPage = lazy(() => import('./pages/GroupDetailPage'));
+const InfoCenterPage = lazy(() => import('./pages/InfoCenterPage'));
 const GatePage = lazy(() => import('./pages/GatePage'));
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage'));
 const QrCardsPage = lazy(() => import('./pages/QrCardsPage'));
@@ -86,6 +87,7 @@ function App() {
           {/* Protected Routes with Sidebar Layout */}
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/info" element={<InfoCenterPage />} />
             <Route path="/profile" element={<ProfilePage />} />
 
             {/* Students */}
