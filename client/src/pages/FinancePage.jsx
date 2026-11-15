@@ -6,9 +6,10 @@ import {
   Wallet, TrendingUp, TrendingDown, Users, CheckCircle2,
   DollarSign, ArrowUpRight, ArrowDownLeft, Search, Filter,
   RefreshCw, FileText, AlertTriangle, ArrowUpDown, Loader2,
-  Lock, Calendar, Plus, X, GraduationCap, Clock, Check, CreditCard, ArrowLeft
+  Lock, Calendar, Plus, X, GraduationCap, Clock, Check, CreditCard, ArrowLeft, Printer
 } from 'lucide-react';
 import { formatTime12h, formatEGP, formatCount } from '../lib/formatters';
+import PrintReportModal from '../components/PrintReportModal';
 
 export default function FinancePage() {
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export default function FinancePage() {
   const [actualCashInput, setActualCashInput] = useState('');
   const [shiftNotes, setShiftNotes] = useState('');
   const [closingLoading, setClosingLoading] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -298,6 +300,16 @@ export default function FinancePage() {
           >
             <Lock size={16} />
             <span>تقفيل الوردية واليومية</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsPrintModalOpen(true)}
+            className="atlas-btn atlas-btn-secondary text-sm flex items-center gap-1.5"
+            title="معاينة وطباعة كشف الخزينة"
+          >
+            <Printer size={16} />
+            <span>طباعة كشف</span>
           </button>
 
           <button
@@ -1330,6 +1342,78 @@ export default function FinancePage() {
           </div>
         </div>
       )}
+
+      {/* Print Treasury / Teachers Financial Report Modal */}
+      <PrintReportModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title={
+          activeTab === 'teachers'
+            ? 'كشف مستحقات المدرسين وحصة السنتر'
+            : activeTab === 'debts'
+            ? 'كشف المديونيات المتأخرة على الطلاب'
+            : 'كشف حركة الخزينة والدرج اليومية'
+        }
+        subtitle={`نقدية الدرج الحية: ${formatEGP(stats.currentCash || 0)} — صافي حركة اليوم: ${formatEGP(stats.today?.netToday || 0)}`}
+        columns={
+          activeTab === 'teachers'
+            ? [
+                { header: 'المدرس', accessor: 'full_name' },
+                { header: 'التخصص', render: (t) => t.specialization || '—' },
+                { header: 'نسبة المدرس', render: (t) => `${t.teacher_percentage || 80}%` },
+                {
+                  header: 'إجمالي التحصيل',
+                  render: (t) =>
+                    formatEGP(
+                      periodScope === 'today' ? t.today_collected || 0 : t.month_collected || 0
+                    ),
+                },
+                {
+                  header: 'مستحق المدرس',
+                  render: (t) =>
+                    formatEGP(
+                      periodScope === 'today' ? t.today_teacher_due || 0 : t.month_teacher_due || 0
+                    ),
+                },
+                {
+                  header: 'حصة السنتر',
+                  render: (t) =>
+                    formatEGP(
+                      periodScope === 'today' ? t.today_center_share || 0 : t.month_center_share || 0
+                    ),
+                },
+              ]
+            : activeTab === 'debts'
+            ? [
+                { header: 'اسم الطالب', accessor: 'student_name' },
+                { header: 'المرحلة', render: (d) => d.grade_name || '—' },
+                { header: 'المجموعة / الباقة', render: (d) => d.group_name || d.package_name || '—' },
+                { header: 'المبلغ المستحق', render: (d) => formatEGP(d.amount_due || 0) },
+                { header: 'تاريخ الاستحقاق', render: (d) => d.due_date ? new Date(d.due_date).toLocaleDateString('ar-EG') : '—' },
+              ]
+            : [
+                {
+                  header: 'التوقيت',
+                  render: (tx) =>
+                    tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG') : '—',
+                },
+                { header: 'البيان / الوصف', render: (tx) => tx.description || tx.reason || '—' },
+                { header: 'الطالب / الجهة', render: (tx) => tx.student_name || tx.person_name || '—' },
+                {
+                  header: 'النوع',
+                  render: (tx) => (tx.direction === 'out' || tx.amount < 0 ? 'منصرف (-)' : 'وارد (+)'),
+                },
+                { header: 'المبلغ', render: (tx) => formatEGP(Math.abs(parseFloat(tx.amount || 0))) },
+              ]
+        }
+        data={
+          activeTab === 'teachers'
+            ? stats.teachers || []
+            : activeTab === 'debts'
+            ? debts || []
+            : transactions || []
+        }
+      />
     </div>
   );
 }

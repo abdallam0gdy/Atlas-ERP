@@ -4,6 +4,7 @@ import api from '../lib/api';
 import StudentModal from '../components/StudentModal';
 import StudentBulkImportModal from '../components/StudentBulkImportModal';
 import PrintReportModal from '../components/PrintReportModal';
+import { printHtmlDocument } from '../lib/printUtils';
 import {
   Search, Plus, Filter, ChevronLeft, ChevronRight,
   Phone, GraduationCap, Loader2, Users,
@@ -223,6 +224,8 @@ export default function StudentsPage() {
   const [studentToEdit, setStudentToEdit] = useState(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printStudentsData, setPrintStudentsData] = useState([]);
+  const [isLoadingPrintData, setIsLoadingPrintData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [printingId, setPrintingId] = useState(null);
 
@@ -317,20 +320,52 @@ export default function StudentsPage() {
       const res = await api.get(`/students/${student.id}/print-sticker`, {
         responseType: 'text',
       });
-      const printWin = window.open('', '_blank', 'width=450,height=300');
-      if (printWin) {
-        printWin.document.open();
-        printWin.document.write(res.data);
-        printWin.document.close();
-      } else {
-        toast.error('يرجى السماح بالنوافذ المنبثقة لطباعة الاستيكر');
-      }
+      printHtmlDocument(res.data);
     } catch {
       toast.error('تعذر تجهيز استيكر الطالب للطباعة');
     } finally {
       setPrintingId(null);
     }
   }, []);
+
+  const handleOpenPrintModal = useCallback(async () => {
+    setIsPrintModalOpen(true);
+    if (pagination.total <= students.length) {
+      setPrintStudentsData(students);
+      return;
+    }
+    setIsLoadingPrintData(true);
+    try {
+      const params = {
+        page: 1,
+        limit: 2000,
+        search: debouncedSearch,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      };
+      if (selectedGrade) params.grade_id = selectedGrade;
+      if (selectedEnrollmentType) params.enrollment_type = selectedEnrollmentType;
+      if (selectedEducationType) params.education_type = selectedEducationType;
+      if (selectedStatus !== '') params.is_active = selectedStatus === 'active';
+
+      const { data } = await api.get('/students', { params });
+      setPrintStudentsData(data.data?.students || students);
+    } catch {
+      setPrintStudentsData(students);
+    } finally {
+      setIsLoadingPrintData(false);
+    }
+  }, [
+    pagination.total,
+    students,
+    debouncedSearch,
+    sortBy,
+    sortOrder,
+    selectedGrade,
+    selectedEnrollmentType,
+    selectedEducationType,
+    selectedStatus,
+  ]);
 
   const handleDeleteStudent = async () => {
     if (!studentToDelete) return;
@@ -597,7 +632,7 @@ export default function StudentsPage() {
           </button>
 
           <button
-            onClick={() => setIsPrintModalOpen(true)}
+            onClick={handleOpenPrintModal}
             className="atlas-btn atlas-btn-secondary text-xs sm:text-sm flex items-center gap-1.5"
             title="معاينة وطباعة الكشف الحالي"
           >
@@ -974,10 +1009,11 @@ export default function StudentsPage() {
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         title="كشف سجلات الطلاب"
-        subtitle={`المطابق للفلاتر الحالية (${students.length} طالب)`}
+        subtitle={`المطابق للفلاتر الحالية (${printStudentsData.length || students.length} طالب)`}
         columns={printColumns}
-        data={students}
+        data={printStudentsData.length > 0 ? printStudentsData : students}
         filtersSummary={activeFiltersList}
+        isLoadingData={isLoadingPrintData}
       />
 
       {/* Delete Student Confirmation Modal (Zero blur/animation for weak PCs) */}

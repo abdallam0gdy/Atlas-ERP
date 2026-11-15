@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import StudentModal from '../components/StudentModal';
+import { printHtmlDocument } from '../lib/printUtils';
 import {
   ArrowRight, User, Phone, BookOpen, GraduationCap,
   Calendar, Clock, CheckCircle2, AlertTriangle, Printer,
@@ -86,15 +87,8 @@ export default function StudentDetailPage() {
       const res = await api.get(`/students/${student.id}/print-sticker`, {
         responseType: 'text',
       });
-      const printWin = window.open('', '_blank', 'width=450,height=300');
-      if (printWin) {
-        printWin.document.open();
-        printWin.document.write(res.data);
-        printWin.document.close();
-      } else {
-        toast.error('تم حظر النافذة المنبثقة، يرجى السماح بالنوافذ المنبثقة لطباعة استيكر الـ QR');
-      }
-    } catch (err) {
+      printHtmlDocument(res.data);
+    } catch {
       toast.error('تعذر تجهيز استيكر الـ QR للطباعة');
     } finally {
       setPrintingSticker(false);

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
+import PrintReportModal from '../components/PrintReportModal';
+import { printHtmlDocument } from '../lib/printUtils';
 import {
   Users,
   GraduationCap,
@@ -858,13 +860,6 @@ export default function OnlineRegistrationsPage() {
   // Print single teacher application
   const printTeacherApplication = (teacher) => {
     const groups = parseGroupsData(teacher);
-    const assistants = parseAssistantsData(teacher);
-
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-      toast.error('يرجى السماح بالنوافذ المنبثقة لطباعة الاستمارة');
-      return;
-    }
 
     const html = `
       <!DOCTYPE html>
@@ -873,21 +868,21 @@ export default function OnlineRegistrationsPage() {
         <meta charset="utf-8" />
         <title>استمارة انضمام معلّم - ${teacher.full_name}</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 25px; margin: 0; color: #1e293b; background: #fff; line-height: 1.5; }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
-          .title { font-size: 20px; font-weight: 800; color: #0C3C82; margin: 0; }
+          @page { size: A4 portrait; margin: 12mm; }
+          body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; padding: 15px; margin: 0; color: #1e293b; background: #fff; line-height: 1.5; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0C3C82; padding-bottom: 12px; margin-bottom: 16px; }
+          .title { font-size: 19px; font-weight: 800; color: #0C3C82; margin: 0; }
           .subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
-          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; font-size: 13px; }
-          .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
-          .label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
+          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; font-size: 13px; }
+          .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; }
+          .label { font-size: 11px; color: #64748b; display: block; margin-bottom: 2px; }
           .val { font-weight: bold; color: #0f172a; }
-          .table-title { font-size: 14px; font-weight: bold; margin: 20px 0 10px; color: #0C3C82; border-right: 4px solid #0C3C82; padding-right: 8px; }
+          .table-title { font-size: 14px; font-weight: bold; margin: 16px 0 8px; color: #0C3C82; border-right: 4px solid #0C3C82; padding-right: 8px; }
           table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: right; }
-          th { background: #f1f5f9; color: #334155; font-weight: bold; }
+          th, td { border: 1px solid #cbd5e1; padding: 7px 10px; text-align: right; }
+          th { background: #0C3C82; color: #ffffff; font-weight: bold; }
           .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #e0f2fe; color: #0369a1; }
-          .footer { margin-top: 35px; border-top: 1px dashed #cbd5e1; padding-top: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
-          @media print { body { padding: 15px; } }
+          .footer { margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 12px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
         </style>
       </head>
       <body>
@@ -896,15 +891,15 @@ export default function OnlineRegistrationsPage() {
             <h1 class="title">أكاديمية أطلس التعليمية — استمارة انضمام معلّم</h1>
             <div class="subtitle">رقم الطلب: ${teacher.id.slice(0, 8).toUpperCase()} • تاريخ التقديم: ${formatArabicDateTime(teacher.created_at)}</div>
           </div>
-          ${teacher.photo_url ? `<img src="${teacher.photo_url}" style="width:65px;height:65px;border-radius:8px;object-fit:cover;" />` : ''}
+          ${teacher.photo_url ? `<img src="${teacher.photo_url}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;" />` : ''}
         </div>
 
         <div class="grid">
           <div class="card"><span class="label">اسم المعلم:</span><span class="val">${teacher.full_name}</span></div>
           <div class="card"><span class="label">اسم الشهرة:</span><span class="val">${teacher.nickname || '—'}</span></div>
           <div class="card"><span class="label">التخصصات:</span><span class="val">${teacher.specialization || '—'}</span></div>
-          <div class="card"><span class="label">الهاتف الشخصي:</span><span class="val" dir="ltr">${teacher.phone}</span></div>
-          <div class="card"><span class="label">الواتساب:</span><span class="val" dir="ltr">${teacher.whatsapp_phone || teacher.phone}</span></div>
+          <div class="card"><span class="label">الهاتف الشخصي:</span><span class="val" dir="ltr">${teacher.phone || '—'}</span></div>
+          <div class="card"><span class="label">الواتساب:</span><span class="val" dir="ltr">${teacher.whatsapp_phone || teacher.phone || '—'}</span></div>
           <div class="card"><span class="label">الرقم القومي:</span><span class="val" dir="ltr">${teacher.national_id || '—'}</span></div>
         </div>
 
@@ -933,26 +928,15 @@ export default function OnlineRegistrationsPage() {
           <span>أكاديمية أطلس — نظام الإدارة المتكامل ERP</span>
           <span>توقيع الإدارة والتنسيق: __________________</span>
         </div>
-
-        <script>
-          window.onload = function() { window.print(); };
-        </script>
       </body>
       </html>
     `;
 
-    printWin.document.write(html);
-    printWin.document.close();
+    printHtmlDocument(html);
   };
 
   // Print single student application
   const printStudentApplication = (student) => {
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-      toast.error('يرجى السماح بالنوافذ المنبثقة لطباعة الاستمارة');
-      return;
-    }
-
     const html = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -960,16 +944,16 @@ export default function OnlineRegistrationsPage() {
         <meta charset="utf-8" />
         <title>استمارة تسجيل طالب - ${student.full_name}</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 25px; margin: 0; color: #1e293b; background: #fff; line-height: 1.5; }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
-          .title { font-size: 20px; font-weight: 800; color: #0C3C82; margin: 0; }
+          @page { size: A4 portrait; margin: 12mm; }
+          body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; padding: 15px; margin: 0; color: #1e293b; background: #fff; line-height: 1.5; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0C3C82; padding-bottom: 12px; margin-bottom: 16px; }
+          .title { font-size: 19px; font-weight: 800; color: #0C3C82; margin: 0; }
           .subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
-          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; font-size: 13px; }
-          .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
-          .label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
+          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; font-size: 13px; }
+          .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; }
+          .label { font-size: 11px; color: #64748b; display: block; margin-bottom: 2px; }
           .val { font-weight: bold; color: #0f172a; }
-          .footer { margin-top: 35px; border-top: 1px dashed #cbd5e1; padding-top: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
-          @media print { body { padding: 15px; } }
+          .footer { margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 12px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
         </style>
       </head>
       <body>
@@ -978,14 +962,14 @@ export default function OnlineRegistrationsPage() {
             <h1 class="title">أكاديمية أطلس التعليمية — استمارة تسجيل طالب</h1>
             <div class="subtitle">رقم الطلب: ${student.id.slice(0, 8).toUpperCase()} • تاريخ التسجيل: ${formatArabicDateTime(student.created_at)}</div>
           </div>
-          ${student.photo_url ? `<img src="${student.photo_url}" style="width:65px;height:65px;border-radius:8px;object-fit:cover;" />` : ''}
+          ${student.photo_url ? `<img src="${student.photo_url}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;" />` : ''}
         </div>
 
         <div class="grid">
           <div class="card"><span class="label">اسم الطالب:</span><span class="val">${student.full_name}</span></div>
-          <div class="card"><span class="label">الصف والتعليم:</span><span class="val">${student.academic_grade} (${student.education_type})</span></div>
-          <div class="card"><span class="label">هاتف الطالب:</span><span class="val" dir="ltr">${student.phone}</span></div>
-          <div class="card"><span class="label">هاتف ولي الأمر:</span><span class="val" dir="ltr">${student.father_phone}</span></div>
+          <div class="card"><span class="label">الصف والتعليم:</span><span class="val">${student.academic_grade || '—'} (${student.education_type || '—'})</span></div>
+          <div class="card"><span class="label">هاتف الطالب:</span><span class="val" dir="ltr">${student.phone || '—'}</span></div>
+          <div class="card"><span class="label">هاتف ولي الأمر:</span><span class="val" dir="ltr">${student.father_phone || '—'}</span></div>
           <div class="card"><span class="label">الرقم القومي:</span><span class="val" dir="ltr">${student.national_id || '—'}</span></div>
           <div class="card"><span class="label">المدرسة:</span><span class="val">${student.school_name || '—'}</span></div>
           <div class="card" style="grid-column: span 2;"><span class="label">العنوان:</span><span class="val">${student.address || '—'}</span></div>
@@ -995,17 +979,45 @@ export default function OnlineRegistrationsPage() {
           <span>أكاديمية أطلس — نظام الإدارة المتكامل ERP</span>
           <span>توقيع شؤون الطلاب: __________________</span>
         </div>
-
-        <script>
-          window.onload = function() { window.print(); };
-        </script>
       </body>
       </html>
     `;
 
-    printWin.document.write(html);
-    printWin.document.close();
+    printHtmlDocument(html);
   };
+
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  const onlinePrintColumns = useMemo(() => {
+    if (activeTab === 'teachers') {
+      return [
+        { header: 'اسم المعلم', accessor: 'full_name' },
+        { header: 'الشهرة', render: (t) => t.nickname || '—' },
+        { header: 'التخصصات', render: (t) => t.specialization || '—' },
+        { header: 'الهاتف', render: (t) => t.phone || '—' },
+        { header: 'المجموعات المقترحة', render: (t) => `${parseGroupsData(t).length} مجموعة` },
+        {
+          header: 'الحالة',
+          render: (t) =>
+            t.status === 'approved' ? 'مقبول' : t.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة',
+        },
+      ];
+    }
+    return [
+      { header: 'كود السنتر', render: (s) => (s._localStudentCode ? `#${s._localStudentCode}` : 'غير مكود') },
+      { header: 'اسم الطالب', accessor: 'full_name' },
+      { header: 'المرحلة الدراسية', render: (s) => s.academic_grade || '—' },
+      { header: 'التعليم', render: (s) => s.education_type || '—' },
+      { header: 'هاتف الطالب', render: (s) => s.phone || '—' },
+      { header: 'هاتف ولي الأمر', render: (s) => s.father_phone || '—' },
+      { header: 'المدرسة', render: (s) => s.school_name || '—' },
+      {
+        header: 'الحالة',
+        render: (s) =>
+          s.status === 'approved' ? 'مقبول' : s.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة',
+      },
+    ];
+  }, [activeTab]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in font-sans" dir="rtl">
@@ -1093,12 +1105,12 @@ export default function OnlineRegistrationsPage() {
           </button>
 
           <button
-            onClick={() => window.print()}
+            onClick={() => setIsPrintModalOpen(true)}
             className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
             title="طباعة الكشف الحالي"
           >
             <Printer size={15} />
-            <span>طباعة</span>
+            <span>طباعة كشف</span>
           </button>
         </div>
       </div>
@@ -2698,6 +2710,19 @@ export default function OnlineRegistrationsPage() {
           </div>
         </div>
       )}
+
+      <PrintReportModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title={
+          activeTab === 'teachers'
+            ? 'كشف طلبات انضمام المدرسين (أونلاين)'
+            : 'كشف طلبات تسجيل الطلاب (أونلاين)'
+        }
+        subtitle={`إجمالي السجلات المعروضة: ${activeList.length}`}
+        columns={onlinePrintColumns}
+        data={activeList}
+      />
 
     </div>
   );

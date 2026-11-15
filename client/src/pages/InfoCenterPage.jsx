@@ -92,6 +92,7 @@ export default function InfoCenterPage() {
 
   // Print Modal
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [singleDayPrint, setSingleDayPrint] = useState(null); // { dayLabel, slots } | null
 
   useEffect(() => {
     setLoading(true);
@@ -566,23 +567,95 @@ export default function InfoCenterPage() {
     }
   }, [activeMode]);
 
-  const printData =
-    activeMode === 'TEACHER'
-      ? teacherFilteredGroups
-      : activeMode === 'GRADE'
-      ? gradeFilteredGroups
-      : dayFilteredSlots;
+  const printData = singleDayPrint
+    ? singleDayPrint.slots
+    : activeMode === 'TEACHER'
+    ? teacherFilteredGroups
+    : activeMode === 'GRADE'
+    ? gradeFilteredGroups
+    : dayFilteredSlots;
 
-  const printTitle =
-    activeMode === 'TEACHER'
-      ? `جدول ومواعيد المدرس: ${selectedTeacher?.full_name || ''}`
-      : activeMode === 'GRADE'
-      ? `جدول مواعيد: ${selectedGrade?.name_ar || ''}`
-      : `جدول حصص السنتر - ${
+  const printTitle = singleDayPrint
+    ? `جدول حصص السنتر — يوم ${singleDayPrint.dayLabel}`
+    : activeMode === 'TEACHER'
+    ? `جدول ومواعيد المدرس: ${selectedTeacher?.full_name || ''}`
+    : activeMode === 'GRADE'
+    ? `جدول مواعيد: ${selectedGrade?.name_ar || ''}`
+    : `جدول حصص السنتر - ${
+        selectedDays.length === 7
+          ? 'كامل أيام الأسبوع'
+          : selectedDays.map((k) => dayMap[k]).join(' ، ')
+      }`;
+
+  const printFiltersSummary = useMemo(() => {
+    if (activeMode === 'TEACHER') {
+      const list = [];
+      if (selectedTeacher?.full_name) list.push(`المدرس: ${selectedTeacher.full_name}`);
+      if (teacherGroupType === 'PACKAGE') list.push('النوع: مجموعات الباكدج');
+      if (teacherGroupType === 'PRIVATE') list.push('النوع: مجموعات البرايفت');
+      return list;
+    }
+    if (activeMode === 'GRADE') {
+      const list = [];
+      if (selectedGrade?.name_ar) list.push(`المرحلة: ${selectedGrade.name_ar}`);
+      if (gradeTrackFilter === 'PACKAGE_PUBLIC') list.push('المسار: باكدج عربي/عام');
+      if (gradeTrackFilter === 'PACKAGE_LANG') list.push('المسار: باكدج لغات');
+      if (gradeTrackFilter === 'PRIVATE') list.push('المسار: حصص برايفت');
+      if (gradeSubjectFilter) {
+        const sub = subjects.find((s) => s.id === gradeSubjectFilter);
+        if (sub) list.push(`المادة: ${sub.name_ar}`);
+      }
+      return list;
+    }
+    const list = [];
+    if (singleDayPrint) {
+      list.push(`اليوم: ${singleDayPrint.dayLabel}`);
+    } else if (selectedDays.length > 0) {
+      list.push(
+        `الأيام: ${
           selectedDays.length === 7
-            ? 'كامل أيام الأسبوع'
-            : selectedDays.map((k) => dayMap[k]).join(' ، ')
-        }`;
+            ? 'كامل الأسبوع'
+            : selectedDays.map((k) => dayMap[k]).join(' + ')
+        }`
+      );
+    }
+    if (dayTypeFilter === 'PACKAGE') list.push('النوع: حصص الباكدج');
+    if (dayTypeFilter === 'PRIVATE') list.push('النوع: حصص البرايفت');
+    if (dayTrackFilter === 'PUBLIC') list.push('المسار: عربي / عام');
+    if (dayTrackFilter === 'LANGUAGES') list.push('المسار: لغات');
+    if (dayGradeFilter) {
+      const gr = grades.find((g) => g.id === dayGradeFilter);
+      if (gr) list.push(`المرحلة: ${gr.name_ar}`);
+    }
+    if (daySubjectFilter) {
+      const sub = subjects.find((s) => s.id === daySubjectFilter);
+      if (sub) list.push(`المادة: ${sub.name_ar}`);
+    }
+    if (dayTeacherFilter) {
+      const t = teachers.find((x) => x.id === dayTeacherFilter);
+      if (t) list.push(`المدرس: ${t.full_name}`);
+    }
+    if (daySearch.trim()) list.push(`بحث: "${daySearch.trim()}"`);
+    return list;
+  }, [
+    activeMode,
+    selectedTeacher,
+    teacherGroupType,
+    selectedGrade,
+    gradeTrackFilter,
+    gradeSubjectFilter,
+    subjects,
+    singleDayPrint,
+    selectedDays,
+    dayTypeFilter,
+    dayTrackFilter,
+    dayGradeFilter,
+    grades,
+    daySubjectFilter,
+    dayTeacherFilter,
+    teachers,
+    daySearch,
+  ]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -606,7 +679,10 @@ export default function InfoCenterPage() {
           (activeMode === 'DAY' && dayFilteredSlots.length > 0)) && (
           <button
             type="button"
-            onClick={() => setIsPrintOpen(true)}
+            onClick={() => {
+              setSingleDayPrint(null);
+              setIsPrintOpen(true);
+            }}
             className="atlas-btn atlas-btn-primary text-xs sm:text-sm flex items-center gap-2 self-start sm:self-auto"
           >
             <Printer size={16} />
@@ -958,17 +1034,33 @@ export default function InfoCenterPage() {
                 )}
               </div>
 
-              {/* Sorting Mode */}
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <span className="font-semibold">ترتيب النتائج:</span>
-                <select
-                  value={daySortBy}
-                  onChange={(e) => setDaySortBy(e.target.value)}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer"
-                >
-                  <option value="TIME_ASC">🕒 بالموعد (من الصباح للمساء)</option>
-                  <option value="GRADE_ASC">🎓 بالمرحلة الدراسية</option>
-                </select>
+              {/* Sorting Mode & Print Button */}
+              <div className="flex flex-wrap items-center gap-2 text-slate-600">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold">ترتيب النتائج:</span>
+                  <select
+                    value={daySortBy}
+                    onChange={(e) => setDaySortBy(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer"
+                  >
+                    <option value="TIME_ASC">🕒 بالموعد (من الصباح للمساء)</option>
+                    <option value="GRADE_ASC">🎓 بالمرحلة الدراسية</option>
+                  </select>
+                </div>
+
+                {dayFilteredSlots.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSingleDayPrint(null);
+                      setIsPrintOpen(true);
+                    }}
+                    className="px-3 py-1 rounded-lg bg-[#0C3C82] hover:bg-[#092c61] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer size={13} />
+                    <span>طباعة الجدول ({dayFilteredSlots.length})</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1064,6 +1156,19 @@ export default function InfoCenterPage() {
                         <span className="text-slate-600 font-semibold">
                           👨‍🏫 {sec.teacherCount} مدرس
                         </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSingleDayPrint({ dayLabel: sec.dayLabel, slots: sec.slots });
+                            setIsPrintOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-white hover:bg-sky-50 text-[#0C3C82] border border-slate-200 font-bold flex items-center gap-1 cursor-pointer"
+                          title={`طباعة جدول يوم ${sec.dayLabel}`}
+                        >
+                          <Printer size={12} />
+                          <span>طباعة اليوم</span>
+                        </button>
                         <button
                           type="button"
                           className="p-1 rounded-lg text-slate-500 hover:bg-slate-200"
@@ -1900,11 +2005,15 @@ export default function InfoCenterPage() {
       {/* Print Modal */}
       <PrintReportModal
         isOpen={isPrintOpen}
-        onClose={() => setIsPrintOpen(false)}
+        onClose={() => {
+          setIsPrintOpen(false);
+          setSingleDayPrint(null);
+        }}
         title={printTitle}
         subtitle={`عدد الحصص/المجموعات: ${printData.length}`}
         columns={printColumns}
         data={printData}
+        filtersSummary={printFiltersSummary}
       />
     </div>
   );

@@ -459,12 +459,29 @@ body {
     margin: 7mm 8mm 7mm 8mm; /* Optimized compact margin: maximizes students on single A4 sheet */
   }
 
-  /* When printing an isolated report modal, hide everything else completely */
+  /* When printing an isolated report modal, hide the entire React #root completely */
+  body:has(.print-only-report) > #root,
   body:has(.print-only-report) aside,
   body:has(.print-only-report) header,
   body:has(.print-only-report) footer,
   body:has(.print-only-report) .atlas-card:not(.print-card-visible) {
     display: none !important;
+  }
+
+  /* Clean fallback if user prints raw page directly without modal */
+  aside,
+  header,
+  footer,
+  .print-hidden {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
   }
 
   .print-only-report {
@@ -481,12 +498,14 @@ body {
   .print-card-visible {
     width: 100% !important;
     max-width: none !important;
+    max-height: none !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
     background: transparent !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
   }
 
   #printable-report-area {
@@ -501,10 +520,10 @@ body {
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
-    width: 480px !important;
-    height: 480px !important;
-    max-width: 75vw !important;
-    max-height: 75vh !important;
+    width: 360px !important;
+    height: 360px !important;
+    max-width: 65vw !important;
+    max-height: 65vh !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -516,8 +535,7 @@ body {
     width: 100% !important;
     height: 100% !important;
     object-fit: contain !important;
-    opacity: 0.4 !important;
-    filter: saturate(130%) contrast(110%) !important;
+    opacity: 0.06 !important;
     transform: rotate(-8deg) !important;
   }
 

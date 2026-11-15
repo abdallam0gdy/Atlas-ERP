@@ -7,6 +7,7 @@ import {
   Package, ArrowRight, User, Sparkles, RefreshCw, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { buildThermalReceiptHtml, printHtmlDocument } from '../lib/printUtils';
 
 export default function PosPage() {
   const navigate = useNavigate();
@@ -162,7 +163,9 @@ export default function PosPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!completedSale) return;
+    const html = buildThermalReceiptHtml(completedSale);
+    printHtmlDocument(html);
   };
 
   const filteredItems = items.filter((item) => {

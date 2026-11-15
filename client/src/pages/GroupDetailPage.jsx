@@ -4,10 +4,11 @@ import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { formatTime12h } from '../lib/formatters';
 import GroupModal from '../components/GroupModal';
+import PrintReportModal from '../components/PrintReportModal';
 import {
   ArrowRight, BookOpen, GraduationCap, Calendar, MapPin,
   Users, Loader2, Search, Plus, Edit2,
-  Phone, UserPlus, X, Check, Coins
+  Phone, UserPlus, X, Check, Coins, Printer
 } from 'lucide-react';
 
 const dayMap = {
@@ -22,6 +23,7 @@ export default function GroupDetailPage() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   const fetchGroup = async () => {
     setLoading(true);
@@ -177,18 +179,30 @@ export default function GroupDetailPage() {
       {/* Students Section */}
       <div className="atlas-card overflow-hidden animate-fade-in-up" style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}>
         {/* Section Header */}
-        <div className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}>
+        <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-2 border-b" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}>
           <h2 className="font-bold text-sm flex items-center gap-2" style={{ color: '#0C3C82' }}>
             <Users size={18} />
             الطلاب المشتركين ({studentCount})
           </h2>
-          <Link
-            to="/subscriptions"
-            className="text-xs font-bold text-[#0C3C82] hover:underline flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200 transition-all"
-          >
-            <Coins size={14} />
-            <span>تسجيل وقيد الطلاب (صفحة الاشتراكات)</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            {students.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsPrintOpen(true)}
+                className="text-xs font-bold text-slate-700 hover:bg-slate-200/70 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-300 cursor-pointer"
+              >
+                <Printer size={14} />
+                <span>طباعة كشف المجموعة</span>
+              </button>
+            )}
+            <Link
+              to="/subscriptions"
+              className="text-xs font-bold text-[#0C3C82] hover:underline flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200 transition-all"
+            >
+              <Coins size={14} />
+              <span>تسجيل وقيد الطلاب (صفحة الاشتراكات)</span>
+            </Link>
+          </div>
         </div>
 
         {/* Students Table */}
@@ -269,6 +283,26 @@ export default function GroupDetailPage() {
           setIsEditModalOpen(false);
           fetchGroup();
         }}
+      />
+
+      {/* Print Group Roster Modal */}
+      <PrintReportModal
+        isOpen={isPrintOpen}
+        onClose={() => setIsPrintOpen(false)}
+        title={`كشف طلاب المجموعة: ${group.name_ar || group.name}`}
+        subtitle={`${group.subject_name || ''} — ${group.grade_name || ''} — المدرس: ${group.teacher_name || ''}`}
+        columns={[
+          { header: 'كود الطالب', accessor: 'barcode_id' },
+          { header: 'اسم الطالب', accessor: 'full_name' },
+          { header: 'الموبايل', render: (s) => s.phone || '—' },
+          { header: 'النظام', render: (s) => (s.enrollment_type === 'PRIVATE' ? 'برايفت' : 'باقة سنتر') },
+          { header: 'الحالة', render: (s) => (s.enrollment_active ? 'نشط' : 'منسحب') },
+          {
+            header: 'تاريخ التسجيل',
+            render: (s) => (s.enrolled_at ? new Date(s.enrolled_at).toLocaleDateString('ar-EG') : '—'),
+          },
+        ]}
+        data={students}
       />
     </div>
   );

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import TeacherModal from '../components/TeacherModal';
+import PrintReportModal from '../components/PrintReportModal';
 import {
   ArrowRight, Phone, Mail, BookOpen, Edit2,
   Loader2, Users, Calendar, Coins, Percent,
-  Clock, MapPin, GraduationCap
+  Clock, MapPin, GraduationCap, Printer
 } from 'lucide-react';
 
 export default function TeacherDetailPage() {
@@ -15,6 +16,7 @@ export default function TeacherDetailPage() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('groups');
 
   const fetchTeacher = async () => {
@@ -143,15 +145,25 @@ export default function TeacherDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
               {teacher.logo_url && (
                 <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/20 bg-white/10 p-1 flex items-center justify-center">
                   <img src={teacher.logo_url} alt="شعار المدرس" className="max-h-full max-w-full object-contain" />
                 </div>
               )}
+              {groups.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsPrintOpen(true)}
+                  className="atlas-btn text-sm text-white/95 hover:text-white hover:bg-white/15 border border-white/25 cursor-pointer"
+                >
+                  <Printer size={16} />
+                  <span>طباعة جدول المدرس</span>
+                </button>
+              )}
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="atlas-btn text-sm text-white/90 hover:text-white hover:bg-white/10 border border-white/20"
+                className="atlas-btn text-sm text-white/90 hover:text-white hover:bg-white/10 border border-white/20 cursor-pointer"
               >
                 <Edit2 size={16} />
                 تعديل الملف
@@ -384,6 +396,28 @@ export default function TeacherDetailPage() {
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={fetchTeacher}
         initialData={teacher}
+      />
+
+      {/* Print Teacher Schedule Modal */}
+      <PrintReportModal
+        isOpen={isPrintOpen}
+        onClose={() => setIsPrintOpen(false)}
+        title={`جدول ومجموعات المدرس: ${teacher.full_name}`}
+        subtitle={`التخصص: ${teacher.specialization || '—'} — إجمالي المجموعات: ${groups.length}`}
+        columns={[
+          { header: 'المرحلة الدراسية', accessor: 'grade_name' },
+          { header: 'المادة', accessor: 'subject_name' },
+          { header: 'اسم المجموعة', render: (g) => g.name_ar || g.name },
+          { header: 'النظام', render: (g) => (g.is_private ? 'برايفت' : 'باكدج') },
+          { header: 'المواعيد', render: (g) => formatSchedule(g.schedule) },
+          {
+            header: 'السعر الشهري',
+            render: (g) =>
+              Number(g.price_per_month) > 0 ? `${Number(g.price_per_month)} ج.م` : 'ضمن الباكدج',
+          },
+          { header: 'الطلاب', render: (g) => `${g.student_count || 0} طالب` },
+        ]}
+        data={groups}
       />
     </div>
   );
