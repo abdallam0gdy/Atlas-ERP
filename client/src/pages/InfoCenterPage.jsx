@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { formatTime12h } from '../lib/formatters';
@@ -6,7 +6,9 @@ import PrintReportModal from '../components/PrintReportModal';
 import {
   GraduationCap, Calendar, BookOpen, Search, Printer,
   Users, Clock, Layers, Package, Sparkles, X,
-  ChevronLeft, Phone, UserCheck, Compass, ExternalLink
+  ChevronLeft, Phone, UserCheck, Compass, ExternalLink,
+  MapPin, CheckSquare, Square, RefreshCw, CalendarDays,
+  Filter, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const dayMap = {
@@ -29,6 +31,8 @@ const orderedDays = [
   { key: 'friday', label: 'الجمعة' },
 ];
 
+const dayIndexToKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
 const formatScheduleText = (schedule) => {
   if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return 'بدون موعد';
   return schedule
@@ -39,26 +43,52 @@ const formatScheduleText = (schedule) => {
 export default function InfoCenterPage() {
   const navigate = useNavigate();
 
-  // Main Mode: 'TEACHER' | 'GRADE'
-  const [activeMode, setActiveMode] = useState('TEACHER');
+  // Current system day key (e.g. 'saturday', 'sunday', etc.)
+  const todayKey = useMemo(() => {
+    const jsDay = new Date().getDay();
+    return dayIndexToKey[jsDay] || 'saturday';
+  }, []);
+
+  // Main Active Mode: 'TEACHER' | 'GRADE' | 'DAY'
+  const [activeMode, setActiveMode] = useState('DAY');
 
   // Master Data
   const [teachers, setTeachers] = useState([]);
   const [grades, setGrades] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Teacher Mode States
+  // ---------------------------------------------------------------------------
+  // 1. Teacher Mode States
+  // ---------------------------------------------------------------------------
   const [teacherSearch, setTeacherSearch] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [teacherGroupType, setTeacherGroupType] = useState('ALL'); // 'ALL' | 'PACKAGE' | 'PRIVATE'
   const [teacherViewStyle, setTeacherViewStyle] = useState('BY_GRADE'); // 'BY_GRADE' | 'BY_DAY'
 
-  // Grade Mode States
+  // ---------------------------------------------------------------------------
+  // 2. Grade Mode States
+  // ---------------------------------------------------------------------------
   const [selectedGradeId, setSelectedGradeId] = useState('');
   const [gradeTrackFilter, setGradeTrackFilter] = useState('ALL'); // 'ALL' | 'PACKAGE_PUBLIC' | 'PACKAGE_LANG' | 'PRIVATE'
   const [gradeSubjectFilter, setGradeSubjectFilter] = useState('');
   const [gradeViewStyle, setGradeViewStyle] = useState('BY_SUBJECT'); // 'BY_SUBJECT' | 'BY_DAY'
+
+  // ---------------------------------------------------------------------------
+  // 3. Day Mode States (Single Day or Multiple Days with Center Filters)
+  // ---------------------------------------------------------------------------
+  const [selectedDays, setSelectedDays] = useState([todayKey]);
+  const [daySearch, setDaySearch] = useState('');
+  const [dayGradeFilter, setDayGradeFilter] = useState('');
+  const [daySubjectFilter, setDaySubjectFilter] = useState('');
+  const [dayTeacherFilter, setDayTeacherFilter] = useState('');
+  const [dayTypeFilter, setDayTypeFilter] = useState('ALL'); // 'ALL' | 'PACKAGE' | 'PRIVATE'
+  const [dayTrackFilter, setDayTrackFilter] = useState('ALL'); // 'ALL' | 'PUBLIC' | 'LANGUAGES'
+  const [dayClassroomFilter, setDayClassroomFilter] = useState('');
+  const [daySortBy, setDaySortBy] = useState('TIME_ASC'); // 'TIME_ASC' | 'GRADE_ASC'
+  const [collapsedDaySections, setCollapsedDaySections] = useState({});
 
   // Print Modal
   const [isPrintOpen, setIsPrintOpen] = useState(false);
@@ -68,19 +98,24 @@ export default function InfoCenterPage() {
     Promise.all([
       api.get('/teachers'),
       api.get('/master/grades'),
+      api.get('/master/subjects'),
+      api.get('/master/classrooms').catch(() => ({ data: { data: [] } })),
       api.get('/groups'),
     ])
-      .then(([tRes, gRes, grpRes]) => {
+      .then(([tRes, gRes, sRes, cRes, grpRes]) => {
         const tList = tRes.data.data || [];
         const gList = gRes.data.data || [];
+        const sList = sRes.data.data || [];
+        const cList = cRes.data.data || [];
         const grpList = grpRes.data.data || [];
 
         setTeachers(tList);
         setGrades(gList);
+        setSubjects(sList);
+        setClassrooms(cList);
         setGroups(grpList);
 
         if (gList.length > 0) {
-          // Default to 4th Primary or first grade
           const defaultGrade = gList.find((g) => g.grade_order === 4) || gList[0];
           setSelectedGradeId(defaultGrade.id);
         }
@@ -287,7 +322,201 @@ export default function InfoCenterPage() {
   }, [gradeFilteredGroups]);
 
   // ============================================================================
-  // PRINT CONFIGURATION
+  // 3. DAY / MULTI-DAY MODE COMPUTATIONS
+  // ============================================================================
+  // Toggle day selection
+  const handleToggleDay = useCallback((dayKey) => {
+    setSelectedDays((prev) => {
+      if (prev.includes(dayKey)) {
+        // Keep at least one or allow empty
+        return prev.filter((k) => k !== dayKey);
+      } else {
+        return [...prev, dayKey];
+      }
+    });
+  }, []);
+
+  const handleSelectOnlyDay = useCallback((dayKey) => {
+    setSelectedDays([dayKey]);
+  }, []);
+
+  const handleSelectAllDays = useCallback(() => {
+    setSelectedDays(orderedDays.map((d) => d.key));
+  }, []);
+
+  const handleClearDays = useCallback(() => {
+    setSelectedDays([]);
+  }, []);
+
+  // Extract all slots matching selected days and filters
+  const dayFilteredSlots = useMemo(() => {
+    if (selectedDays.length === 0) return [];
+
+    const q = daySearch.trim().toLowerCase();
+    const result = [];
+
+    for (const g of groups) {
+      // Type Filter
+      if (dayTypeFilter === 'PACKAGE' && g.is_private) continue;
+      if (dayTypeFilter === 'PRIVATE' && !g.is_private) continue;
+
+      // Track Filter
+      if (dayTrackFilter !== 'ALL') {
+        const types = Array.isArray(g.package_education_types) ? g.package_education_types : [];
+        if (!types.includes(dayTrackFilter)) continue;
+      }
+
+      // Grade Filter
+      if (dayGradeFilter && g.grade_id !== dayGradeFilter) continue;
+
+      // Subject Filter
+      if (daySubjectFilter && g.subject_id !== daySubjectFilter) continue;
+
+      // Teacher Filter
+      if (dayTeacherFilter && g.teacher_id !== dayTeacherFilter) continue;
+
+      // Classroom Filter
+      if (dayClassroomFilter && g.classroom_id !== dayClassroomFilter) continue;
+
+      // Search Filter
+      if (q) {
+        const nameMatch = (g.name_ar || g.name || '').toLowerCase().includes(q);
+        const tMatch = (g.teacher_name || '').toLowerCase().includes(q);
+        const sMatch = (g.subject_name || '').toLowerCase().includes(q);
+        const grMatch = (g.grade_name || '').toLowerCase().includes(q);
+        if (!nameMatch && !tMatch && !sMatch && !grMatch) continue;
+      }
+
+      // Schedule Slots
+      const sched = Array.isArray(g.schedule) ? g.schedule : [];
+      for (const slot of sched) {
+        const slotDayKey = (slot.day || '').toLowerCase();
+        if (selectedDays.includes(slotDayKey)) {
+          result.push({
+            ...g,
+            slotId: `${g.id}-${slotDayKey}-${slot.start_time}`,
+            dayKey: slotDayKey,
+            slotDay: dayMap[slotDayKey] || slotDayKey,
+            startTime: slot.start_time || '00:00',
+            endTime: slot.end_time || '',
+          });
+        }
+      }
+    }
+
+    // Sort slots
+    if (daySortBy === 'TIME_ASC') {
+      result.sort((a, b) => {
+        // First sort by day order in the week
+        const dayOrderA = orderedDays.findIndex((d) => d.key === a.dayKey);
+        const dayOrderB = orderedDays.findIndex((d) => d.key === b.dayKey);
+        if (dayOrderA !== dayOrderB) return dayOrderA - dayOrderB;
+        // Then by time
+        return a.startTime.localeCompare(b.startTime);
+      });
+    } else if (daySortBy === 'GRADE_ASC') {
+      result.sort((a, b) => {
+        const grA = a.grade_order || 99;
+        const grB = b.grade_order || 99;
+        if (grA !== grB) return grA - grB;
+        return a.startTime.localeCompare(b.startTime);
+      });
+    }
+
+    return result;
+  }, [
+    groups,
+    selectedDays,
+    daySearch,
+    dayGradeFilter,
+    daySubjectFilter,
+    dayTeacherFilter,
+    dayTypeFilter,
+    dayTrackFilter,
+    dayClassroomFilter,
+    daySortBy,
+  ]);
+
+  // Group slots by Day for sectioned display
+  const daySectionsList = useMemo(() => {
+    return orderedDays
+      .filter((d) => selectedDays.includes(d.key))
+      .map((d) => {
+        const slots = dayFilteredSlots.filter((s) => s.dayKey === d.key);
+        let pkgCount = 0;
+        let privCount = 0;
+        const teachersSet = new Set();
+        slots.forEach((s) => {
+          if (s.is_private) privCount++;
+          else pkgCount++;
+          if (s.teacher_name) teachersSet.add(s.teacher_name);
+        });
+
+        return {
+          dayKey: d.key,
+          dayLabel: d.label,
+          slots,
+          pkgCount,
+          privCount,
+          teacherCount: teachersSet.size,
+        };
+      });
+  }, [orderedDays, selectedDays, dayFilteredSlots]);
+
+  // Overall Day Stats
+  const dayStats = useMemo(() => {
+    let pkgCount = 0;
+    let privCount = 0;
+    const teachersSet = new Set();
+    const gradesSet = new Set();
+
+    dayFilteredSlots.forEach((s) => {
+      if (s.is_private) privCount++;
+      else pkgCount++;
+      if (s.teacher_name) teachersSet.add(s.teacher_name);
+      if (s.grade_name) gradesSet.add(s.grade_name);
+    });
+
+    return {
+      totalSlots: dayFilteredSlots.length,
+      pkgCount,
+      privCount,
+      teacherCount: teachersSet.size,
+      gradeCount: gradesSet.size,
+    };
+  }, [dayFilteredSlots]);
+
+  const toggleDaySection = useCallback((dayKey) => {
+    setCollapsedDaySections((prev) => ({
+      ...prev,
+      [dayKey]: !prev[dayKey],
+    }));
+  }, []);
+
+  const resetDayFilters = () => {
+    setDaySearch('');
+    setDayGradeFilter('');
+    setDaySubjectFilter('');
+    setDayTeacherFilter('');
+    setDayTypeFilter('ALL');
+    setDayTrackFilter('ALL');
+    setDayClassroomFilter('');
+    setDaySortBy('TIME_ASC');
+  };
+
+  const hasActiveDayFilters = Boolean(
+    daySearch ||
+      dayGradeFilter ||
+      daySubjectFilter ||
+      dayTeacherFilter ||
+      dayTypeFilter !== 'ALL' ||
+      dayTrackFilter !== 'ALL' ||
+      dayClassroomFilter ||
+      daySortBy !== 'TIME_ASC'
+  );
+
+  // ============================================================================
+  // PRINT CONFIGURATION (Dynamic per mode)
   // ============================================================================
   const printColumns = useMemo(() => {
     if (activeMode === 'TEACHER') {
@@ -304,26 +533,56 @@ export default function InfoCenterPage() {
         },
         { header: 'الطلاب', render: (g) => `${g.student_count || 0} طالب` },
       ];
+    } else if (activeMode === 'GRADE') {
+      return [
+        { header: 'المادة الدراسية', accessor: 'subject_name' },
+        { header: 'المدرس', accessor: 'teacher_name' },
+        { header: 'اسم المجموعة', render: (g) => g.name_ar || g.name },
+        { header: 'النظام', render: (g) => (g.is_private ? 'برايفت' : 'باكدج') },
+        { header: 'المواعيد', render: (g) => formatScheduleText(g.schedule) },
+        {
+          header: 'السعر الشهري',
+          render: (g) =>
+            Number(g.price_per_month) > 0 ? `${Number(g.price_per_month)} ج.م` : 'ضمن الباكدج',
+        },
+      ];
+    } else {
+      // DAY MODE
+      return [
+        { header: 'اليوم', render: (s) => s.slotDay || '' },
+        { header: 'الموعد', render: (s) => formatTime12h(s.startTime) },
+        { header: 'المادة الدراسية', accessor: 'subject_name' },
+        { header: 'المدرس', accessor: 'teacher_name' },
+        { header: 'المرحلة الدراسية', accessor: 'grade_name' },
+        { header: 'اسم المجموعة', render: (s) => s.name_ar || s.name },
+        { header: 'النظام', render: (s) => (s.is_private ? 'برايفت' : 'باكدج') },
+        { header: 'القاعة', render: (s) => s.classroom_name || '—' },
+        {
+          header: 'السعر الشهري',
+          render: (s) =>
+            Number(s.price_per_month) > 0 ? `${Number(s.price_per_month)} ج.م` : 'ضمن الباكدج',
+        },
+      ];
     }
-    return [
-      { header: 'المادة الدراسية', accessor: 'subject_name' },
-      { header: 'المدرس', accessor: 'teacher_name' },
-      { header: 'اسم المجموعة', render: (g) => g.name_ar || g.name },
-      { header: 'النظام', render: (g) => (g.is_private ? 'برايفت' : 'باكدج') },
-      { header: 'المواعيد', render: (g) => formatScheduleText(g.schedule) },
-      {
-        header: 'السعر الشهري',
-        render: (g) =>
-          Number(g.price_per_month) > 0 ? `${Number(g.price_per_month)} ج.م` : 'ضمن الباكدج',
-      },
-    ];
   }, [activeMode]);
 
-  const printData = activeMode === 'TEACHER' ? teacherFilteredGroups : gradeFilteredGroups;
+  const printData =
+    activeMode === 'TEACHER'
+      ? teacherFilteredGroups
+      : activeMode === 'GRADE'
+      ? gradeFilteredGroups
+      : dayFilteredSlots;
+
   const printTitle =
     activeMode === 'TEACHER'
       ? `جدول ومواعيد المدرس: ${selectedTeacher?.full_name || ''}`
-      : `جدول مواعيد: ${selectedGrade?.name_ar || ''}`;
+      : activeMode === 'GRADE'
+      ? `جدول مواعيد: ${selectedGrade?.name_ar || ''}`
+      : `جدول حصص السنتر - ${
+          selectedDays.length === 7
+            ? 'كامل أيام الأسبوع'
+            : selectedDays.map((k) => dayMap[k]).join(' ، ')
+        }`;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -338,12 +597,13 @@ export default function InfoCenterPage() {
             <span>مركز المعلومات والاستعلام السريع</span>
           </h1>
           <p className="text-xs sm:text-sm mt-1 text-slate-500">
-            استعلم فوراً عن بيانات ومواعيد أي مدرس أو اعرض الجدول الكامل لأي مرحلة دراسية (باكدج وبرايفت)
+            استعلم فوراً عن جدول السنتر باليوم، أو مواعيد أي مدرس، أو جدول أي مرحلة دراسية (باكدج وبرايفت)
           </p>
         </div>
 
         {((activeMode === 'TEACHER' && selectedTeacher) ||
-          (activeMode === 'GRADE' && selectedGrade)) && (
+          (activeMode === 'GRADE' && selectedGrade) ||
+          (activeMode === 'DAY' && dayFilteredSlots.length > 0)) && (
           <button
             type="button"
             onClick={() => setIsPrintOpen(true)}
@@ -351,83 +611,580 @@ export default function InfoCenterPage() {
           >
             <Printer size={16} />
             <span>
-              {activeMode === 'TEACHER' ? 'طباعة جدول المدرس' : 'طباعة جدول المرحلة'}
+              {activeMode === 'TEACHER'
+                ? 'طباعة جدول المدرس'
+                : activeMode === 'GRADE'
+                ? 'طباعة جدول المرحلة'
+                : 'طباعة كشف الأيام المحددة'}
             </span>
           </button>
         )}
       </div>
 
-      {/* Mode Switcher Cards: Choose Teacher Info vs. Grade Schedule */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Choice 1: Teacher Info */}
+      {/* 3 Main Mode Switcher Cards: Day Schedule, Teacher Info, Grade Timetable */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* Choice 1: Day & Multi-Day Timetable */}
+        <button
+          type="button"
+          onClick={() => setActiveMode('DAY')}
+          className={`p-4 rounded-2xl border-2 text-right flex items-center gap-3.5 cursor-pointer ${
+            activeMode === 'DAY'
+              ? 'bg-[#0C3C82] text-white border-[#0C3C82] shadow-md'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40'
+          }`}
+        >
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+              activeMode === 'DAY' ? 'bg-white/15 text-cyan-300' : 'bg-sky-100 text-[#0C3C82]'
+            }`}
+          >
+            <CalendarDays size={26} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm sm:text-base font-black">1. استعلام بجدول الأيام</h2>
+            <p
+              className={`text-[11px] mt-0.5 leading-snug ${
+                activeMode === 'DAY' ? 'text-white/80' : 'text-slate-500'
+              }`}
+            >
+              اختر يوماً أو عدة أيام لعرض كافة حصص ومواعيد السنتر مرتبة زمنياً مع الفلاتر
+            </p>
+          </div>
+        </button>
+
+        {/* Choice 2: Teacher Info */}
         <button
           type="button"
           onClick={() => setActiveMode('TEACHER')}
-          className={`p-5 rounded-2xl border-2 text-right flex items-center gap-4 cursor-pointer ${
+          className={`p-4 rounded-2xl border-2 text-right flex items-center gap-3.5 cursor-pointer ${
             activeMode === 'TEACHER'
               ? 'bg-[#0C3C82] text-white border-[#0C3C82] shadow-md'
               : 'bg-white text-slate-800 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40'
           }`}
         >
           <div
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
-              activeMode === 'TEACHER'
-                ? 'bg-white/15 text-cyan-300'
-                : 'bg-sky-100 text-[#0C3C82]'
+            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+              activeMode === 'TEACHER' ? 'bg-white/15 text-cyan-300' : 'bg-sky-100 text-[#0C3C82]'
             }`}
           >
-            <GraduationCap size={30} />
+            <GraduationCap size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base sm:text-lg font-black">
-              1. استعلام عن مدرس (معلومات وجدول مدرس)
-            </h2>
+            <h2 className="text-sm sm:text-base font-black">2. استعلام عن مدرس</h2>
             <p
-              className={`text-xs mt-1 ${
+              className={`text-[11px] mt-0.5 leading-snug ${
                 activeMode === 'TEACHER' ? 'text-white/80' : 'text-slate-500'
               }`}
             >
-              اختر أي مدرس لعرض مواده، مراحله، مواعيد مجموعات الباكدج والبرايفت، وأسعار الشهر
+              اختر أي مدرس لعرض مواده ومجموعات الباكدج والبرايفت وأسعار الشهر
             </p>
           </div>
         </button>
 
-        {/* Choice 2: Grade Timetable */}
+        {/* Choice 3: Grade Timetable */}
         <button
           type="button"
           onClick={() => setActiveMode('GRADE')}
-          className={`p-5 rounded-2xl border-2 text-right flex items-center gap-4 cursor-pointer ${
+          className={`p-4 rounded-2xl border-2 text-right flex items-center gap-3.5 cursor-pointer ${
             activeMode === 'GRADE'
               ? 'bg-[#0C3C82] text-white border-[#0C3C82] shadow-md'
               : 'bg-white text-slate-800 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40'
           }`}
         >
           <div
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
-              activeMode === 'GRADE'
-                ? 'bg-white/15 text-cyan-300'
-                : 'bg-emerald-100 text-emerald-800'
+            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+              activeMode === 'GRADE' ? 'bg-white/15 text-cyan-300' : 'bg-emerald-100 text-emerald-800'
             }`}
           >
-            <Calendar size={30} />
+            <Calendar size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base sm:text-lg font-black">
-              2. استعلام عن جدول مرحلة دراسية معينة
-            </h2>
+            <h2 className="text-sm sm:text-base font-black">3. جدول مرحلة دراسية</h2>
             <p
-              className={`text-xs mt-1 ${
+              className={`text-[11px] mt-0.5 leading-snug ${
                 activeMode === 'GRADE' ? 'text-white/80' : 'text-slate-500'
               }`}
             >
-              اختر المرحلة الدراسية لعرض جدولها الأسبوعي أو تقسيم المواد والمدرسين (عربي / لغات / برايفت)
+              اختر المرحلة لعرض جدولها الكامل (عربي / لغات / برايفت)
             </p>
           </div>
         </button>
       </div>
 
       {/* ========================================================================
-          MODE 1: TEACHER INFORMATION & SCHEDULE
+          MODE 1: DAY / MULTI-DAY SCHEDULE (جدول السنتر باليوم أو عدة أيام)
+      ======================================================================== */}
+      {activeMode === 'DAY' && (
+        <div className="space-y-5">
+          {/* Day Selector Box (Multi-Day Chips & Quick Presets) */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                  <CalendarDays size={18} className="text-[#0C3C82]" />
+                  <span>اختر الأيام المراد عرض جدول السنتر لها (يمكنك اختيار يوم أو عدة أيام معاً):</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  اضغط على أي يوم لتحديده أو إلغاء تحديده، أو استخدم الأزرار السريعة
+                </p>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleSelectOnlyDay(todayKey)}
+                  className="px-2.5 py-1 rounded-lg font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 cursor-pointer flex items-center gap-1"
+                >
+                  ⚡ اليوم ({dayMap[todayKey]})
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSelectAllDays}
+                  className="px-2.5 py-1 rounded-lg font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
+                >
+                  تحديد كل الأيام
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearDays}
+                  className="px-2.5 py-1 rounded-lg font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                >
+                  مسح التحديد
+                </button>
+              </div>
+            </div>
+
+            {/* 7 Days Toggle Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pt-1">
+              {orderedDays.map((d) => {
+                const isSelected = selectedDays.includes(d.key);
+                const isToday = d.key === todayKey;
+                // Count how many groups occur on this day across center
+                const countOnDay = groups.filter((g) => {
+                  const s = Array.isArray(g.schedule) ? g.schedule : [];
+                  return s.some((slot) => slot.day && slot.day.toLowerCase() === d.key);
+                }).length;
+
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => handleToggleDay(d.key)}
+                    className={`p-3 rounded-xl border text-center cursor-pointer transition-all flex flex-col items-center justify-between gap-1 relative ${
+                      isSelected
+                        ? 'bg-[#0C3C82] text-white border-[#0C3C82] shadow-sm'
+                        : 'bg-slate-50/70 text-slate-800 border-slate-200 hover:bg-sky-50 hover:border-sky-300'
+                    }`}
+                  >
+                    {isToday && (
+                      <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-white" title="اليوم الحالي" />
+                    )}
+                    <span className="font-black text-sm">يوم {d.label}</span>
+                    <span
+                      className={`text-[11px] font-semibold ${
+                        isSelected ? 'text-cyan-200' : 'text-slate-500'
+                      }`}
+                    >
+                      {countOnDay} حصة
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Detailed Filters Toolbar for Selected Day(s) */}
+          <div className="atlas-card p-4 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Filter size={14} className="text-[#0C3C82]" />
+                <span>فلاتر جدول الأيام المحددة:</span>
+              </span>
+
+              {hasActiveDayFilters && (
+                <button
+                  type="button"
+                  onClick={resetDayFilters}
+                  className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  <span>إعادة ضبط الفلاتر</span>
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              {/* Search Box */}
+              <div className="relative sm:col-span-2">
+                <Search
+                  size={16}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={daySearch}
+                  onChange={(e) => setDaySearch(e.target.value)}
+                  placeholder="بحث باسم المدرس، المادة، أو المجموعة..."
+                  className="atlas-input pr-9 text-xs"
+                />
+                {daySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setDaySearch('')}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Grade Filter */}
+              <div>
+                <select
+                  value={dayGradeFilter}
+                  onChange={(e) => setDayGradeFilter(e.target.value)}
+                  className="atlas-input text-xs"
+                >
+                  <option value="">كل المراحل الدراسية</option>
+                  {grades.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name_ar}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subject Filter */}
+              <div>
+                <select
+                  value={daySubjectFilter}
+                  onChange={(e) => setDaySubjectFilter(e.target.value)}
+                  className="atlas-input text-xs"
+                >
+                  <option value="">كل المواد الدراسية ({subjects.length})</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name_ar}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Teacher Filter */}
+              <div>
+                <select
+                  value={dayTeacherFilter}
+                  onChange={(e) => setDayTeacherFilter(e.target.value)}
+                  className="atlas-input text-xs"
+                >
+                  <option value="">كل المدرسين ({teachers.length})</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Group Type (Package vs Private) */}
+              <div>
+                <select
+                  value={dayTypeFilter}
+                  onChange={(e) => setDayTypeFilter(e.target.value)}
+                  className="atlas-input text-xs"
+                >
+                  <option value="ALL">كل الأنظمة (باكدج + برايفت)</option>
+                  <option value="PACKAGE">📦 مجموعات الباكدج فقط</option>
+                  <option value="PRIVATE">💎 مجموعات البرايفت فقط</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Secondary Filter Row: Track, Classroom, Sorting */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Track Filter */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setDayTrackFilter('ALL')}
+                    className={`px-2.5 py-1 rounded font-bold cursor-pointer ${
+                      dayTrackFilter === 'ALL'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    الكل (عربي + لغات)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDayTrackFilter('PUBLIC')}
+                    className={`px-2.5 py-1 rounded font-bold cursor-pointer ${
+                      dayTrackFilter === 'PUBLIC'
+                        ? 'bg-white text-blue-800 shadow-2xs'
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    🏛️ عربي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDayTrackFilter('LANGUAGES')}
+                    className={`px-2.5 py-1 rounded font-bold cursor-pointer ${
+                      dayTrackFilter === 'LANGUAGES'
+                        ? 'bg-white text-purple-800 shadow-2xs'
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    🌐 لغات
+                  </button>
+                </div>
+
+                {/* Classroom Filter if available */}
+                {classrooms.length > 0 && (
+                  <select
+                    value={dayClassroomFilter}
+                    onChange={(e) => setDayClassroomFilter(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold bg-white outline-none"
+                  >
+                    <option value="">كل القاعات الدراسية</option>
+                    {classrooms.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name_ar || c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Sorting Mode */}
+              <div className="flex items-center gap-1.5 text-slate-600">
+                <span className="font-semibold">ترتيب النتائج:</span>
+                <select
+                  value={daySortBy}
+                  onChange={(e) => setDaySortBy(e.target.value)}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer"
+                >
+                  <option value="TIME_ASC">🕒 بالموعد (من الصباح للمساء)</option>
+                  <option value="GRADE_ASC">🎓 بالمرحلة الدراسية</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar for Day Mode */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-slate-500 font-semibold">إجمالي الحصص المطابقة</p>
+                <p className="text-lg font-black text-slate-900 mt-0.5">
+                  {dayStats.totalSlots} حصة
+                </p>
+              </div>
+              <CalendarDays size={22} className="text-[#0C3C82]" />
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/30 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-emerald-700 font-semibold">حصص الباكدج</p>
+                <p className="text-lg font-black text-emerald-900 mt-0.5">
+                  📦 {dayStats.pkgCount}
+                </p>
+              </div>
+              <Package size={22} className="text-emerald-600" />
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-amber-200 bg-amber-50/30 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-amber-700 font-semibold">حصص البرايفت</p>
+                <p className="text-lg font-black text-amber-900 mt-0.5">
+                  💎 {dayStats.privCount}
+                </p>
+              </div>
+              <Sparkles size={22} className="text-amber-600" />
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-slate-500 font-semibold">المدرسون المتواجدون</p>
+                <p className="text-lg font-black text-slate-900 mt-0.5">
+                  👨‍🏫 {dayStats.teacherCount} مدرس
+                </p>
+              </div>
+              <GraduationCap size={22} className="text-sky-600" />
+            </div>
+          </div>
+
+          {/* Day Schedule Content: Grouped by Day */}
+          {selectedDays.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-xs text-slate-500">
+              يرجى اختيار يوم واحد على الأقل من شريط الأيام بالأعلى لعرض جدول السنتر له
+            </div>
+          ) : dayFilteredSlots.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-xs text-slate-500">
+              لا توجد حصص مطابقة للفلاتر في الأيام المحددة
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {daySectionsList.map((sec) => {
+                const isCollapsed = Boolean(collapsedDaySections[sec.dayKey]);
+                return (
+                  <div
+                    key={sec.dayKey}
+                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs"
+                  >
+                    {/* Day Section Header */}
+                    <div
+                      onClick={() => toggleDaySection(sec.dayKey)}
+                      className="px-4 sm:px-5 py-3.5 bg-slate-50 hover:bg-slate-100/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 cursor-pointer select-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-6 rounded-full bg-[#0C3C82]" />
+                        <h3 className="font-black text-sm sm:text-base text-slate-900">
+                          جدول يوم {sec.dayLabel}
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#0C3C82] text-white">
+                          {sec.slots.length} حصة
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs">
+                        {sec.pkgCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-md font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            📦 {sec.pkgCount} باكدج
+                          </span>
+                        )}
+                        {sec.privCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-md font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            💎 {sec.privCount} برايفت
+                          </span>
+                        )}
+                        <span className="text-slate-400">|</span>
+                        <span className="text-slate-600 font-semibold">
+                          👨‍🏫 {sec.teacherCount} مدرس
+                        </span>
+                        <button
+                          type="button"
+                          className="p-1 rounded-lg text-slate-500 hover:bg-slate-200"
+                        >
+                          {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Day Sessions Table */}
+                    {!isCollapsed && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-right border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50/60 border-b border-slate-200 text-slate-700 text-xs">
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">الموعد</th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">
+                                المادة الدراسية
+                              </th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">المدرس</th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">
+                                المرحلة الدراسية
+                              </th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">
+                                اسم المجموعة
+                              </th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">النظام</th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">القاعة</th>
+                              <th className="py-2.5 px-4 font-bold whitespace-nowrap">
+                                السعر الشهري
+                              </th>
+                              <th className="py-2.5 px-4 font-bold text-center whitespace-nowrap">
+                                الطلاب
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {sec.slots.map((slot) => (
+                              <tr
+                                key={slot.slotId}
+                                onClick={() => navigate(`/groups/${slot.id}`)}
+                                className="hover:bg-sky-50/50 cursor-pointer text-xs"
+                              >
+                                <td className="py-3 px-4 font-black text-[#0C3C82] whitespace-nowrap">
+                                  <span className="px-2 py-1 rounded-md bg-sky-50 text-[#0C3C82] border border-sky-200 font-mono">
+                                    🕒 {formatTime12h(slot.startTime)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                    <span
+                                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                                      style={{ background: slot.subject_color || '#0C3C82' }}
+                                    />
+                                    <span>{slot.subject_name}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
+                                  {slot.teacher_name}
+                                </td>
+                                <td className="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded bg-slate-100">
+                                    {slot.grade_name}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-slate-700">
+                                  {slot.name_ar || slot.name}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  {slot.is_private ? (
+                                    <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-amber-50 text-amber-800 border border-amber-200">
+                                      💎 برايفت
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                      📦 باكدج
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  {slot.classroom_name ? (
+                                    <span className="font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1 text-[11px] w-fit">
+                                      <MapPin size={11} className="text-[#0C3C82]" />
+                                      {slot.classroom_name}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400">—</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  {Number(slot.price_per_month) > 0 ? (
+                                    <span className="font-black text-amber-700">
+                                      {Number(slot.price_per_month)} ج.م / شهر
+                                    </span>
+                                  ) : (
+                                    <span className="text-emerald-700 font-semibold">
+                                      ضمن الباكدج
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-center whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
+                                    {slot.student_count || 0}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================
+          MODE 2: TEACHER INFORMATION & SCHEDULE
       ======================================================================== */}
       {activeMode === 'TEACHER' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -826,7 +1583,7 @@ export default function InfoCenterPage() {
       )}
 
       {/* ========================================================================
-          MODE 2: ACADEMIC GRADE SCHEDULE & INFORMATION
+          MODE 3: ACADEMIC GRADE SCHEDULE & INFORMATION
       ======================================================================== */}
       {activeMode === 'GRADE' && (
         <div className="space-y-5">
@@ -1145,11 +1902,10 @@ export default function InfoCenterPage() {
         isOpen={isPrintOpen}
         onClose={() => setIsPrintOpen(false)}
         title={printTitle}
-        subtitle={`عدد المجموعات: ${printData.length} مجموعة`}
+        subtitle={`عدد الحصص/المجموعات: ${printData.length}`}
         columns={printColumns}
         data={printData}
       />
     </div>
   );
 }
-
