@@ -2,6 +2,18 @@ const db = require('../config/db');
 const { NotFoundError } = require('../utils/errors');
 
 /**
+ * Normalizes teacher names to use bare Alif ('ا') and 'ا/' prefix.
+ */
+const normalizeTeacherName = (name) => {
+  if (!name) return name;
+  return name
+    .replace(/^مستر\//, 'ا/')
+    .replace(/^أ\//, 'ا/')
+    .replace(/[أإآ]/g, 'ا')
+    .trim();
+};
+
+/**
  * GET /api/teachers
  * List all teachers
  */
@@ -14,8 +26,15 @@ const listTeachers = async (req, res, next) => {
     let paramIndex = 1;
 
     if (search) {
-      whereClause += ` AND (t.full_name ILIKE $${paramIndex} OR t.phone ILIKE $${paramIndex} OR t.specialization ILIKE $${paramIndex})`;
-      params.push(`%${search}%`);
+      const cleanSearch = search.trim();
+      const normSearch = cleanSearch.replace(/^[أا]\//, '').replace(/[أإآ]/g, 'ا');
+      whereClause += ` AND (
+        t.full_name ILIKE $${paramIndex} OR
+        regexp_replace(regexp_replace(regexp_replace(t.full_name, 'أ', 'ا', 'g'), 'إ', 'ا', 'g'), 'آ', 'ا', 'g') ILIKE $${paramIndex} OR
+        t.phone ILIKE $${paramIndex} OR
+        t.specialization ILIKE $${paramIndex}
+      )`;
+      params.push(`%${normSearch}%`);
       paramIndex++;
     }
 
@@ -173,6 +192,9 @@ const createTeacher = async (req, res, next) => {
     const teacherPhone = data.phone && data.phone.trim() ? data.phone.trim() : null;
     const secretaryPhone = data.secretary_phone && data.secretary_phone.trim() ? data.secretary_phone.trim() : null;
 
+    const normalizedFullName = normalizeTeacherName(data.full_name);
+    const normalizedFullNameAr = data.full_name_ar ? normalizeTeacherName(data.full_name_ar) : null;
+
     const result = await db.query(
       `INSERT INTO teachers (full_name, full_name_ar, aka, phone, email, gender, national_id, date_of_birth,
                               specialization, subject_id, subject_ids,
@@ -181,8 +203,8 @@ const createTeacher = async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING *`,
       [
-        data.full_name,
-        data.full_name_ar || null,
+        normalizedFullName,
+        normalizedFullNameAr || null,
         data.aka || null,
         teacherPhone,
         data.email || null,
@@ -238,6 +260,13 @@ const updateTeacher = async (req, res, next) => {
       data.subject_id = data.subject_ids[0];
     } else if (data.subject_id && !data.subject_ids) {
       data.subject_ids = [data.subject_id];
+    }
+
+    if (data.full_name) {
+      data.full_name = normalizeTeacherName(data.full_name);
+    }
+    if (data.full_name_ar) {
+      data.full_name_ar = normalizeTeacherName(data.full_name_ar);
     }
 
     const fields = [];

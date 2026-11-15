@@ -158,43 +158,43 @@ const StudentRow = memo(function StudentRow({
 
       {/* Quick Actions */}
       <td className="py-2.5 px-3.5 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
-        <div className="inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => onNavigate(student.id)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs"
             title="فتح ملف الطالب"
           >
-            <Eye size={14} />
+            <Eye size={16} className="shrink-0" />
           </button>
           <button
             type="button"
             onClick={() => onEdit(student)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 hover:border-amber-600 flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs"
             title="تعديل سريع لبيانات الطالب"
           >
-            <Edit size={14} />
+            <Edit size={16} className="shrink-0" />
           </button>
           <button
             type="button"
             onClick={() => onPrintSticker(student)}
             disabled={printingId === student.id}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 cursor-pointer disabled:opacity-50"
+            className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-indigo-600 flex items-center justify-center shrink-0 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
             title="طباعة استيكر الباركود / QR"
           >
             {printingId === student.id ? (
-              <Loader2 size={14} className="animate-spin text-indigo-600" />
+              <Loader2 size={16} className="animate-spin text-indigo-600 shrink-0" />
             ) : (
-              <QrCode size={14} />
+              <QrCode size={16} className="shrink-0" />
             )}
           </button>
           <button
             type="button"
             onClick={() => onDelete(student)}
-            className="p-1.5 rounded-lg text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 hover:border-rose-600 cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs"
             title={`حذف الطالب ${student.full_name}`}
           >
-            <Trash2 size={14} />
+            <Trash2 size={16} className="shrink-0" />
           </button>
         </div>
       </td>

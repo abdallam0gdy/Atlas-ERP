@@ -649,3 +649,4 @@ export function buildThermalReceiptHtml(sale) {
 </body>
 </html>`;
 }
+

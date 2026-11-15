@@ -130,14 +130,13 @@ export default function InfoCenterPage() {
   // TEACHER MODE COMPUTATIONS
   // ============================================================================
   const filteredTeachersList = useMemo(() => {
-    const q = teacherSearch.trim().toLowerCase();
+    const q = (teacherSearch || '').replace(/[أإآ]/g, 'ا').trim().toLowerCase();
     return teachers.filter((t) => {
       if (!q) return true;
-      return (
-        (t.full_name || '').toLowerCase().includes(q) ||
-        (t.specialization || '').toLowerCase().includes(q) ||
-        (t.subject_name || '').toLowerCase().includes(q)
-      );
+      const fn = (t.full_name || '').replace(/[أإآ]/g, 'ا').toLowerCase();
+      const sp = (t.specialization || '').replace(/[أإآ]/g, 'ا').toLowerCase();
+      const sn = (t.subject_name || '').replace(/[أإآ]/g, 'ا').toLowerCase();
+      return fn.includes(q) || sp.includes(q) || sn.includes(q);
     });
   }, [teachers, teacherSearch]);
 
@@ -381,10 +380,11 @@ export default function InfoCenterPage() {
 
       // Search Filter
       if (q) {
-        const nameMatch = (g.name_ar || g.name || '').toLowerCase().includes(q);
-        const tMatch = (g.teacher_name || '').toLowerCase().includes(q);
-        const sMatch = (g.subject_name || '').toLowerCase().includes(q);
-        const grMatch = (g.grade_name || '').toLowerCase().includes(q);
+        const normQ = q.replace(/[أإآ]/g, 'ا');
+        const nameMatch = (g.name_ar || g.name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
+        const tMatch = (g.teacher_name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
+        const sMatch = (g.subject_name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
+        const grMatch = (g.grade_name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
         if (!nameMatch && !tMatch && !sMatch && !grMatch) continue;
       }
 

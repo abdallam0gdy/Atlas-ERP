@@ -310,10 +310,11 @@ export default function GroupsPage() {
 
       // Text search
       if (q) {
-        const nameMatch = (g.name_ar || g.name || '').toLowerCase().includes(q);
-        const teacherMatch = (g.teacher_name || '').toLowerCase().includes(q);
-        const subjectMatch = (g.subject_name || '').toLowerCase().includes(q);
-        const gradeMatch = (g.grade_name || '').toLowerCase().includes(q);
+        const normQ = q.replace(/[أإآ]/g, 'ا');
+        const nameMatch = (g.name_ar || g.name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
+        const teacherMatch = (g.teacher_name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
+        const subjectMatch = (g.subject_name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
+        const gradeMatch = (g.grade_name || '').replace(/[أإآ]/g, 'ا').toLowerCase().includes(normQ);
         if (!nameMatch && !teacherMatch && !subjectMatch && !gradeMatch) return false;
       }
 

@@ -57,9 +57,13 @@
     box-sizing: border-box;
   }
 
-  img, svg, video, canvas, audio, iframe, embed, object {
+  img, video, canvas, audio, iframe, embed, object {
     display: block;
     max-width: 100%;
+  }
+
+  svg {
+    display: block;
   }
 }
 
