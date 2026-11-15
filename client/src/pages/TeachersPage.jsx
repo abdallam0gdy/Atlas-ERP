@@ -667,6 +667,7 @@ export default function TeachersPage() {
         }}
         onSuccess={fetchTeachers}
         initialData={editingTeacher}
+        subjects={subjects}
       />
 
       {/* Teacher Bulk Import Modal */}

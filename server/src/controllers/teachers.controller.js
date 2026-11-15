@@ -170,6 +170,8 @@ const createTeacher = async (req, res, next) => {
       ? data.subject_ids
       : (data.subject_id ? [data.subject_id] : []);
     const primarySubjectId = data.subject_id || (subjectIds.length > 0 ? subjectIds[0] : null);
+    const teacherPhone = data.phone && data.phone.trim() ? data.phone.trim() : null;
+    const secretaryPhone = data.secretary_phone && data.secretary_phone.trim() ? data.secretary_phone.trim() : null;
 
     const result = await db.query(
       `INSERT INTO teachers (full_name, full_name_ar, aka, phone, email, gender, national_id, date_of_birth,
@@ -182,7 +184,7 @@ const createTeacher = async (req, res, next) => {
         data.full_name,
         data.full_name_ar || null,
         data.aka || null,
-        data.phone,
+        teacherPhone,
         data.email || null,
         data.gender || 'male',
         data.national_id || null,
@@ -196,7 +198,7 @@ const createTeacher = async (req, res, next) => {
         data.bio || null,
         data.social_links ? (typeof data.social_links === 'string' ? data.social_links : JSON.stringify(data.social_links)) : '{}',
         data.secretary_name || null,
-        data.secretary_phone || null,
+        secretaryPhone,
         data.photo_url || null,
         data.logo_url || null,
         data.notes || null,

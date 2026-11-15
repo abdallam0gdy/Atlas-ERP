@@ -62,7 +62,9 @@ const createTeacherSchema = Joi.object({
   full_name: Joi.string().min(2).max(150).required(),
   full_name_ar: Joi.string().max(150).allow('', null),
   aka: Joi.string().max(100).allow('', null),
-  phone: phonePattern.allow('', null),
+  phone: phonePattern.allow('', null).optional().messages({
+    'string.pattern.base': 'رقم هاتف المدرس غير صحيح',
+  }),
   email: Joi.string().email().max(100).allow('', null),
   gender: Joi.string().valid('male', 'female').default('male').allow('', null),
   national_id: Joi.string().max(20).allow('', null),
@@ -76,7 +78,9 @@ const createTeacherSchema = Joi.object({
   bio: Joi.string().allow('', null),
   social_links: Joi.alternatives().try(Joi.object(), Joi.string()).optional(),
   secretary_name: Joi.string().max(150).allow('', null),
-  secretary_phone: phonePattern.allow('', null),
+  secretary_phone: phonePattern.allow('', null).optional().messages({
+    'string.pattern.base': 'رقم هاتف السكرتارية غير صحيح',
+  }),
   photo_url: Joi.string().max(500).allow('', null),
   logo_url: Joi.string().max(500).allow('', null),
   notes: Joi.string().max(1000).allow('', null),
