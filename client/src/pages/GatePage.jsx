@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import PrintReportModal from '../components/PrintReportModal';
 import CancelSessionModal from '../components/CancelSessionModal';
+import MobileCameraScanner from '../components/MobileCameraScanner';
 import {
   DoorOpen, QrCode, Volume2, VolumeX, Clock,
   CheckCircle2, XCircle, AlertTriangle, User, BookOpen,
@@ -14,7 +15,7 @@ import toast from 'react-hot-toast';
 
 export default function GatePage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState('scanner'); // 'scanner' | 'manual'
+  const [mode, setMode] = useState('scanner'); // 'scanner' | 'camera' | 'manual'
   const [scanResult, setScanResult] = useState(null);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,8 +51,8 @@ export default function GatePage() {
 
   // Maintain focus based on current mode
   const maintainFocus = useCallback(() => {
-    // If any modal is open, NEVER steal focus!
-    if (isPrintModalOpen || isCancelModalOpen) return;
+    // If in camera mode or if any modal is open, NEVER steal focus!
+    if (mode === 'camera' || isPrintModalOpen || isCancelModalOpen) return;
 
     // Check if active element is an input, select, textarea, or inside any dialog/modal
     const active = document.activeElement;
@@ -82,7 +83,7 @@ export default function GatePage() {
     maintainFocus();
 
     const handleActivity = (e) => {
-      if (isPrintModalOpen || isCancelModalOpen) return;
+      if (mode === 'camera' || isPrintModalOpen || isCancelModalOpen) return;
       if (e?.target?.closest && e.target.closest('[role="dialog"], select, option, input, textarea, button, .modal, .fixed')) {
         return;
       }
@@ -95,14 +96,18 @@ export default function GatePage() {
       if (isPrintModalOpen || isCancelModalOpen) return;
       if (e.key === 'F2') {
         e.preventDefault();
-        setMode((prev) => (prev === 'scanner' ? 'manual' : 'scanner'));
+        setMode((prev) => (prev === 'scanner' ? 'camera' : prev === 'camera' ? 'manual' : 'scanner'));
         setLookedUpStudent(null);
         setLookupError('');
-      } else if (e.key === 'Escape' && mode === 'manual') {
-        setLookedUpStudent(null);
-        setLookupError('');
-        setManualCode('');
-        setTimeout(() => manualInputRef.current?.focus(), 50);
+      } else if (e.key === 'Escape') {
+        if (mode === 'camera') {
+          setMode('scanner');
+        } else if (mode === 'manual') {
+          setLookedUpStudent(null);
+          setLookupError('');
+          setManualCode('');
+          setTimeout(() => manualInputRef.current?.focus(), 50);
+        }
       }
     };
     document.addEventListener('keydown', handleGlobalKey);
@@ -427,7 +432,7 @@ export default function GatePage() {
         </div>
 
         {/* Mode Switcher Tabs */}
-        <div className="flex items-center bg-black/30 p-1 rounded-xl border border-white/10">
+        <div className="flex items-center bg-black/30 p-1 rounded-xl border border-white/10 gap-1">
           <button
             onClick={() => {
               setMode('scanner');
@@ -435,24 +440,44 @@ export default function GatePage() {
               setLookupError('');
               setTimeout(() => inputRef.current?.focus(), 50);
             }}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               mode === 'scanner'
-                ? 'bg-cyan-500 text-slate-900 shadow-md'
+                ? 'bg-cyan-500 text-slate-900 shadow-md font-bold'
                 : 'text-white/60 hover:text-white'
             }`}
           >
             <QrCode size={16} />
-            <span>ماسح QR</span>
+            <span>جهاز الباركود</span>
           </button>
+
+          <button
+            onClick={() => {
+              setMode('camera');
+              setLookedUpStudent(null);
+              setLookupError('');
+            }}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              mode === 'camera'
+                ? 'bg-cyan-500 text-slate-900 shadow-md font-bold'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Camera size={16} />
+            <span>كاميرا الموبايل</span>
+            <span className="text-[10px] bg-emerald-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full hidden sm:inline">
+              مباشر
+            </span>
+          </button>
+
           <button
             onClick={() => {
               setMode('manual');
               setScanResult(null);
               setTimeout(() => manualInputRef.current?.focus(), 50);
             }}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               mode === 'manual'
-                ? 'bg-cyan-500 text-slate-900 shadow-md'
+                ? 'bg-cyan-500 text-slate-900 shadow-md font-bold'
                 : 'text-white/60 hover:text-white'
             }`}
           >
@@ -587,6 +612,19 @@ export default function GatePage() {
                   )}
                 </div>
 
+                {/* Mobile Camera Quick Launch Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('camera');
+                    setScanResult(null);
+                  }}
+                  className="w-full -mt-2 mb-5 py-3 px-4 rounded-2xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-200 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+                >
+                  <Camera size={18} className="text-cyan-300" />
+                  <span>📱 فتح كاميرا الهاتف لمسح كروت الطلاب مباشرة</span>
+                </button>
+
                 {/* Scan Results Display */}
                 {scanResult ? (
                   <div className="text-center py-4 animate-fade-in space-y-4">
@@ -700,7 +738,20 @@ export default function GatePage() {
               </div>
             )}
 
-            {/* 2. MANUAL ENTRY MODE */}
+            {/* 2. CAMERA MODE (Mobile Phone Camera Viewfinder) */}
+            {mode === 'camera' && (
+              <MobileCameraScanner
+                onScan={processScan}
+                isProcessing={isProcessing}
+                scanResult={scanResult}
+                onClose={() => {
+                  setMode('scanner');
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+              />
+            )}
+
+            {/* 3. MANUAL ENTRY MODE */}
             {mode === 'manual' && (
               <div className="space-y-4">
                 {!lookedUpStudent ? (
