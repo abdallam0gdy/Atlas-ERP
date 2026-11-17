@@ -1868,9 +1868,9 @@ async function runSeed() {
     console.log(`✅ تم التحقق من باكدجات المراحل الدراسية (عربي / لغات).`);
 
     // ------------------------------------------------------------------------
-    // 4.5. Deduplicate and Merge Redundant Private & Package Groups
+    // 4.5. Deduplicate and Merge Redundant Groups (Package & Private)
     // ------------------------------------------------------------------------
-    console.log('🔄 فحص ودمج المجموعات المكررة (باكدج + برايفت في نفس الموعد)...');
+    console.log('🔄 فحص ودمج أي مجموعات مكررة في نفس الموعد ونفس المدرس...');
     const duplicates = await client.query(`
       SELECT g1.id as primary_id, g2.id as dup_id, g2.price_per_month as dup_price_month, g2.price_per_session as dup_price_session
       FROM groups g1
@@ -1878,14 +1878,23 @@ async function runSeed() {
                     AND g1.grade_id = g2.grade_id
                     AND g1.subject_id = g2.subject_id
                     AND g1.schedule::text = g2.schedule::text
-                    AND g1.id != g2.id
-      WHERE EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g1.id)
-        AND NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g2.id)
+                    AND g1.id < g2.id
     `);
 
     let mergedDupsCount = 0;
     for (const dup of duplicates.rows) {
+      // 1. Re-link packages
+      await client.query(`
+        INSERT INTO package_groups (package_id, group_id)
+        SELECT package_id, $1 FROM package_groups WHERE group_id = $2
+        ON CONFLICT (package_id, group_id) DO NOTHING
+      `, [dup.primary_id, dup.dup_id]);
+      await client.query(`DELETE FROM package_groups WHERE group_id = $1`, [dup.dup_id]);
+
+      // 2. Re-point subscriptions
       await client.query(`UPDATE student_subscriptions SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+
+      // 3. Re-point enrollments
       await client.query(`
         UPDATE group_enrollments 
         SET group_id = $1 
@@ -1893,9 +1902,12 @@ async function runSeed() {
           AND student_id NOT IN (SELECT student_id FROM group_enrollments WHERE group_id = $1)
       `, [dup.primary_id, dup.dup_id]);
       await client.query(`DELETE FROM group_enrollments WHERE group_id = $1`, [dup.dup_id]);
+
+      // 4. Re-point attendance logs & booklet reservations
       await client.query(`UPDATE attendance_logs SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
       await client.query(`UPDATE booklet_reservations SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
 
+      // 5. Transfer pricing
       const pMonth = Number(dup.dup_price_month || 0);
       const pSession = Number(dup.dup_price_session || 0);
       if (pMonth > 0 || pSession > 0) {
@@ -1907,12 +1919,12 @@ async function runSeed() {
         `, [pMonth, pSession, dup.primary_id]);
       }
 
-      await client.query(`DELETE FROM package_groups WHERE group_id = $1`, [dup.dup_id]);
+      // 6. Delete duplicate
       await client.query(`DELETE FROM groups WHERE id = $1`, [dup.dup_id]);
       mergedDupsCount++;
     }
     if (mergedDupsCount > 0) {
-      console.log(`✅ تم دمج وحذف ${mergedDupsCount} مجموعة مكررة بنجاح بدون فقدان أي بيانات اشتراكات أو حضور!`);
+      console.log(`✅ تم دمج وحذف ${mergedDupsCount} مجموعة مكررة بنجاح بدون فقدان أي بيانات!`);
     }
 
     // ------------------------------------------------------------------------
@@ -1934,10 +1946,13 @@ async function runSeed() {
       const priceMonth = Number(gDef.price_per_month || 0);
       const priceSession = Number(gDef.price_per_session || 0);
 
-      // Check if group already exists for this grade, subject, teacher, and name
+      // Check if group already exists for this grade, subject, teacher, and name (or matching schedule)
       const existGrp = await client.query(
-        `SELECT id FROM groups WHERE grade_id = $1 AND teacher_id = $2 AND subject_id = $3 AND name = $4`,
-        [grade.id, teacherId, subjectId, gDef.name]
+        `SELECT id FROM groups 
+         WHERE grade_id = $1 AND teacher_id = $2 AND subject_id = $3 
+           AND (name = $4 OR schedule::text = $5)
+         ORDER BY (name = $4) DESC, id ASC LIMIT 1`,
+        [grade.id, teacherId, subjectId, gDef.name, JSON.stringify(gDef.schedule)]
       );
 
       let groupId;
@@ -2008,8 +2023,11 @@ async function runSeed() {
       }
 
       const existGrp = await client.query(
-        `SELECT id FROM groups WHERE grade_id = $1 AND teacher_id = $2 AND subject_id = $3 AND name = $4`,
-        [grade.id, teacherId, subjectId, pDef.name]
+        `SELECT id FROM groups 
+         WHERE grade_id = $1 AND teacher_id = $2 AND subject_id = $3 
+           AND (name = $4 OR schedule::text = $5)
+         ORDER BY (name = $4) DESC, id ASC LIMIT 1`,
+        [grade.id, teacherId, subjectId, pDef.name, JSON.stringify(pDef.schedule)]
       );
 
       const priceMonth = Number(pDef.price_per_month || 0);
