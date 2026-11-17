@@ -157,44 +157,52 @@ const StudentRow = memo(function StudentRow({
       </td>
 
       {/* Quick Actions */}
-      <td className="py-2.5 px-3 whitespace-nowrap text-center w-[165px] min-w-[165px]" onClick={(e) => e.stopPropagation()}>
-        <div className="inline-flex items-center justify-center gap-1.5 min-w-max">
+      <td
+        className="py-2.5 px-3 whitespace-nowrap text-center w-[170px] min-w-[170px] max-w-[170px]"
+        style={{ width: '170px', minWidth: '170px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="inline-flex items-center justify-center gap-1.5 w-max min-w-[145px]">
           <button
             type="button"
             onClick={() => onNavigate(student.id)}
-            className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs"
+            className="w-8 h-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] aspect-square rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs"
+            style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px', flexShrink: 0 }}
             title="فتح ملف الطالب"
           >
-            <Eye className="w-4 h-4 shrink-0 pointer-events-none" />
+            <Eye size={16} className="shrink-0 pointer-events-none" />
           </button>
           <button
             type="button"
             onClick={() => onEdit(student)}
-            className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 hover:border-amber-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs"
+            className="w-8 h-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] aspect-square rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 hover:border-amber-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs"
+            style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px', flexShrink: 0 }}
             title="تعديل سريع لبيانات الطالب"
           >
-            <Edit className="w-4 h-4 shrink-0 pointer-events-none" />
+            <Edit size={16} className="shrink-0 pointer-events-none" />
           </button>
           <button
             type="button"
             onClick={() => onPrintSticker(student)}
             disabled={printingId === student.id}
-            className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-indigo-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+            className="w-8 h-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] aspect-square rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-indigo-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+            style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px', flexShrink: 0 }}
             title="طباعة استيكر الباركود / QR"
           >
             {printingId === student.id ? (
-              <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0 pointer-events-none" />
+              <Loader2 size={16} className="animate-spin text-indigo-600 shrink-0 pointer-events-none" />
             ) : (
-              <QrCode className="w-4 h-4 shrink-0 pointer-events-none" />
+              <QrCode size={16} className="shrink-0 pointer-events-none" />
             )}
           </button>
           <button
             type="button"
             onClick={() => onDelete(student)}
-            className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs"
+            className="w-8 h-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] aspect-square rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 inline-flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs"
+            style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px', flexShrink: 0 }}
             title={`حذف الطالب ${student.full_name}`}
           >
-            <Trash2 className="w-4 h-4 shrink-0 pointer-events-none" />
+            <Trash2 size={16} className="shrink-0 pointer-events-none" />
           </button>
         </div>
       </td>
@@ -858,7 +866,7 @@ export default function StudentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[1150px] text-right border-collapse">
+            <table className="w-full min-w-[1250px] text-right border-collapse">
               <thead>
                 <tr style={{ background: '#0C3C82' }}>
                   <th className="text-white text-xs font-semibold py-3 px-3.5 whitespace-nowrap">
@@ -885,7 +893,10 @@ export default function StudentsPage() {
                   <th className="text-white text-xs font-semibold py-3 px-3.5 whitespace-nowrap">
                     الحالة
                   </th>
-                  <th className="text-white text-xs font-semibold py-3 px-3 text-center whitespace-nowrap w-[165px] min-w-[165px]">
+                  <th
+                    className="text-white text-xs font-semibold py-3 px-3 text-center whitespace-nowrap w-[170px] min-w-[170px] max-w-[170px]"
+                    style={{ width: '170px', minWidth: '170px' }}
+                  >
                     إجراءات سريعة
                   </th>
                 </tr>
