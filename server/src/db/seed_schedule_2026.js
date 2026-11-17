@@ -1871,57 +1871,62 @@ async function runSeed() {
     // 4.5. Deduplicate and Merge Redundant Groups (Package & Private)
     // ------------------------------------------------------------------------
     console.log('🔄 فحص ودمج أي مجموعات مكررة في نفس الموعد ونفس المدرس...');
-    const duplicates = await client.query(`
-      SELECT g1.id as primary_id, g2.id as dup_id, g2.price_per_month as dup_price_month, g2.price_per_session as dup_price_session
-      FROM groups g1
-      JOIN groups g2 ON g1.teacher_id = g2.teacher_id
-                    AND g1.grade_id = g2.grade_id
-                    AND g1.subject_id = g2.subject_id
-                    AND g1.schedule::text = g2.schedule::text
-                    AND g1.id < g2.id
-    `);
-
     let mergedDupsCount = 0;
-    for (const dup of duplicates.rows) {
-      // 1. Re-link packages
-      await client.query(`
-        INSERT INTO package_groups (package_id, group_id)
-        SELECT package_id, $1 FROM package_groups WHERE group_id = $2
-        ON CONFLICT (package_id, group_id) DO NOTHING
-      `, [dup.primary_id, dup.dup_id]);
-      await client.query(`DELETE FROM package_groups WHERE group_id = $1`, [dup.dup_id]);
+    while (true) {
+      const duplicates = await client.query(`
+        SELECT g1.id as primary_id, g2.id as dup_id, g2.price_per_month as dup_price_month, g2.price_per_session as dup_price_session
+        FROM groups g1
+        JOIN groups g2 ON g1.teacher_id = g2.teacher_id
+                      AND g1.grade_id = g2.grade_id
+                      AND g1.subject_id = g2.subject_id
+                      AND g1.schedule::text = g2.schedule::text
+                      AND g1.id < g2.id
+        LIMIT 100
+      `);
 
-      // 2. Re-point subscriptions
-      await client.query(`UPDATE student_subscriptions SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+      if (duplicates.rows.length === 0) break;
 
-      // 3. Re-point enrollments
-      await client.query(`
-        UPDATE group_enrollments 
-        SET group_id = $1 
-        WHERE group_id = $2
-          AND student_id NOT IN (SELECT student_id FROM group_enrollments WHERE group_id = $1)
-      `, [dup.primary_id, dup.dup_id]);
-      await client.query(`DELETE FROM group_enrollments WHERE group_id = $1`, [dup.dup_id]);
-
-      // 4. Re-point attendance logs & booklet reservations
-      await client.query(`UPDATE attendance_logs SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
-      await client.query(`UPDATE booklet_reservations SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
-
-      // 5. Transfer pricing
-      const pMonth = Number(dup.dup_price_month || 0);
-      const pSession = Number(dup.dup_price_session || 0);
-      if (pMonth > 0 || pSession > 0) {
+      for (const dup of duplicates.rows) {
+        // 1. Re-link packages
         await client.query(`
-          UPDATE groups 
-          SET price_per_month = GREATEST(price_per_month, $1),
-              price_per_session = GREATEST(price_per_session, $2)
-          WHERE id = $3
-        `, [pMonth, pSession, dup.primary_id]);
-      }
+          INSERT INTO package_groups (package_id, group_id)
+          SELECT package_id, $1 FROM package_groups WHERE group_id = $2
+          ON CONFLICT (package_id, group_id) DO NOTHING
+        `, [dup.primary_id, dup.dup_id]);
+        await client.query(`DELETE FROM package_groups WHERE group_id = $1`, [dup.dup_id]);
 
-      // 6. Delete duplicate
-      await client.query(`DELETE FROM groups WHERE id = $1`, [dup.dup_id]);
-      mergedDupsCount++;
+        // 2. Re-point subscriptions
+        await client.query(`UPDATE student_subscriptions SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+
+        // 3. Re-point enrollments
+        await client.query(`
+          UPDATE group_enrollments 
+          SET group_id = $1 
+          WHERE group_id = $2
+            AND student_id NOT IN (SELECT student_id FROM group_enrollments WHERE group_id = $1)
+        `, [dup.primary_id, dup.dup_id]);
+        await client.query(`DELETE FROM group_enrollments WHERE group_id = $1`, [dup.dup_id]);
+
+        // 4. Re-point attendance logs & booklet reservations
+        await client.query(`UPDATE attendance_logs SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+        await client.query(`UPDATE booklet_reservations SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+
+        // 5. Transfer pricing
+        const pMonth = Number(dup.dup_price_month || 0);
+        const pSession = Number(dup.dup_price_session || 0);
+        if (pMonth > 0 || pSession > 0) {
+          await client.query(`
+            UPDATE groups 
+            SET price_per_month = GREATEST(price_per_month, $1),
+                price_per_session = GREATEST(price_per_session, $2)
+            WHERE id = $3
+          `, [pMonth, pSession, dup.primary_id]);
+        }
+
+        // 6. Delete duplicate
+        await client.query(`DELETE FROM groups WHERE id = $1`, [dup.dup_id]);
+        mergedDupsCount++;
+      }
     }
     if (mergedDupsCount > 0) {
       console.log(`✅ تم دمج وحذف ${mergedDupsCount} مجموعة مكررة بنجاح بدون فقدان أي بيانات!`);
