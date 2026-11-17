@@ -1690,7 +1690,7 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
     const fetchGroups = async () => {
       setLoadingGroups(true);
       try {
-        const { data } = await api.get('/groups?status=active&is_private=true');
+        const { data } = await api.get('/groups?status=active');
         if (isMounted && Array.isArray(data?.data)) {
           setFreshGroups(data.data);
         }
@@ -1716,11 +1716,11 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
 
   const activeGroupSource = freshGroups.length > 0 ? freshGroups : allGroups;
 
-  // Filter groups STRICTLY by student's grade, private only (not in any package), and not already enrolled
+  // Filter groups STRICTLY by student's grade, accepting private or in system, and not already enrolled
   const availableGroups = useMemo(() => {
     if (!student?.grade_id) return [];
     return activeGroupSource.filter(
-      (g) => g.grade_id === student.grade_id && (g.is_private === true || !g.is_in_package) && !existingGroupIds.includes(g.id)
+      (g) => g.grade_id === student.grade_id && (g.is_private === true || Number(g.price_per_month) > 0 || !g.is_in_package) && !existingGroupIds.includes(g.id)
     );
   }, [activeGroupSource, student?.grade_id, existingGroupIds]);
 
@@ -1851,7 +1851,7 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
                 <span className="px-2 py-0.5 rounded-md bg-white/20 text-white font-bold text-[11px]">
                   {student?.education_type === 'LANGUAGES' ? '🌐 لغات / تجريبي' : '🏛️ حكومي / عربي'}
                 </span>
-                <span className="text-amber-300 font-bold">• مجموعات خاصة خارج الباكدج</span>
+                <span className="text-amber-300 font-bold">• المجموعات المتاحة للاشتراك الخاص / الفردي</span>
               </p>
             </div>
           </div>
@@ -2011,19 +2011,35 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
                     >
                       {/* Top Badges */}
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span
-                          className="text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1.5"
-                          style={{
-                            backgroundColor: `${group.subject_color || '#0C3C82'}15`,
-                            color: group.subject_color || '#0C3C82',
-                          }}
-                        >
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: group.subject_color || '#0C3C82' }}
-                          />
-                          <span>{group.subject_name || 'عام'}</span>
-                        </span>
+                            className="text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1.5"
+                            style={{
+                              backgroundColor: `${group.subject_color || '#0C3C82'}15`,
+                              color: group.subject_color || '#0C3C82',
+                            }}
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: group.subject_color || '#0C3C82' }}
+                            />
+                            <span>{group.subject_name || 'عام'}</span>
+                          </span>
+
+                          {group.is_in_package && (Number(group.price_per_month) > 0 || group.is_private) ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-[#0C3C82] border border-blue-200">
+                              📦 باكدج + 💎 برايفت
+                            </span>
+                          ) : group.is_in_package ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200">
+                              📦 باكدج
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                              💎 مجموعة خاصة
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                           {group.grade_name || 'عام'}
                         </span>

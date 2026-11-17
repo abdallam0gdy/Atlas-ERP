@@ -40,6 +40,34 @@ const formatScheduleText = (schedule) => {
     .join(' ، ');
 };
 
+const renderSystemBadge = (item) => {
+  const inPkg = Boolean(item.is_in_package);
+  const inPriv = Boolean(item.is_private || Number(item.price_per_month) > 0);
+  const price = Number(item.price_per_month) || 0;
+
+  if (inPkg && inPriv) {
+    return (
+      <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-blue-50 text-[#0C3C82] border border-blue-200 inline-flex items-center gap-1">
+        <span>📦 باكدج + 💎 برايفت</span>
+        {price > 0 && <span className="text-[10px] text-blue-700">({price} ج.م)</span>}
+      </span>
+    );
+  }
+  if (inPriv) {
+    return (
+      <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+        <span>💎 برايفت</span>
+        {price > 0 && <span className="text-[10px] text-amber-700">({price} ج.م)</span>}
+      </span>
+    );
+  }
+  return (
+    <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200">
+      📦 باكدج
+    </span>
+  );
+};
+
 export default function InfoCenterPage() {
   const navigate = useNavigate();
 
@@ -152,8 +180,8 @@ export default function InfoCenterPage() {
 
   const teacherFilteredGroups = useMemo(() => {
     return teacherAllGroups.filter((g) => {
-      if (teacherGroupType === 'PACKAGE' && g.is_private) return false;
-      if (teacherGroupType === 'PRIVATE' && !g.is_private) return false;
+      if (teacherGroupType === 'PACKAGE' && !g.is_in_package) return false;
+      if (teacherGroupType === 'PRIVATE' && !(g.is_private || Number(g.price_per_month) > 0)) return false;
       return true;
     });
   }, [teacherAllGroups, teacherGroupType]);
@@ -166,8 +194,8 @@ export default function InfoCenterPage() {
     const subjectsSet = new Set();
 
     for (const g of teacherAllGroups) {
-      if (g.is_private) privCount++;
-      else pkgCount++;
+      if (g.is_in_package) pkgCount++;
+      if (g.is_private || Number(g.price_per_month) > 0) privCount++;
       totalStudents += parseInt(g.student_count, 10) || 0;
       if (g.grade_name) gradesSet.add(g.grade_name);
       if (g.subject_name) subjectsSet.add(g.subject_name);
@@ -232,13 +260,14 @@ export default function InfoCenterPage() {
     const subjectsMap = new Map();
 
     for (const g of gradeAllGroups) {
-      if (g.is_private) {
-        privTotal++;
-      } else {
+      if (g.is_in_package) {
         pkgTotal++;
         const types = Array.isArray(g.package_education_types) ? g.package_education_types : [];
         if (types.includes('PUBLIC')) pkgPublic++;
         if (types.includes('LANGUAGES')) pkgLang++;
+      }
+      if (g.is_private || Number(g.price_per_month) > 0) {
+        privTotal++;
       }
       if (g.teacher_id) teachersSet.add(g.teacher_id);
       if (g.subject_id && g.subject_name) {
@@ -260,15 +289,15 @@ export default function InfoCenterPage() {
   const gradeFilteredGroups = useMemo(() => {
     return gradeAllGroups.filter((g) => {
       if (gradeTrackFilter === 'PACKAGE_PUBLIC') {
-        if (g.is_private) return false;
+        if (!g.is_in_package) return false;
         const types = Array.isArray(g.package_education_types) ? g.package_education_types : [];
         if (!types.includes('PUBLIC')) return false;
       } else if (gradeTrackFilter === 'PACKAGE_LANG') {
-        if (g.is_private) return false;
+        if (!g.is_in_package) return false;
         const types = Array.isArray(g.package_education_types) ? g.package_education_types : [];
         if (!types.includes('LANGUAGES')) return false;
       } else if (gradeTrackFilter === 'PRIVATE') {
-        if (!g.is_private) return false;
+        if (!(g.is_private || Number(g.price_per_month) > 0)) return false;
       }
 
       if (gradeSubjectFilter && g.subject_id !== gradeSubjectFilter) return false;
@@ -357,8 +386,8 @@ export default function InfoCenterPage() {
 
     for (const g of groups) {
       // Type Filter
-      if (dayTypeFilter === 'PACKAGE' && g.is_private) continue;
-      if (dayTypeFilter === 'PRIVATE' && !g.is_private) continue;
+      if (dayTypeFilter === 'PACKAGE' && !g.is_in_package) continue;
+      if (dayTypeFilter === 'PRIVATE' && !(g.is_private || Number(g.price_per_month) > 0)) continue;
 
       // Track Filter
       if (dayTrackFilter !== 'ALL') {
@@ -448,8 +477,8 @@ export default function InfoCenterPage() {
         let privCount = 0;
         const teachersSet = new Set();
         slots.forEach((s) => {
-          if (s.is_private) privCount++;
-          else pkgCount++;
+          if (s.is_private || Number(s.price_per_month) > 0) privCount++;
+          if (s.is_in_package) pkgCount++;
           if (s.teacher_name) teachersSet.add(s.teacher_name);
         });
 
@@ -472,8 +501,8 @@ export default function InfoCenterPage() {
     const gradesSet = new Set();
 
     dayFilteredSlots.forEach((s) => {
-      if (s.is_private) privCount++;
-      else pkgCount++;
+      if (s.is_private || Number(s.price_per_month) > 0) privCount++;
+      if (s.is_in_package) pkgCount++;
       if (s.teacher_name) teachersSet.add(s.teacher_name);
       if (s.grade_name) gradesSet.add(s.grade_name);
     });
@@ -519,13 +548,21 @@ export default function InfoCenterPage() {
   // ============================================================================
   // PRINT CONFIGURATION (Dynamic per mode)
   // ============================================================================
+  const formatSystemType = (item) => {
+    const inPkg = Boolean(item.is_in_package);
+    const inPriv = Boolean(item.is_private || Number(item.price_per_month) > 0);
+    if (inPkg && inPriv) return 'باكدج + برايفت';
+    if (inPriv) return 'برايفت';
+    return 'باكدج';
+  };
+
   const printColumns = useMemo(() => {
     if (activeMode === 'TEACHER') {
       return [
         { header: 'المرحلة الدراسية', accessor: 'grade_name' },
         { header: 'المادة', accessor: 'subject_name' },
         { header: 'اسم المجموعة', render: (g) => g.name_ar || g.name },
-        { header: 'النظام', render: (g) => (g.is_private ? 'برايفت' : 'باكدج') },
+        { header: 'النظام', render: (g) => formatSystemType(g) },
         { header: 'المواعيد', render: (g) => formatScheduleText(g.schedule) },
         {
           header: 'السعر الشهري',
@@ -539,7 +576,7 @@ export default function InfoCenterPage() {
         { header: 'المادة الدراسية', accessor: 'subject_name' },
         { header: 'المدرس', accessor: 'teacher_name' },
         { header: 'اسم المجموعة', render: (g) => g.name_ar || g.name },
-        { header: 'النظام', render: (g) => (g.is_private ? 'برايفت' : 'باكدج') },
+        { header: 'النظام', render: (g) => formatSystemType(g) },
         { header: 'المواعيد', render: (g) => formatScheduleText(g.schedule) },
         {
           header: 'السعر الشهري',
@@ -556,7 +593,7 @@ export default function InfoCenterPage() {
         { header: 'المدرس', accessor: 'teacher_name' },
         { header: 'المرحلة الدراسية', accessor: 'grade_name' },
         { header: 'اسم المجموعة', render: (s) => s.name_ar || s.name },
-        { header: 'النظام', render: (s) => (s.is_private ? 'برايفت' : 'باكدج') },
+        { header: 'النظام', render: (s) => formatSystemType(s) },
         { header: 'القاعة', render: (s) => s.classroom_name || '—' },
         {
           header: 'السعر الشهري',
@@ -1238,15 +1275,7 @@ export default function InfoCenterPage() {
                                   {slot.name_ar || slot.name}
                                 </td>
                                 <td className="py-3 px-4 whitespace-nowrap">
-                                  {slot.is_private ? (
-                                    <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-amber-50 text-amber-800 border border-amber-200">
-                                      💎 برايفت
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                      📦 باكدج
-                                    </span>
-                                  )}
+                                  {renderSystemBadge(slot)}
                                 </td>
                                 <td className="py-3 px-4 whitespace-nowrap">
                                   {slot.classroom_name ? (
@@ -1580,15 +1609,7 @@ export default function InfoCenterPage() {
                                 {g.grade_name}
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
-                                {g.is_private ? (
-                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                    💎 برايفت
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    📦 باكدج
-                                  </span>
-                                )}
+                                {renderSystemBadge(g)}
                               </td>
                               <td className="py-3 px-4">
                                 <p className="font-bold text-xs sm:text-sm text-slate-800">
@@ -1664,15 +1685,7 @@ export default function InfoCenterPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                {slot.is_private ? (
-                                  <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                    💎 برايفت ({Number(slot.price_per_month)} ج.م)
-                                  </span>
-                                ) : (
-                                  <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    📦 باكدج
-                                  </span>
-                                )}
+                                {renderSystemBadge(slot)}
                               </div>
                             </div>
                           ))}
@@ -1901,15 +1914,7 @@ export default function InfoCenterPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
-                                {g.is_private ? (
-                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                    💎 برايفت ({Number(g.price_per_month)} ج.م/شهر)
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    📦 باكدج
-                                  </span>
-                                )}
+                                {renderSystemBadge(g)}
                               </div>
                             </div>
 
@@ -1978,15 +1983,7 @@ export default function InfoCenterPage() {
                                   {slot.name_ar || slot.name}
                                 </td>
                                 <td className="py-3 px-4 whitespace-nowrap">
-                                  {slot.is_private ? (
-                                    <span className="px-2 py-0.5 rounded font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                      💎 برايفت ({Number(slot.price_per_month)} ج.م)
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                      📦 ضمن الباكدج
-                                    </span>
-                                  )}
+                                  {renderSystemBadge(slot)}
                                 </td>
                               </tr>
                             ))}

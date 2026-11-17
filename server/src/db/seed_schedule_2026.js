@@ -121,1257 +121,963 @@ const TEACHERS_LIST = [
 // ============================================================================
 // packages: ['PUBLIC', 'LANGUAGES'] | ['PUBLIC'] | ['LANGUAGES']
 const GROUPS_LIST = [
-  // ==========================================================================
-  // المرحلة: الصف الرابع الابتدائي (gradeOrder: 4)
-  // ==========================================================================
   {
     gradeOrder: 4,
-    subjectKey: 'ARABIC',
-    teacherNum: 1, // مروان
-    name: 'اللغة العربية - ا/ مروان',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '16:00', end_time: '17:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 1,
+    name: "اللغة العربية - ا/ مروان",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"16:00","end_time":"17:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'ARABIC',
-    teacherNum: 2, // دنيا
-    name: 'اللغة العربية - ميس/ دنيا',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '16:00', end_time: '17:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 2,
+    name: "اللغة العربية - ميس/ دنيا",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"16:00","end_time":"17:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'ENGLISH',
-    teacherNum: 9, // آلاء علاء
-    name: 'اللغة الانجليزية - ميس/ الاء علاء',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'friday', start_time: '14:00', end_time: '15:00' },
-      { day: 'saturday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 9,
+    name: "اللغة الانجليزية - ميس/ الاء علاء",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"friday","start_time":"14:00","end_time":"15:00"},{"day":"saturday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'MATH_AR',
-    teacherNum: 16, // أحمد محمود
-    name: 'الرياضيات - ا/ احمد محمود',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '16:00', end_time: '17:00' },
-      { day: 'wednesday', start_time: '16:00', end_time: '17:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 16,
+    name: "الرياضيات - ا/ احمد محمود",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"16:00","end_time":"17:00"},{"day":"wednesday","start_time":"16:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'MATH_AR',
-    teacherNum: 17, // أدهم هاني
-    name: 'الرياضيات - ا/ ادهم هاني',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '16:00', end_time: '17:00' },
-      { day: 'wednesday', start_time: '16:00', end_time: '17:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 17,
+    name: "الرياضيات - ا/ ادهم هاني",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"16:00","end_time":"17:00"},{"day":"wednesday","start_time":"16:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (لغات) - ميس/ اسماء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '15:00', end_time: '16:30' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 21,
+    name: "Math (لغات) - ميس/ اسماء",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"15:00","end_time":"16:30"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'MATH_EN',
-    teacherNum: 22, // أحمد نبيل
-    name: 'Math (لغات) - ا/ احمد نبيل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 22,
+    name: "Math (لغات) - ا/ احمد نبيل",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"wednesday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم - ا/ حازم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '17:00', end_time: '18:00' },
-      { day: 'wednesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 25,
+    name: "العلوم - ا/ حازم",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"18:00"},{"day":"wednesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 26, // أحمد عثمان
-    name: 'العلوم - ا/ احمد عثمان',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 26,
+    name: "العلوم - ا/ احمد عثمان",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 29, // إيناس
-    name: 'Science (لغات) - ميس/ ايناس',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 29,
+    name: "Science (لغات) - ميس/ ايناس",
+    packages: ["LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 30, // أدهم إمبابي
-    name: 'Science (لغات) - ا/ ادهم امبابي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '15:00', end_time: '16:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 30,
+    name: "Science (لغات) - ا/ ادهم امبابي",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"15:00","end_time":"16:30"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'SOCIAL',
-    teacherNum: 33, // شيماء
-    name: 'الدراسات الاجتماعية - ميس/ شيماء',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '17:00', end_time: '18:00' },
-      { day: 'thursday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 33,
+    name: "الدراسات الاجتماعية - ميس/ شيماء",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"18:00"},{"day":"thursday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'SOCIAL',
-    teacherNum: 34, // محمود رشاد
-    name: 'الدراسات الاجتماعية - ا/ محمود رشاد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '17:00', end_time: '18:00' },
-      { day: 'thursday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 34,
+    name: "الدراسات الاجتماعية - ا/ محمود رشاد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"18:00"},{"day":"thursday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'IT_AR',
-    teacherNum: 38, // هبة
-    name: 'تكنولوجيا المعلومات (عربي) - ميس/ هبة',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "IT_AR",
+    teacherNum: 38,
+    name: "تكنولوجيا المعلومات (عربي) - ميس/ هبة",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (لغات) - ميس/ نهلة',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '16:00', end_time: '17:00' },
-    ],
+    subjectKey: "ICT_EN",
+    teacherNum: 39,
+    name: "ICT (لغات) - ميس/ نهلة",
+    packages: ["LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"tuesday","start_time":"16:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 4,
-    subjectKey: 'RELIGION',
-    teacherNum: 8, // صفية
-    name: 'التربية الدينية - ا/ صفية',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
-  },
-
-  // ==========================================================================
-  // المرحلة: الصف الخامس الابتدائي (gradeOrder: 5)
-  // ==========================================================================
-  {
-    gradeOrder: 5,
-    subjectKey: 'ARABIC',
-    teacherNum: 1, // مروان
-    name: 'اللغة العربية - ا/ مروان',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "RELIGION",
+    teacherNum: 8,
+    name: "التربية الدينية - ا/ صفية",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'ARABIC',
-    teacherNum: 2, // دنيا
-    name: 'اللغة العربية - ميس/ دنيا',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 1,
+    name: "اللغة العربية - ا/ مروان",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 100,
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'ENGLISH',
-    teacherNum: 9, // آلاء علاء
-    name: 'اللغة الانجليزية - ميس/ الاء علاء',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'friday', start_time: '15:00', end_time: '16:00' },
-      { day: 'saturday', start_time: '15:00', end_time: '17:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 2,
+    name: "اللغة العربية - ميس/ دنيا",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'ENGLISH',
-    teacherNum: 10, // سالي
-    name: 'اللغة الانجليزية - ا/ سالي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '18:30', end_time: '19:30' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 9,
+    name: "اللغة الانجليزية - ميس/ الاء علاء",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"friday","start_time":"15:00","end_time":"16:00"},{"day":"saturday","start_time":"15:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'MATH_AR',
-    teacherNum: 16, // أحمد محمود
-    name: 'الرياضيات - ا/ احمد محمود',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '17:00', end_time: '18:00' },
-      { day: 'wednesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 10,
+    name: "اللغة الانجليزية - ا/ سالي",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"18:30","end_time":"19:30"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'MATH_AR',
-    teacherNum: 17, // أدهم هاني
-    name: 'الرياضيات - ا/ ادهم هاني',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '17:00', end_time: '18:00' },
-      { day: 'wednesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 16,
+    name: "الرياضيات - ا/ احمد محمود",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"18:00"},{"day":"wednesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (لغات) - ميس/ اسماء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 17,
+    name: "الرياضيات - ا/ ادهم هاني",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"18:00"},{"day":"wednesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'MATH_EN',
-    teacherNum: 22, // أحمد نبيل
-    name: 'Math (لغات) - ا/ احمد نبيل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '19:00', end_time: '20:30' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 21,
+    name: "Math (لغات) - ميس/ اسماء",
+    packages: ["LANGUAGES"],
+    price_per_month: 40,
+    schedule: [{"day":"wednesday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم - ا/ حازم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '18:00', end_time: '19:00' },
-      { day: 'wednesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 22,
+    name: "Math (لغات) - ا/ احمد نبيل",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"wednesday","start_time":"19:00","end_time":"20:30"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 26, // أحمد عثمان
-    name: 'العلوم - ا/ احمد عثمان',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '20:00', end_time: '21:00' },
-      { day: 'thursday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 25,
+    name: "العلوم - ا/ حازم",
+    packages: ["PUBLIC"],
+    price_per_month: 150,
+    schedule: [{"day":"sunday","start_time":"18:00","end_time":"19:00"},{"day":"wednesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 29, // إيناس
-    name: 'Science (لغات) - ميس/ ايناس',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '19:00', end_time: '20:30' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 26,
+    name: "العلوم - ا/ احمد عثمان",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"20:00","end_time":"21:00"},{"day":"thursday","start_time":"20:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 30, // أدهم إمبابي
-    name: 'Science (لغات) - ا/ ادهم امبابي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 29,
+    name: "Science (لغات) - ميس/ ايناس",
+    packages: ["LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"sunday","start_time":"19:00","end_time":"20:30"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'SOCIAL',
-    teacherNum: 33, // شيماء
-    name: 'الدراسات الاجتماعية - ميس/ شيماء',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '20:00' },
-      { day: 'thursday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 30,
+    name: "Science (لغات) - ا/ ادهم امبابي",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'SOCIAL',
-    teacherNum: 34, // محمود رشاد
-    name: 'الدراسات الاجتماعية - ا/ محمود رشاد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '20:00' },
-      { day: 'thursday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 33,
+    name: "الدراسات الاجتماعية - ميس/ شيماء",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:00"},{"day":"thursday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'IT_AR',
-    teacherNum: 38, // هبة
-    name: 'تكنولوجيا المعلومات (عربي) - ميس/ هبة',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 34,
+    name: "الدراسات الاجتماعية - ا/ محمود رشاد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:00"},{"day":"thursday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (لغات) - ميس/ نهلة',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "IT_AR",
+    teacherNum: 38,
+    name: "تكنولوجيا المعلومات (عربي) - ميس/ هبة",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 5,
-    subjectKey: 'RELIGION',
-    teacherNum: 8, // صفية
-    name: 'التربية الدينية - ا/ صفية',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "ICT_EN",
+    teacherNum: 39,
+    name: "ICT (لغات) - ميس/ نهلة",
+    packages: ["LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
-
-  // ==========================================================================
-  // المرحلة: الصف السادس الابتدائي (gradeOrder: 6)
-  // ==========================================================================
   {
-    gradeOrder: 6,
-    subjectKey: 'ARABIC',
-    teacherNum: 1, // مروان
-    name: 'اللغة العربية - ا/ مروان',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    gradeOrder: 5,
+    subjectKey: "RELIGION",
+    teacherNum: 8,
+    name: "التربية الدينية - ا/ صفية",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'ARABIC',
-    teacherNum: 2, // دنيا
-    name: 'اللغة العربية - ميس/ دنيا',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 1,
+    name: "اللغة العربية - ا/ مروان",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'ENGLISH',
-    teacherNum: 9, // آلاء علاء
-    name: 'اللغة الانجليزية - ميس/ الاء علاء',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'friday', start_time: '16:00', end_time: '17:00' },
-      { day: 'saturday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 2,
+    name: "اللغة العربية - ميس/ دنيا",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'ENGLISH',
-    teacherNum: 10, // سالي
-    name: 'اللغة الانجليزية - ا/ سالي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '20:00' },
-      { day: 'thursday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 9,
+    name: "اللغة الانجليزية - ميس/ الاء علاء",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"friday","start_time":"16:00","end_time":"17:00"},{"day":"saturday","start_time":"19:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'MATH_AR',
-    teacherNum: 16, // أحمد محمود
-    name: 'الرياضيات - ا/ احمد محمود',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '18:00', end_time: '19:00' },
-      { day: 'wednesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 10,
+    name: "اللغة الانجليزية - ا/ سالي",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:00"},{"day":"thursday","start_time":"20:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'MATH_AR',
-    teacherNum: 17, // أدهم هاني
-    name: 'الرياضيات - ا/ ادهم هاني',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '18:00', end_time: '19:00' },
-      { day: 'wednesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 16,
+    name: "الرياضيات - ا/ احمد محمود",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"18:00","end_time":"19:00"},{"day":"wednesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (لغات) - ميس/ اسماء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '15:00', end_time: '16:30' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 17,
+    name: "الرياضيات - ا/ ادهم هاني",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"sunday","start_time":"18:00","end_time":"19:00"},{"day":"wednesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'MATH_EN',
-    teacherNum: 22, // أحمد نبيل
-    name: 'Math (لغات) - ا/ احمد نبيل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '19:00', end_time: '20:30' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 21,
+    name: "Math (لغات) - ميس/ اسماء",
+    packages: ["LANGUAGES"],
+    price_per_month: 40,
+    schedule: [{"day":"wednesday","start_time":"15:00","end_time":"16:30"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم - ا/ حازم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'sunday', start_time: '19:00', end_time: '20:00' },
-      { day: 'wednesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 22,
+    name: "Math (لغات) - ا/ احمد نبيل",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"19:00","end_time":"20:30"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 26, // أحمد عثمان
-    name: 'العلوم - ا/ احمد عثمان',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '17:00', end_time: '18:00' },
-      { day: 'thursday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 25,
+    name: "العلوم - ا/ حازم",
+    packages: ["PUBLIC"],
+    price_per_month: 150,
+    schedule: [{"day":"sunday","start_time":"19:00","end_time":"20:00"},{"day":"wednesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 29, // إيناس
-    name: 'Science (لغات) - ميس/ ايناس',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'thursday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 26,
+    name: "العلوم - ا/ احمد عثمان",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"18:00"},{"day":"thursday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'SOCIAL',
-    teacherNum: 33, // شيماء
-    name: 'الدراسات الاجتماعية - ميس/ شيماء',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 29,
+    name: "Science (لغات) - ميس/ ايناس",
+    packages: ["LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"thursday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'SOCIAL',
-    teacherNum: 34, // محمود رشاد
-    name: 'الدراسات الاجتماعية - ا/ محمود رشاد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 33,
+    name: "الدراسات الاجتماعية - ميس/ شيماء",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'IT_AR',
-    teacherNum: 38, // هبة
-    name: 'تكنولوجيا المعلومات (عربي) - ميس/ هبة',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'tuesday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 34,
+    name: "الدراسات الاجتماعية - ا/ محمود رشاد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (لغات) - ميس/ نهلة',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "IT_AR",
+    teacherNum: 38,
+    name: "تكنولوجيا المعلومات (عربي) - ميس/ هبة",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"tuesday","start_time":"20:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 6,
-    subjectKey: 'RELIGION',
-    teacherNum: 8, // صفية
-    name: 'التربية الدينية (عام) - ا/ صفية',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "ICT_EN",
+    teacherNum: 39,
+    name: "ICT (لغات) - ميس/ نهلة",
+    packages: ["LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"tuesday","start_time":"20:00","end_time":"21:00"}],
   },
-
-  // ==========================================================================
-  // المرحلة: الصف الأول الإعدادي (gradeOrder: 7)
-  // ==========================================================================
   {
-    gradeOrder: 7,
-    subjectKey: 'ARABIC',
-    teacherNum: 3, // محمد صلاح عربي
-    name: 'اللغة العربية (عام) - ا/ محمد صلاح عربي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '18:30', end_time: '19:30' },
-      { day: 'wednesday', start_time: '18:30', end_time: '19:30' },
-    ],
+    gradeOrder: 6,
+    subjectKey: "RELIGION",
+    teacherNum: 8,
+    name: "التربية الدينية (عام) - ا/ صفية",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"wednesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'ARABIC',
-    teacherNum: 4, // ياسمين حسن
-    name: 'اللغة العربية (أزهر) - ميس/ ياسمين حسن',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'thursday', start_time: '16:00', end_time: '17:30' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 3,
+    name: "اللغة العربية (عام) - ا/ محمد صلاح عربي",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"18:30","end_time":"19:30"},{"day":"wednesday","start_time":"18:30","end_time":"19:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SHARIA',
-    teacherNum: 6, // آلاء محمد
-    name: 'الشرعي (أزهر) - ا/ الاء محمد',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'friday', start_time: '09:00', end_time: '10:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 4,
+    name: "اللغة العربية (أزهر) - ميس/ ياسمين حسن",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"thursday","start_time":"16:00","end_time":"17:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء (عام)
-    name: 'اللغة الانجليزية (عام) - ا/ محمد علاء',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "SHARIA",
+    teacherNum: 6,
+    name: "الشرعي (أزهر) - ا/ الاء محمد",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"friday","start_time":"09:00","end_time":"10:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء (لغات)
-    name: 'اللغة الانجليزية (لغات) - ا/ محمد علاء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'friday', start_time: '10:00', end_time: '11:00' },
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (عام) - ا/ محمد علاء",
+    packages: ["PUBLIC"],
+    price_per_month: 210,
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'ENGLISH',
-    teacherNum: 12, // صبحي محمد
-    name: 'اللغة الانجليزية - ا/ صبحي محمد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (لغات) - ا/ محمد علاء",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"friday","start_time":"10:00","end_time":"11:00"},{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'FRENCH',
-    teacherNum: 15, // خالد النصيري
-    name: 'اللغة الفرنسية - مسيو/ خالد النصيري',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 12,
+    name: "اللغة الانجليزية - ا/ صبحي محمد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'MATH_AR',
-    teacherNum: 18, // محمد بكير
-    name: 'الرياضيات - ا/ محمد بكير',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '20:00' },
-      { day: 'thursday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "FRENCH",
+    teacherNum: 15,
+    name: "اللغة الفرنسية - مسيو/ خالد النصيري",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"tuesday","start_time":"20:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'MATH_AR',
-    teacherNum: 19, // محمد عادل
-    name: 'الرياضيات - ا/ محمد عادل',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '20:00' },
-      { day: 'thursday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 18,
+    name: "الرياضيات - ا/ محمد بكير",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:00"},{"day":"thursday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (لغات) - ميس/ اسماء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 19,
+    name: "الرياضيات - ا/ محمد عادل",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:00"},{"day":"thursday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'MATH_EN',
-    teacherNum: 22, // أحمد نبيل
-    name: 'Math (لغات) - ا/ احمد نبيل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '16:00', end_time: '17:30' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 21,
+    name: "Math (لغات) - ميس/ اسماء",
+    packages: ["LANGUAGES"],
+    price_per_month: 40,
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 27, // آية آدم
-    name: 'العلوم - ميس/ اية ادم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '19:00', end_time: '20:00' },
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 22,
+    name: "Math (لغات) - ا/ احمد نبيل",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"wednesday","start_time":"16:00","end_time":"17:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 26, // أحمد عثمان
-    name: 'العلوم - ا/ احمد عثمان',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '19:00', end_time: '20:00' },
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 27,
+    name: "العلوم - ميس/ اية ادم",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"19:00","end_time":"20:00"},{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 28, // أحمد عبد الله
-    name: 'العلوم - ا/ احمد عبد الله',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '19:00', end_time: '20:00' },
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 26,
+    name: "العلوم - ا/ احمد عثمان",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"19:00","end_time":"20:00"},{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 31, // إسلام عبد الجليل
-    name: 'Science (لغات) - ا/ اسلام عبد الجليل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '19:00', end_time: '20:30' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 28,
+    name: "العلوم - ا/ احمد عبد الله",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"19:00","end_time":"20:00"},{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Science (لغات) - ا/ محمد العربي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '15:00', end_time: '16:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 31,
+    name: "Science (لغات) - ا/ اسلام عبد الجليل",
+    packages: ["LANGUAGES"],
+    price_per_month: 10,
+    schedule: [{"day":"saturday","start_time":"19:00","end_time":"20:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية - ا/ محمد سعيد دراسات',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '17:30', end_time: '18:30' },
-      { day: 'wednesday', start_time: '17:30', end_time: '18:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 32,
+    name: "Science (لغات) - ا/ محمد العربي",
+    packages: ["LANGUAGES"],
+    price_per_month: 210,
+    schedule: [{"day":"saturday","start_time":"15:00","end_time":"16:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'SOCIAL',
-    teacherNum: 36, // محمود طارق
-    name: 'الدراسات الاجتماعية - ا/ محمود طارق',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '19:30', end_time: '20:30' },
-      { day: 'wednesday', start_time: '19:30', end_time: '20:30' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية - ا/ محمد سعيد دراسات",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"17:30","end_time":"18:30"},{"day":"wednesday","start_time":"17:30","end_time":"18:30"}],
   },
   {
     gradeOrder: 7,
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT - ميس/ نهلة',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 36,
+    name: "الدراسات الاجتماعية - ا/ محمود طارق",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"19:30","end_time":"20:30"},{"day":"wednesday","start_time":"19:30","end_time":"20:30"}],
   },
-
-  // ==========================================================================
-  // المرحلة: الصف الثاني الإعدادي (gradeOrder: 8)
-  // ==========================================================================
   {
-    gradeOrder: 8,
-    subjectKey: 'ARABIC',
-    teacherNum: 3, // محمد صلاح عربي
-    name: 'اللغة العربية (عام) - ا/ محمد صلاح عربي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '17:30', end_time: '18:30' },
-      { day: 'wednesday', start_time: '17:30', end_time: '18:30' },
-    ],
+    gradeOrder: 7,
+    subjectKey: "ICT_EN",
+    teacherNum: 39,
+    name: "ICT - ميس/ نهلة",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'ARABIC',
-    teacherNum: 4, // ياسمين حسن
-    name: 'اللغة العربية (أزهر) - ميس/ ياسمين حسن',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 3,
+    name: "اللغة العربية (عام) - ا/ محمد صلاح عربي",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"17:30","end_time":"18:30"},{"day":"wednesday","start_time":"17:30","end_time":"18:30"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SHARIA',
-    teacherNum: 6, // آلاء محمد
-    name: 'الشرعي (أزهر) - ا/ الاء محمد',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'friday', start_time: '10:00', end_time: '11:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 4,
+    name: "اللغة العربية (أزهر) - ميس/ ياسمين حسن",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء (عام)
-    name: 'اللغة الانجليزية (عام) - ا/ محمد علاء',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SHARIA",
+    teacherNum: 6,
+    name: "الشرعي (أزهر) - ا/ الاء محمد",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"friday","start_time":"10:00","end_time":"11:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء (لغات)
-    name: 'اللغة الانجليزية (لغات) - ا/ محمد علاء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'friday', start_time: '11:00', end_time: '12:00' },
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (عام) - ا/ محمد علاء",
+    packages: ["PUBLIC"],
+    price_per_month: 210,
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'ENGLISH',
-    teacherNum: 12, // صبحي محمد
-    name: 'اللغة الانجليزية - ا/ صبحي محمد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (لغات) - ا/ محمد علاء",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"friday","start_time":"11:00","end_time":"12:00"},{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'FRENCH',
-    teacherNum: 15, // خالد النصيري
-    name: 'اللغة الفرنسية - مسيو/ خالد النصيري',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 12,
+    name: "اللغة الانجليزية - ا/ صبحي محمد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'MATH_AR',
-    teacherNum: 19, // محمد عادل
-    name: 'الرياضيات - ا/ محمد عادل',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '20:00', end_time: '21:00' },
-      { day: 'thursday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "FRENCH",
+    teacherNum: 15,
+    name: "اللغة الفرنسية - مسيو/ خالد النصيري",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"tuesday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'MATH_AR',
-    teacherNum: 18, // محمد بكير
-    name: 'الرياضيات - ا/ محمد بكير',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '20:00', end_time: '21:00' },
-      { day: 'thursday', start_time: '20:00', end_time: '21:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 19,
+    name: "الرياضيات - ا/ محمد عادل",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"20:00","end_time":"21:00"},{"day":"thursday","start_time":"20:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'MATH_EN',
-    teacherNum: 23, // محمود الرفاعي
-    name: 'Math (لغات) - ا/ محمود الرفاعي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '19:00', end_time: '20:30' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 18,
+    name: "الرياضيات - ا/ محمد بكير",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"20:00","end_time":"21:00"},{"day":"thursday","start_time":"20:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 27, // آية آدم
-    name: 'العلوم - ميس/ اية ادم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 23,
+    name: "Math (لغات) - ا/ محمود الرفاعي",
+    packages: ["LANGUAGES"],
+    price_per_month: 260,
+    schedule: [{"day":"wednesday","start_time":"19:00","end_time":"20:30"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 28, // أحمد عبد الله
-    name: 'العلوم - ا/ احمد عبد الله',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 27,
+    name: "العلوم - ميس/ اية ادم",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 26, // أحمد عثمان
-    name: 'العلوم - ا/ احمد عثمان',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '20:00' },
-      { day: 'thursday', start_time: '19:00', end_time: '20:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 28,
+    name: "العلوم - ا/ احمد عبد الله",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 31, // إسلام عبد الجليل
-    name: 'Science (لغات) - ا/ اسلام عبد الجليل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '15:00', end_time: '16:30' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 26,
+    name: "العلوم - ا/ احمد عثمان",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:00"},{"day":"thursday","start_time":"19:00","end_time":"20:00"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية - ا/ محمد سعيد دراسات',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '16:30', end_time: '17:30' },
-      { day: 'wednesday', start_time: '16:30', end_time: '17:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 31,
+    name: "Science (لغات) - ا/ اسلام عبد الجليل",
+    packages: ["LANGUAGES"],
+    price_per_month: 10,
+    schedule: [{"day":"saturday","start_time":"15:00","end_time":"16:30"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'SOCIAL',
-    teacherNum: 36, // محمود طارق
-    name: 'الدراسات الاجتماعية - ا/ محمود طارق',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '18:30', end_time: '19:30' },
-      { day: 'wednesday', start_time: '18:30', end_time: '19:30' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية - ا/ محمد سعيد دراسات",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"16:30","end_time":"17:30"},{"day":"wednesday","start_time":"16:30","end_time":"17:30"}],
   },
   {
     gradeOrder: 8,
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT - ميس/ نهلة',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 36,
+    name: "الدراسات الاجتماعية - ا/ محمود طارق",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"18:30","end_time":"19:30"},{"day":"wednesday","start_time":"18:30","end_time":"19:30"}],
   },
-
-  // ==========================================================================
-  // المرحلة: الصف الثالث الإعدادي (gradeOrder: 9)
-  // ==========================================================================
   {
-    gradeOrder: 9,
-    subjectKey: 'ARABIC',
-    teacherNum: 3, // محمد صلاح عربي
-    name: 'اللغة العربية (عام) - ا/ محمد صلاح عربي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '16:30', end_time: '17:30' },
-      { day: 'wednesday', start_time: '16:30', end_time: '17:30' },
-    ],
+    gradeOrder: 8,
+    subjectKey: "ICT_EN",
+    teacherNum: 39,
+    name: "ICT - ميس/ نهلة",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"tuesday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'ARABIC',
-    teacherNum: 3, // محمد صلاح عربي (أزهر)
-    name: 'اللغة العربية (أزهر) - ا/ محمد صلاح عربي',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'wednesday', start_time: '14:30', end_time: '16:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 3,
+    name: "اللغة العربية (عام) - ا/ محمد صلاح عربي",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"16:30","end_time":"17:30"},{"day":"wednesday","start_time":"16:30","end_time":"17:30"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SHARIA',
-    teacherNum: 7, // إسلام جمال
-    name: 'الشرعي (أزهر) - ا/ اسلام جمال',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'thursday', start_time: '16:00', end_time: '17:30' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 3,
+    name: "اللغة العربية (أزهر) - ا/ محمد صلاح عربي",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"wednesday","start_time":"14:30","end_time":"16:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء (عام)
-    name: 'اللغة الانجليزية (عام) - ا/ محمد علاء',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '16:00', end_time: '17:00' },
-      { day: 'tuesday', start_time: '16:00', end_time: '17:00' },
-    ],
+    subjectKey: "SHARIA",
+    teacherNum: 7,
+    name: "الشرعي (أزهر) - ا/ اسلام جمال",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"thursday","start_time":"16:00","end_time":"17:30"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء (لغات)
-    name: 'اللغة الانجليزية (لغات) - ا/ محمد علاء',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'friday', start_time: '12:00', end_time: '13:00' },
-      { day: 'saturday', start_time: '16:00', end_time: '17:00' },
-      { day: 'tuesday', start_time: '16:00', end_time: '17:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (عام) - ا/ محمد علاء",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"16:00","end_time":"17:00"},{"day":"tuesday","start_time":"16:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'ENGLISH',
-    teacherNum: 12, // صبحي محمد
-    name: 'اللغة الانجليزية - ا/ صبحي محمد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '16:00', end_time: '17:00' },
-      { day: 'tuesday', start_time: '16:00', end_time: '17:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (لغات) - ا/ محمد علاء",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"friday","start_time":"12:00","end_time":"13:00"},{"day":"saturday","start_time":"16:00","end_time":"17:00"},{"day":"tuesday","start_time":"16:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'FRENCH',
-    teacherNum: 15, // خالد النصيري
-    name: 'اللغة الفرنسية - مسيو/ خالد النصيري',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '15:00', end_time: '16:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 12,
+    name: "اللغة الانجليزية - ا/ صبحي محمد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"16:00","end_time":"17:00"},{"day":"tuesday","start_time":"16:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'MATH_AR',
-    teacherNum: 19, // محمد عادل
-    name: 'الرياضيات - ا/ محمد عادل',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "FRENCH",
+    teacherNum: 15,
+    name: "اللغة الفرنسية - مسيو/ خالد النصيري",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"15:00","end_time":"16:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'MATH_AR',
-    teacherNum: 18, // محمد بكير
-    name: 'الرياضيات - ا/ محمد بكير',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'monday', start_time: '18:00', end_time: '19:00' },
-      { day: 'thursday', start_time: '18:00', end_time: '19:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 19,
+    name: "الرياضيات - ا/ محمد عادل",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'MATH_EN',
-    teacherNum: 23, // محمود الرفاعي
-    name: 'Math (لغات) - ا/ محمود الرفاعي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '13:30', end_time: '15:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 18,
+    name: "الرياضيات - ا/ محمد بكير",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:00"},{"day":"thursday","start_time":"18:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 27, // آية آدم
-    name: 'العلوم - ميس/ اية ادم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 23,
+    name: "Math (لغات) - ا/ محمود الرفاعي",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"wednesday","start_time":"13:30","end_time":"15:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 28, // أحمد عبد الله
-    name: 'العلوم - ا/ احمد عبد الله',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 27,
+    name: "العلوم - ميس/ اية ادم",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 31, // إسلام عبد الجليل
-    name: 'Science (لغات) - ا/ اسلام عبد الجليل',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:30' },
-    ],
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 28,
+    name: "العلوم - ا/ احمد عبد الله",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Science (لغات) - ا/ محمد العربي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'thursday', start_time: '15:00', end_time: '17:00' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 31,
+    name: "Science (لغات) - ا/ اسلام عبد الجليل",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:30"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية (عام) - ا/ محمد سعيد دراسات',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '15:30', end_time: '16:30' },
-      { day: 'wednesday', start_time: '15:30', end_time: '16:30' },
-    ],
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 32,
+    name: "Science (لغات) - ا/ محمد العربي",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"thursday","start_time":"15:00","end_time":"17:00"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'SOCIAL',
-    teacherNum: 36, // محمود طارق
-    name: 'الدراسات الاجتماعية (عام) - ا/ محمود طارق',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '17:30', end_time: '18:30' },
-      { day: 'wednesday', start_time: '17:30', end_time: '18:30' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية (عام) - ا/ محمد سعيد دراسات",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"15:30","end_time":"16:30"},{"day":"wednesday","start_time":"15:30","end_time":"16:30"}],
   },
   {
     gradeOrder: 9,
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT - ميس/ نهلة',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '15:00', end_time: '16:00' },
-    ],
+    subjectKey: "SOCIAL",
+    teacherNum: 36,
+    name: "الدراسات الاجتماعية (عام) - ا/ محمود طارق",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"sunday","start_time":"17:30","end_time":"18:30"},{"day":"wednesday","start_time":"17:30","end_time":"18:30"}],
   },
-
-  // ==========================================================================
-  // المرحلة: الصف الأول الثانوي (gradeOrder: 10)
-  // ==========================================================================
   {
-    gradeOrder: 10,
-    subjectKey: 'ARABIC',
-    teacherNum: 5, // الغزالي
-    name: 'اللغة العربية - ا/ الغزالي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '17:00', end_time: '19:00' },
-    ],
+    gradeOrder: 9,
+    subjectKey: "ICT_EN",
+    teacherNum: 39,
+    name: "ICT - ميس/ نهلة",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"tuesday","start_time":"15:00","end_time":"16:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'ENGLISH',
-    teacherNum: 13, // الشاذلي
-    name: 'اللغة الانجليزية - ا/ الشاذلي',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'sunday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "ARABIC",
+    teacherNum: 5,
+    name: "اللغة العربية - ا/ الغزالي",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 160,
+    schedule: [{"day":"tuesday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'ENGLISH',
-    teacherNum: 14, // أدهم أبو الصفا
-    name: 'اللغة الانجليزية - ا/ ادهم ابو الصفا',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 13,
+    name: "اللغة الانجليزية - ا/ الشاذلي",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 210,
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'ENGLISH',
-    teacherNum: 12, // صبحي محمد
-    name: 'اللغة الانجليزية - ا/ صبحي محمد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'tuesday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 14,
+    name: "اللغة الانجليزية - ا/ ادهم ابو الصفا",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 260,
+    schedule: [{"day":"tuesday","start_time":"19:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'FRENCH',
-    teacherNum: 15, // خالد النصيري
-    name: 'اللغة الفرنسية - مسيو/ خالد النصيري',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "ENGLISH",
+    teacherNum: 12,
+    name: "اللغة الانجليزية - ا/ صبحي محمد",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 210,
+    schedule: [{"day":"tuesday","start_time":"19:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'MATH_AR',
-    teacherNum: 20, // محمد يوسف
-    name: 'الرياضيات - ا/ محمد يوسف',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'wednesday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "FRENCH",
+    teacherNum: 15,
+    name: "اللغة الفرنسية - مسيو/ خالد النصيري",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 210,
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'MATH_EN',
-    teacherNum: 24, // عمر جمال
-    name: 'Math (لغات) - ا/ عمر جمال',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'thursday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "MATH_AR",
+    teacherNum: 20,
+    name: "الرياضيات - ا/ محمد يوسف",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"wednesday","start_time":"19:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'INTEGRATED_SCI_AR',
-    teacherNum: 27, // آية آدم
-    name: 'العلوم المتكاملة (عربي) - ميس/ اية ادم',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'wednesday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "MATH_EN",
+    teacherNum: 24,
+    name: "Math (لغات) - ا/ عمر جمال",
+    packages: ["LANGUAGES"],
+    schedule: [{"day":"thursday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'INTEGRATED_SCI_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Integrated Science (لغات) - ا/ محمد العربي',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'wednesday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "INTEGRATED_SCI_AR",
+    teacherNum: 27,
+    name: "العلوم المتكاملة (عربي) - ميس/ اية ادم",
+    packages: ["PUBLIC"],
+    price_per_month: 240,
+    schedule: [{"day":"wednesday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'PROGRAMMING',
-    teacherNum: 40, // محمد عاشور (لغات)
-    name: 'البرمجة (لغات) - ا/ محمد عاشور',
-    packages: ['LANGUAGES'],
-    schedule: [
-      { day: 'monday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "INTEGRATED_SCI_EN",
+    teacherNum: 32,
+    name: "Integrated Science (لغات) - ا/ محمد العربي",
+    packages: ["LANGUAGES"],
+    price_per_month: 310,
+    schedule: [{"day":"wednesday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'PROGRAMMING',
-    teacherNum: 40, // محمد عاشور (عربي)
-    name: 'البرمجة (عربي) - ا/ محمد عاشور',
-    packages: ['PUBLIC'],
-    schedule: [
-      { day: 'thursday', start_time: '17:00', end_time: '19:00' },
-    ],
+    subjectKey: "PROGRAMMING",
+    teacherNum: 40,
+    name: "البرمجة (لغات) - ا/ محمد عاشور",
+    packages: ["LANGUAGES"],
+    price_per_month: 210,
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'PHILOSOPHY',
-    teacherNum: 41, // محمد صلاح فلسفة
-    name: 'الفلسفة والمنطق - ا/ محمد صلاح فلسفة',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "PROGRAMMING",
+    teacherNum: 40,
+    name: "البرمجة (عربي) - ا/ محمد عاشور",
+    packages: ["PUBLIC"],
+    schedule: [{"day":"thursday","start_time":"17:00","end_time":"19:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'PHILOSOPHY',
-    teacherNum: 42, // علي فؤاد
-    name: 'الفلسفة والمنطق - ا/ علي فؤاد',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'saturday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "PHILOSOPHY",
+    teacherNum: 41,
+    name: "الفلسفة والمنطق - ا/ محمد صلاح فلسفة",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 210,
+    schedule: [{"day":"saturday","start_time":"19:00","end_time":"21:00"}],
   },
   {
     gradeOrder: 10,
-    subjectKey: 'HISTORY',
-    teacherNum: 37, // أيمن سليمان
-    name: 'التاريخ - ا/ ايمن سليمان',
-    packages: ['PUBLIC', 'LANGUAGES'],
-    schedule: [
-      { day: 'thursday', start_time: '19:00', end_time: '21:00' },
-    ],
+    subjectKey: "PHILOSOPHY",
+    teacherNum: 42,
+    name: "الفلسفة والمنطق - ا/ علي فؤاد",
+    packages: ["PUBLIC","LANGUAGES"],
+    schedule: [{"day":"saturday","start_time":"19:00","end_time":"21:00"}],
+  },
+  {
+    gradeOrder: 10,
+    subjectKey: "HISTORY",
+    teacherNum: 37,
+    name: "التاريخ - ا/ ايمن سليمان",
+    packages: ["PUBLIC","LANGUAGES"],
+    price_per_month: 250,
+    schedule: [{"day":"thursday","start_time":"19:00","end_time":"21:00"}],
   },
 ];
 
@@ -1379,1085 +1085,644 @@ const GROUPS_LIST = [
 // 4. PRIVATE GROUPS & TIMETABLES (is_private = true, NOT in package_groups)
 // ============================================================================
 const PRIVATE_GROUPS_LIST = [
-  // ==========================================================================
-  // جدول البرايفت - يوم الجمعة
-  // ==========================================================================
   {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'ENGLISH',
-    teacherNum: 12, // صبحي محمد
-    name: 'اللغة الانجليزية (برايفت - الجمعة) - ا/ صبحي محمد',
+    gradeOrder: 8,
+    subjectKey: "ENGLISH",
+    teacherNum: 12,
+    name: "اللغة الانجليزية (برايفت - الجمعة) - ا/ صبحي محمد",
     price_per_month: 210,
     price_per_session: 0,
-    schedule: [{ day: 'friday', start_time: '12:00', end_time: '13:30' }],
+    schedule: [{"day":"friday","start_time":"12:00","end_time":"13:30"}],
   },
-
-  // ==========================================================================
-  // جدول البرايفت - يوم السبت (+ المجموعات المشتركة سبت وثلاثاء)
-  // ==========================================================================
-  // --- المدرس: محمد علاء | اللغة الإنجليزية ---
   {
-    gradeOrder: 11, // 2 ث بكالوريا
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (2 ث بكالوريا - برايفت - السبت 8:00) - ا/ محمد علاء',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (2 ث بكالوريا - برايفت - السبت 8:00) - ا/ محمد علاء",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '08:00', end_time: '10:00' }],
+    schedule: [{"day":"saturday","start_time":"08:00","end_time":"10:00"}],
   },
   {
-    gradeOrder: 11, // 2 ث عام
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (2 ث عام - برايفت - السبت 12:00 ظ) - ا/ محمد علاء',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (2 ث عام - برايفت - السبت 12:00 ظ) - ا/ محمد علاء",
     price_per_month: 260,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '12:00', end_time: '14:00' }],
+    schedule: [{"day":"saturday","start_time":"12:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 7, // 1 ع (سبت وثلاثاء 6:00 مساءً)
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (برايفت) - ا/ محمد علاء',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
-  },
-  {
-    gradeOrder: 8, // 2 ع (سبت وثلاثاء 5:00 مساءً)
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (برايفت) - ا/ محمد علاء',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
-  },
-  {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (برايفت - السبت 2:00 ظ) - ا/ محمد علاء',
+    gradeOrder: 10,
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (برايفت - السبت 2:00 ظ) - ا/ محمد علاء",
     price_per_month: 240,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '14:00', end_time: '16:00' }],
+    schedule: [{"day":"saturday","start_time":"14:00","end_time":"16:00"}],
   },
-
-  // --- المدرس: محمد سعيد إنجليزي | اللغة الإنجليزية ---
   {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 43, // محمد سعيد إنجليزي
-    name: 'اللغة الانجليزية (برايفت - السبت 8:00) - ا/ محمد سعيد انجليزي',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 43,
+    name: "اللغة الانجليزية (برايفت - السبت 8:00) - ا/ محمد سعيد انجليزي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '08:00', end_time: '10:00' }],
+    schedule: [{"day":"saturday","start_time":"08:00","end_time":"10:00"}],
   },
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 43, // محمد سعيد إنجليزي
-    name: 'اللغة الانجليزية (برايفت - السبت 1:00 ظ) - ا/ محمد سعيد انجليزي',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 43,
+    name: "اللغة الانجليزية (برايفت - السبت 1:00 ظ) - ا/ محمد سعيد انجليزي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '13:00', end_time: '15:00' }],
+    schedule: [{"day":"saturday","start_time":"13:00","end_time":"15:00"}],
   },
-
-  // --- المدرس: محمد العربي | Bio / Science ---
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'BIOLOGY',
-    teacherNum: 32, // محمد العربي
-    name: 'أحياء (Bio - 3 ث - برايفت - السبت 10:00 ص) - ا/ محمد العربي',
+    gradeOrder: 12,
+    subjectKey: "BIOLOGY",
+    teacherNum: 32,
+    name: "أحياء (Bio - 3 ث - برايفت - السبت 10:00 ص) - ا/ محمد العربي",
     price_per_month: 550,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '10:00', end_time: '12:00' }],
+    schedule: [{"day":"saturday","start_time":"10:00","end_time":"12:00"}],
   },
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Science (برايفت) - ا/ محمد العربي',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '15:00', end_time: '16:30' }],
-  },
-
-  // --- المدرس: الزنكلوني | اللغة العربية ---
-  {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'ARABIC',
-    teacherNum: 45, // الزنكلوني
-    name: 'اللغة العربية (برايفت) - ا/ الزنكلوني',
+    gradeOrder: 8,
+    subjectKey: "ARABIC",
+    teacherNum: 45,
+    name: "اللغة العربية (برايفت) - ا/ الزنكلوني",
     price_per_month: 160,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '13:30', end_time: '15:00' }],
+    schedule: [{"day":"saturday","start_time":"13:30","end_time":"15:00"}],
   },
   {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'ARABIC',
-    teacherNum: 45, // الزنكلوني
-    name: 'اللغة العربية (برايفت) - ا/ الزنكلوني',
+    gradeOrder: 9,
+    subjectKey: "ARABIC",
+    teacherNum: 45,
+    name: "اللغة العربية (برايفت) - ا/ الزنكلوني",
     price_per_month: 170,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '12:00', end_time: '13:30' }],
+    schedule: [{"day":"saturday","start_time":"12:00","end_time":"13:30"}],
   },
-
-  // --- المدرس: محمد صلاح عربي | اللغة العربية ---
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ARABIC',
-    teacherNum: 3, // محمد صلاح عربي
-    name: 'اللغة العربية (برايفت) - ا/ محمد صلاح عربي',
+    gradeOrder: 10,
+    subjectKey: "ARABIC",
+    teacherNum: 3,
+    name: "اللغة العربية (برايفت) - ا/ محمد صلاح عربي",
     price_per_month: 190,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '10:00', end_time: '12:00' }],
+    schedule: [{"day":"saturday","start_time":"10:00","end_time":"12:00"}],
   },
-
-  // --- المدرس: محمد علام إنجليزي | اللغة الإنجليزية ---
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 44, // محمد علام إنجليزي
-    name: 'اللغة الانجليزية (برايفت - السبت 1:00 ظ) - ا/ محمد علام انجليزي',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 44,
+    name: "اللغة الانجليزية (برايفت - السبت 1:00 ظ) - ا/ محمد علام انجليزي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '13:00', end_time: '15:00' }],
+    schedule: [{"day":"saturday","start_time":"13:00","end_time":"15:00"}],
   },
-
-  // --- المدرس: إسلام جمال | شرعي (أزهر) ---
   {
-    gradeOrder: 12, // 3 ث (حصتين في الأسبوع: السبت 3:00 عصراً + الثلاثاء 3:00 عصراً)
-    subjectKey: 'SHARIA',
-    teacherNum: 7, // إسلام جمال
-    name: 'الشرعي (أزهر - برايفت - 8 حصص) - ا/ اسلام جمال',
+    gradeOrder: 12,
+    subjectKey: "SHARIA",
+    teacherNum: 7,
+    name: "الشرعي (أزهر - برايفت - 8 حصص) - ا/ اسلام جمال",
     price_per_month: 330,
     price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '15:00', end_time: '16:30' },
-      { day: 'tuesday', start_time: '15:00', end_time: '16:30' },
-    ],
+    schedule: [{"day":"saturday","start_time":"15:00","end_time":"16:30"},{"day":"tuesday","start_time":"15:00","end_time":"16:30"}],
   },
-
-  // --- المدرس: مروان أشرف | اللغة العربية ---
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'ARABIC',
-    teacherNum: 1, // مروان
-    name: 'اللغة العربية (برايفت) - ا/ مروان',
+    gradeOrder: 7,
+    subjectKey: "ARABIC",
+    teacherNum: 1,
+    name: "اللغة العربية (برايفت) - ا/ مروان",
     price_per_month: 100,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '13:30', end_time: '15:00' }],
+    schedule: [{"day":"saturday","start_time":"13:30","end_time":"15:00"}],
   },
   {
-    gradeOrder: 5, // 5 ب (حصتين في الأسبوع: السبت 5:00 م + الثلاثاء 6:00 م)
-    subjectKey: 'ARABIC',
-    teacherNum: 1, // مروان
-    name: 'اللغة العربية (برايفت - 8 حصص) - ا/ مروان',
+    gradeOrder: 4,
+    subjectKey: "ARABIC",
+    teacherNum: 1,
+    name: "اللغة العربية (برايفت - 8 حصص) - ا/ مروان",
     price_per_month: 100,
     price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '17:00', end_time: '18:00' },
-      { day: 'tuesday', start_time: '18:00', end_time: '19:00' },
-    ],
+    schedule: [{"day":"saturday","start_time":"18:00","end_time":"19:00"},{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
-    gradeOrder: 4, // 4 ب (حصتين في الأسبوع: السبت 6:00 م + الثلاثاء 5:00 م)
-    subjectKey: 'ARABIC',
-    teacherNum: 1, // مروان
-    name: 'اللغة العربية (برايفت - 8 حصص) - ا/ مروان',
-    price_per_month: 100,
-    price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '18:00', end_time: '19:00' },
-      { day: 'tuesday', start_time: '17:00', end_time: '18:00' },
-    ],
-  },
-
-  // --- المدرس: إسلام عبد الجليل | Science ---
-  {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 31, // إسلام عبد الجليل
-    name: 'Science (برايفت) - ا/ اسلام عبد الجليل',
+    gradeOrder: 9,
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 31,
+    name: "Science (برايفت) - ا/ اسلام عبد الجليل",
     price_per_month: 10,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '15:00', end_time: '16:30' }],
+    schedule: [{"day":"saturday","start_time":"16:30","end_time":"18:00"}],
   },
   {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 31, // إسلام عبد الجليل
-    name: 'Science (برايفت) - ا/ اسلام عبد الجليل',
-    price_per_month: 10,
-    price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '16:30', end_time: '18:00' }],
-  },
-  {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 31, // إسلام عبد الجليل
-    name: 'Science (برايفت) - ا/ اسلام عبد الجليل',
-    price_per_month: 10,
-    price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '19:00', end_time: '20:30' }],
-  },
-
-  // --- المدرس: إسلام موسى | الدراسات الاجتماعية (السبت) ---
-  {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - السبت 1:00 ظ) - ا/ اسلام موسى',
+    gradeOrder: 4,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - السبت 1:00 ظ) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '13:00', end_time: '14:00' }],
+    schedule: [{"day":"saturday","start_time":"13:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - السبت 3:00 ع) - ا/ اسلام موسى',
+    gradeOrder: 6,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - السبت 3:00 ع) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '15:00', end_time: '16:00' }],
+    schedule: [{"day":"saturday","start_time":"15:00","end_time":"16:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - السبت 5:00 م) - ا/ اسلام موسى',
+    gradeOrder: 10,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - السبت 5:00 م) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '17:00', end_time: '18:30' }],
+    schedule: [{"day":"saturday","start_time":"17:00","end_time":"18:30"}],
   },
-
-  // --- المدرس: محمد صلاح فلسفة | الفلسفة والمنطق ---
   {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'PHILOSOPHY',
-    teacherNum: 41, // محمد صلاح فلسفة
-    name: 'الفلسفة والمنطق (برايفت) - ا/ محمد صلاح فلسفة',
+    gradeOrder: 11,
+    subjectKey: "PHILOSOPHY",
+    teacherNum: 41,
+    name: "الفلسفة والمنطق (برايفت) - ا/ محمد صلاح فلسفة",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '17:30', end_time: '19:00' }],
+    schedule: [{"day":"saturday","start_time":"17:30","end_time":"19:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'PHILOSOPHY',
-    teacherNum: 41, // محمد صلاح فلسفة
-    name: 'الفلسفة والمنطق (برايفت) - ا/ محمد صلاح فلسفة',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [{ day: 'saturday', start_time: '19:00', end_time: '21:00' }],
-  },
-
-  // --- المدرس: محمد سعيد دراسات | الدراسات الاجتماعية (سبت وثلاثاء) ---
-  {
-    gradeOrder: 8, // 2 ع (حصتين في الأسبوع: السبت 6:30 م + الثلاثاء 6:30 م)
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية (برايفت - 8 حصص) - ا/ محمد سعيد دراسات',
+    gradeOrder: 8,
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية (برايفت - 8 حصص) - ا/ محمد سعيد دراسات",
     price_per_month: 170,
     price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '18:30', end_time: '19:30' },
-      { day: 'tuesday', start_time: '18:30', end_time: '19:30' },
-    ],
+    schedule: [{"day":"saturday","start_time":"18:30","end_time":"19:30"},{"day":"tuesday","start_time":"18:30","end_time":"19:30"}],
   },
   {
-    gradeOrder: 7, // 1 ع (حصتين في الأسبوع: السبت 8:00 م + الثلاثاء 7:30 م)
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية (برايفت - 8 حصص - سبت وثلاثاء) - ا/ محمد سعيد دراسات',
+    gradeOrder: 7,
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية (برايفت - 8 حصص - سبت وثلاثاء) - ا/ محمد سعيد دراسات",
     price_per_month: 170,
     price_per_session: 0,
-    schedule: [
-      { day: 'saturday', start_time: '20:00', end_time: '21:00' },
-      { day: 'tuesday', start_time: '19:30', end_time: '20:30' },
-    ],
+    schedule: [{"day":"saturday","start_time":"20:00","end_time":"21:00"},{"day":"tuesday","start_time":"19:30","end_time":"20:30"}],
   },
-
-  // ==========================================================================
-  // جدول البرايفت - يوم الأحد
-  // ==========================================================================
-  // --- المدرس: محمد عاشور | البرمجة ---
   {
-    gradeOrder: 11, // 2 ث عربي
-    subjectKey: 'PROGRAMMING',
-    teacherNum: 40, // محمد عاشور
-    name: 'البرمجة (2 ث عربي - برايفت) - ا/ محمد عاشور',
+    gradeOrder: 11,
+    subjectKey: "PROGRAMMING",
+    teacherNum: 40,
+    name: "البرمجة (2 ث عربي - برايفت) - ا/ محمد عاشور",
     price_per_month: 325,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '10:00', end_time: '12:00' }],
+    schedule: [{"day":"sunday","start_time":"10:00","end_time":"12:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث لغات (الأحد)
-    subjectKey: 'PROGRAMMING',
-    teacherNum: 40, // محمد عاشور
-    name: 'البرمجة (1 ث لغات - برايفت - الأحد 12:00 ظ) - ا/ محمد عاشور',
+    gradeOrder: 10,
+    subjectKey: "PROGRAMMING",
+    teacherNum: 40,
+    name: "البرمجة (1 ث لغات - برايفت - الأحد 12:00 ظ) - ا/ محمد عاشور",
     price_per_month: 385,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '12:00', end_time: '14:00' }],
+    schedule: [{"day":"sunday","start_time":"12:00","end_time":"14:00"}],
   },
-
-  // --- المدرس: أميرة إنجليزي | اللغة الإنجليزية (الأحد) ---
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 47, // أميرة إنجليزي
-    name: 'اللغة الانجليزية (3 ث - برايفت - الأحد 12:00 ظ) - ميس/ اميرة انجليزي',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 47,
+    name: "اللغة الانجليزية (3 ث - برايفت - الأحد 12:00 ظ) - ميس/ اميرة انجليزي",
     price_per_month: 400,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '12:00', end_time: '14:00' }],
+    schedule: [{"day":"sunday","start_time":"12:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 47, // أميرة إنجليزي
-    name: 'اللغة الانجليزية (برايفت - الأحد 3:00 ع) - ميس/ اميرة انجليزي',
+    gradeOrder: 10,
+    subjectKey: "ENGLISH",
+    teacherNum: 47,
+    name: "اللغة الانجليزية (برايفت - الأحد 3:00 ع) - ميس/ اميرة انجليزي",
     price_per_month: 400,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '15:00', end_time: '17:00' }],
+    schedule: [{"day":"sunday","start_time":"15:00","end_time":"17:00"}],
   },
-
-  // --- المدرس: الشاذلي | اللغة الإنجليزية (الأحد) ---
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 13, // الشاذلي
-    name: 'اللغة الانجليزية (3 ث - برايفت - الأحد 1:00 ظ) - ا/ الشاذلي',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 13,
+    name: "اللغة الانجليزية (3 ث - برايفت - الأحد 1:00 ظ) - ا/ الشاذلي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '13:00', end_time: '15:00' }],
+    schedule: [{"day":"sunday","start_time":"13:00","end_time":"15:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 13, // الشاذلي
-    name: 'اللغة الانجليزية (برايفت - الأحد 5:00 م) - ا/ الشاذلي',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '17:00', end_time: '19:00' }],
-  },
-
-  // --- المدرس: محمد علام إنجليزي | اللغة الإنجليزية (الأحد) ---
-  {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 44, // محمد علام إنجليزي
-    name: 'اللغة الانجليزية (برايفت - الأحد 3:30 ع) - ا/ محمد علام انجليزي',
+    gradeOrder: 10,
+    subjectKey: "ENGLISH",
+    teacherNum: 44,
+    name: "اللغة الانجليزية (برايفت - الأحد 3:30 ع) - ا/ محمد علام انجليزي",
     price_per_month: 220,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '15:30', end_time: '17:30' }],
+    schedule: [{"day":"sunday","start_time":"15:30","end_time":"17:30"}],
   },
-
-  // --- المدرس: محمد سعيد إنجليزي | اللغة الإنجليزية (الأحد) ---
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 43, // محمد سعيد إنجليزي
-    name: 'اللغة الانجليزية (برايفت - الأحد 7:00 م) - ا/ محمد سعيد انجليزي',
+    gradeOrder: 10,
+    subjectKey: "ENGLISH",
+    teacherNum: 43,
+    name: "اللغة الانجليزية (برايفت - الأحد 7:00 م) - ا/ محمد سعيد انجليزي",
     price_per_month: 230,
     price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '19:00', end_time: '21:00' }],
+    schedule: [{"day":"sunday","start_time":"19:00","end_time":"21:00"}],
   },
-
-  // --- المدرس: حازم | العلوم ---
   {
-    gradeOrder: 6, // 6 ب (الأحد 7:00 م + الأربعاء 7:00 م)
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم (برايفت) - ا/ حازم',
+    gradeOrder: 4,
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 25,
+    name: "العلوم (برايفت) - ا/ حازم",
     price_per_month: 150,
     price_per_session: 0,
-    schedule: [
-      { day: 'sunday', start_time: '19:00', end_time: '20:00' },
-      { day: 'wednesday', start_time: '19:00', end_time: '20:00' },
-    ],
+    schedule: [{"day":"sunday","start_time":"17:00","end_time":"18:00"}],
   },
   {
-    gradeOrder: 5, // 5 ب (الأحد 6:00 م + الأربعاء 6:00 م)
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم (برايفت) - ا/ حازم',
-    price_per_month: 150,
-    price_per_session: 0,
-    schedule: [
-      { day: 'sunday', start_time: '18:00', end_time: '19:00' },
-      { day: 'wednesday', start_time: '18:00', end_time: '19:00' },
-    ],
-  },
-  {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم (برايفت) - ا/ حازم',
-    price_per_month: 150,
-    price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '17:00', end_time: '18:00' }],
-  },
-
-  // --- المدرس: إيناس | Science (الأحد) ---
-  {
-    gradeOrder: 5, // 5 ب
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 29, // إيناس
-    name: 'Science (برايفت) - ميس/ ايناس',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '19:00', end_time: '20:30' }],
-  },
-  {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 29, // إيناس
-    name: 'Science (برايفت) - ميس/ ايناس',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'sunday', start_time: '17:00', end_time: '18:30' }],
-  },
-
-  // --- المدرس: دنيا | اللغة العربية (الأحد + الثلاثاء) ---
-  {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'ARABIC',
-    teacherNum: 2, // دنيا
-    name: 'اللغة العربية (برايفت) - ميس/ دنيا',
+    gradeOrder: 7,
+    subjectKey: "ARABIC",
+    teacherNum: 2,
+    name: "اللغة العربية (برايفت) - ميس/ دنيا",
     price_per_month: 170,
     price_per_session: 0,
-    schedule: [
-      { day: 'sunday', start_time: '20:00', end_time: '21:00' },
-      { day: 'tuesday', start_time: '20:00', end_time: '21:00' },
-    ],
+    schedule: [{"day":"sunday","start_time":"20:00","end_time":"21:00"},{"day":"tuesday","start_time":"20:00","end_time":"21:00"}],
   },
-
-  // ==========================================================================
-  // جدول البرايفت - يوم الاثنين
-  // ==========================================================================
-  // --- المدرس: محمد علاء | اللغة الإنجليزية (الاثنين) ---
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (3 ث - برايفت - الاثنين 8:30 ص) - ا/ محمد علاء',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (3 ث - برايفت - الاثنين 8:30 ص) - ا/ محمد علاء",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '08:30', end_time: '10:30' }],
+    schedule: [{"day":"monday","start_time":"08:30","end_time":"10:30"}],
   },
-
-  // --- المدرس: أميرة إنجليزي | اللغة الإنجليزية (الاثنين) ---
   {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 47, // أميرة إنجليزي
-    name: 'اللغة الانجليزية (3 ث - برايفت - الاثنين 10:00 ص) - ميس/ اميرة انجليزي',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 47,
+    name: "اللغة الانجليزية (3 ث - برايفت - الاثنين 10:00 ص) - ميس/ اميرة انجليزي",
     price_per_month: 400,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '10:00', end_time: '12:00' }],
+    schedule: [{"day":"monday","start_time":"10:00","end_time":"12:00"}],
   },
-
-  // --- المدرس: محمد علام إنجليزي | اللغة الإنجليزية (الاثنين) ---
   {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 44, // محمد علام إنجليزي
-    name: 'اللغة الانجليزية (برايفت - الاثنين 12:30 ظ) - ا/ محمد علام انجليزي',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 44,
+    name: "اللغة الانجليزية (برايفت - الاثنين 12:30 ظ) - ا/ محمد علام انجليزي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '12:30', end_time: '14:30' }],
+    schedule: [{"day":"monday","start_time":"12:30","end_time":"14:30"}],
   },
-
-  // --- المدرس: ياسمين ماث | Math (الاثنين) ---
   {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'MATH_EN',
-    teacherNum: 48, // ياسمين ماث
-    name: 'Math (برايفت - الاثنين 12:30 ظ) - ميس/ ياسمين ماث',
+    gradeOrder: 4,
+    subjectKey: "MATH_EN",
+    teacherNum: 48,
+    name: "Math (برايفت - الاثنين 12:30 ظ) - ميس/ ياسمين ماث",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '12:30', end_time: '14:00' }],
+    schedule: [{"day":"monday","start_time":"12:30","end_time":"14:00"}],
   },
-
-  // --- المدرس: محمد سعيد دراسات | الدراسات الاجتماعية (الاثنين والخميس) ---
   {
-    gradeOrder: 9, // 3 ع (حصتين في الأسبوع: الاثنين 1:30 ظ + الخميس 1:30 ظ)
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية (برايفت - 8 حصص) - ا/ محمد سعيد دراسات',
+    gradeOrder: 9,
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية (برايفت - 8 حصص) - ا/ محمد سعيد دراسات",
     price_per_month: 170,
     price_per_session: 0,
-    schedule: [
-      { day: 'monday', start_time: '13:30', end_time: '14:30' },
-      { day: 'thursday', start_time: '13:30', end_time: '14:30' },
-    ],
+    schedule: [{"day":"monday","start_time":"13:30","end_time":"14:30"},{"day":"thursday","start_time":"13:30","end_time":"14:30"}],
   },
   {
-    gradeOrder: 7, // 1 ع (الاثنين 6:00 م)
-    subjectKey: 'SOCIAL',
-    teacherNum: 35, // محمد سعيد دراسات
-    name: 'الدراسات الاجتماعية (برايفت - الاثنين 6:00 م) - ا/ محمد سعيد دراسات',
+    gradeOrder: 7,
+    subjectKey: "SOCIAL",
+    teacherNum: 35,
+    name: "الدراسات الاجتماعية (برايفت - الاثنين 6:00 م) - ا/ محمد سعيد دراسات",
     price_per_month: 210,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '18:00', end_time: '19:30' }],
+    schedule: [{"day":"monday","start_time":"18:00","end_time":"19:30"}],
   },
-
-  // --- المدرس: إسلام موسى | الدراسات الاجتماعية (الاثنين) ---
   {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الاثنين 3:00 ع) - ا/ اسلام موسى',
+    gradeOrder: 6,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الاثنين 3:00 ع) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '15:00', end_time: '16:00' }],
+    schedule: [{"day":"monday","start_time":"15:00","end_time":"16:00"}],
   },
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الاثنين 5:00 م) - ا/ اسلام موسى',
+    gradeOrder: 7,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الاثنين 5:00 م) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '17:00', end_time: '18:00' }],
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"18:00"}],
   },
-
-  // --- المدرس: محمد عاشور | البرمجة (الاثنين) ---
   {
-    gradeOrder: 10, // 1 ث لغات
-    subjectKey: 'PROGRAMMING',
-    teacherNum: 40, // محمد عاشور
-    name: 'البرمجة (1 ث لغات - برايفت - الاثنين 5:00 م) - ا/ محمد عاشور',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '17:00', end_time: '19:00' }],
-  },
-
-  // --- المدرس: حازم | العلوم (الاثنين) ---
-  {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم (3 ع - برايفت - الاثنين 7:00 م) - ا/ حازم',
+    gradeOrder: 9,
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 25,
+    name: "العلوم (3 ع - برايفت - الاثنين 7:00 م) - ا/ حازم",
     price_per_month: 190,
     price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '19:00', end_time: '20:30' }],
+    schedule: [{"day":"monday","start_time":"19:00","end_time":"20:30"}],
   },
-
-  // --- المدرس: خالد النصيري | اللغة الفرنسية (الاثنين) ---
   {
-    gradeOrder: 10, // 1 ث برايفت
-    subjectKey: 'FRENCH',
-    teacherNum: 15, // خالد النصيري
-    name: 'اللغة الفرنسية (1 ث برايفت) - مسيو/ خالد النصيري',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '19:00', end_time: '21:00' }],
-  },
-
-  // --- المدرس: محمود رشاد | الدراسات الاجتماعية (الاثنين والخميس) ---
-  {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 34, // محمود رشاد
-    name: 'الدراسات الاجتماعية (برايفت) - ا/ محمود رشاد',
+    gradeOrder: 4,
+    subjectKey: "SOCIAL",
+    teacherNum: 34,
+    name: "الدراسات الاجتماعية (برايفت) - ا/ محمود رشاد",
     price_per_month: 180,
     price_per_session: 0,
-    schedule: [
-      { day: 'monday', start_time: '17:00', end_time: '18:00' },
-      { day: 'thursday', start_time: '17:00', end_time: '18:00' },
-    ],
+    schedule: [{"day":"monday","start_time":"17:00","end_time":"18:00"},{"day":"thursday","start_time":"17:00","end_time":"18:00"}],
   },
-
-  // --- المدرس: أسماء | Math (الاثنين) ---
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (برايفت) - ميس/ اسماء',
-    price_per_month: 40,
-    price_per_session: 0,
-    schedule: [{ day: 'monday', start_time: '17:00', end_time: '18:30' }],
-  },
-
-  // ==========================================================================
-  // جدول البرايفت - يوم الثلاثاء
-  // ==========================================================================
-  // --- المدرس: الغزالي | اللغة العربية (الثلاثاء) ---
-  {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'ARABIC',
-    teacherNum: 5, // الغزالي
-    name: 'اللغة العربية (3 ث - برايفت - الثلاثاء 8:00 ص) - ا/ الغزالي',
+    gradeOrder: 12,
+    subjectKey: "ARABIC",
+    teacherNum: 5,
+    name: "اللغة العربية (3 ث - برايفت - الثلاثاء 8:00 ص) - ا/ الغزالي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '08:00', end_time: '10:00' }],
+    schedule: [{"day":"tuesday","start_time":"08:00","end_time":"10:00"}],
   },
   {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'ARABIC',
-    teacherNum: 5, // الغزالي
-    name: 'اللغة العربية (2 ث - برايفت - الثلاثاء 12:00 ظ) - ا/ الغزالي',
+    gradeOrder: 11,
+    subjectKey: "ARABIC",
+    teacherNum: 5,
+    name: "اللغة العربية (2 ث - برايفت - الثلاثاء 12:00 ظ) - ا/ الغزالي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '12:00', end_time: '14:00' }],
+    schedule: [{"day":"tuesday","start_time":"12:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ARABIC',
-    teacherNum: 5, // الغزالي
-    name: 'اللغة العربية (برايفت - الثلاثاء 5:00 م) - ا/ الغزالي',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '17:00', end_time: '19:00' }],
-  },
-
-  // --- المدرس: محمد علاء | اللغة الإنجليزية (3 ع الثلاثاء) ---
-  {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'ENGLISH',
-    teacherNum: 11, // محمد علاء
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 12:00 ظ) - ا/ محمد علاء',
+    gradeOrder: 9,
+    subjectKey: "ENGLISH",
+    teacherNum: 11,
+    name: "اللغة الانجليزية (برايفت - الثلاثاء 12:00 ظ) - ا/ محمد علاء",
     price_per_month: 210,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '12:00', end_time: '13:30' }],
+    schedule: [{"day":"tuesday","start_time":"12:00","end_time":"13:30"}],
   },
-
-  // --- المدرس: أدهم أبو الصفا | اللغة الإنجليزية (الثلاثاء) ---
   {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 14, // أدهم أبو الصفا
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 12:00 ظ) - ا/ ادهم ابو الصفا',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 14,
+    name: "اللغة الانجليزية (برايفت - الثلاثاء 12:00 ظ) - ا/ ادهم ابو الصفا",
     price_per_month: 320,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '12:00', end_time: '14:00' }],
+    schedule: [{"day":"tuesday","start_time":"12:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 12, // 3 ث (مجموعة 3:00 عصراً)
-    subjectKey: 'ENGLISH',
-    teacherNum: 14, // أدهم أبو الصفا
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 3:00 ع) - ا/ ادهم ابو الصفا',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 14,
+    name: "اللغة الانجليزية (برايفت - الثلاثاء 3:00 ع) - ا/ ادهم ابو الصفا",
     price_per_month: 330,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '15:00', end_time: '17:00' }],
+    schedule: [{"day":"tuesday","start_time":"15:00","end_time":"17:00"}],
   },
   {
-    gradeOrder: 12, // 3 ث (مجموعة 5:00 مساءً)
-    subjectKey: 'ENGLISH',
-    teacherNum: 14, // أدهم أبو الصفا
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 5:00 م) - ا/ ادهم ابو الصفا',
+    gradeOrder: 12,
+    subjectKey: "ENGLISH",
+    teacherNum: 14,
+    name: "اللغة الانجليزية (برايفت - الثلاثاء 5:00 م) - ا/ ادهم ابو الصفا",
     price_per_month: 330,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '17:00', end_time: '19:00' }],
+    schedule: [{"day":"tuesday","start_time":"17:00","end_time":"19:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 14, // أدهم أبو الصفا
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 7:00 م) - ا/ ادهم ابو الصفا',
-    price_per_month: 260,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '19:00', end_time: '21:00' }],
-  },
-
-  // --- المدرس: أميرة إنجليزي | اللغة الإنجليزية (الثلاثاء) ---
-  {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 47, // أميرة إنجليزي
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 12:00 ظ) - ميس/ اميرة انجليزي',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 47,
+    name: "اللغة الانجليزية (برايفت - الثلاثاء 12:00 ظ) - ميس/ اميرة انجليزي",
     price_per_month: 400,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '12:00', end_time: '14:00' }],
+    schedule: [{"day":"tuesday","start_time":"12:00","end_time":"14:00"}],
   },
-
-  // --- المدرس: ياسمين ماث | Math (الثلاثاء) ---
   {
-    gradeOrder: 2, // 2 ب
-    subjectKey: 'MATH_EN',
-    teacherNum: 48, // ياسمين ماث
-    name: 'Math (برايفت - الثلاثاء 12:00 ظ) - ميس/ ياسمين ماث',
+    gradeOrder: 2,
+    subjectKey: "MATH_EN",
+    teacherNum: 48,
+    name: "Math (برايفت - الثلاثاء 12:00 ظ) - ميس/ ياسمين ماث",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '12:00', end_time: '13:30' }],
+    schedule: [{"day":"tuesday","start_time":"12:00","end_time":"13:30"}],
   },
   {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'MATH_EN',
-    teacherNum: 48, // ياسمين ماث
-    name: 'Math (برايفت - الثلاثاء 2:00 ظ) - ميس/ ياسمين ماث',
+    gradeOrder: 6,
+    subjectKey: "MATH_EN",
+    teacherNum: 48,
+    name: "Math (برايفت - الثلاثاء 2:00 ظ) - ميس/ ياسمين ماث",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '14:00', end_time: '15:30' }],
+    schedule: [{"day":"tuesday","start_time":"14:00","end_time":"15:30"}],
   },
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'MATH_EN',
-    teacherNum: 48, // ياسمين ماث
-    name: 'Math (برايفت - الثلاثاء 5:00 م) - ميس/ ياسمين ماث',
+    gradeOrder: 7,
+    subjectKey: "MATH_EN",
+    teacherNum: 48,
+    name: "Math (برايفت - الثلاثاء 5:00 م) - ميس/ ياسمين ماث",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '17:00', end_time: '18:30' }],
+    schedule: [{"day":"tuesday","start_time":"17:00","end_time":"18:30"}],
   },
-
-  // --- المدرس: إسلام موسى | الدراسات الاجتماعية (الثلاثاء) ---
   {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الثلاثاء 1:00 ظ) - ا/ اسلام موسى',
+    gradeOrder: 6,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الثلاثاء 1:00 ظ) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '13:00', end_time: '14:00' }],
+    schedule: [{"day":"tuesday","start_time":"13:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 5, // 5 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الثلاثاء 3:00 ع) - ا/ اسلام موسى',
+    gradeOrder: 5,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الثلاثاء 3:00 ع) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '15:00', end_time: '16:00' }],
+    schedule: [{"day":"tuesday","start_time":"15:00","end_time":"16:00"}],
   },
   {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الثلاثاء 5:00 م) - ا/ اسلام موسى',
+    gradeOrder: 8,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الثلاثاء 5:00 م) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '17:00', end_time: '18:00' }],
-  },
-
-  // --- المدرس: صبحي محمد | اللغة الإنجليزية (الثلاثاء) ---
-  {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 12, // صبحي محمد
-    name: 'اللغة الانجليزية (برايفت - الثلاثاء 7:00 م) - ا/ صبحي محمد',
-    price_per_month: 210,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '19:00', end_time: '21:00' }],
-  },
-
-  // --- المدرس: نهلة | ICT (الثلاثاء) ---
-  {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (برايفت) - ميس/ نهلة',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '19:00', end_time: '20:00' }],
+    schedule: [{"day":"tuesday","start_time":"17:00","end_time":"18:00"}],
   },
   {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (برايفت) - ميس/ نهلة',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '18:00', end_time: '19:00' }],
-  },
-  {
-    gradeOrder: 5, // 5 ب
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (برايفت) - ميس/ نهلة',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '17:00', end_time: '18:00' }],
-  },
-  {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (برايفت) - ميس/ نهلة',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '16:00', end_time: '17:00' }],
-  },
-  {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'ICT_EN',
-    teacherNum: 39, // نهلة
-    name: 'ICT (برايفت) - ميس/ نهلة',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'tuesday', start_time: '20:00', end_time: '21:00' }],
-  },
-
-  // ==========================================================================
-  // جدول البرايفت - يوم الأربعاء
-  // ==========================================================================
-  // --- المدرس: محمد العربي | Science (الأربعاء) ---
-  {
-    gradeOrder: 12, // 3 ث برايفت
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Science / Bio (3 ث برايفت - الأربعاء 10:00 ص) - ا/ محمد العربي',
+    gradeOrder: 12,
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 32,
+    name: "Science / Bio (3 ث برايفت - الأربعاء 10:00 ص) - ا/ محمد العربي",
     price_per_month: 550,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '10:00', end_time: '12:00' }],
+    schedule: [{"day":"wednesday","start_time":"10:00","end_time":"12:00"}],
   },
   {
-    gradeOrder: 10, // 1 ث برايفت
-    subjectKey: 'INTEGRATED_SCI_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Integrated Science (1 ث برايفت) - ا/ محمد العربي',
+    gradeOrder: 12,
+    subjectKey: "GEOGRAPHY",
+    teacherNum: 36,
+    name: "الجغرافيا (برايفت - الأربعاء 1:30 ظ) - ا/ محمود طارق",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '17:00', end_time: '19:00' }],
-  },
-
-  // --- المدرس: آية آدم | العلوم المتكاملة (الأربعاء) ---
-  {
-    gradeOrder: 10, // 1 ث برايفت
-    subjectKey: 'INTEGRATED_SCI_AR',
-    teacherNum: 27, // آية آدم
-    name: 'العلوم المتكاملة (1 ث برايفت) - ميس/ اية ادم',
-    price_per_month: 240,
-    price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '17:00', end_time: '19:00' }],
-  },
-
-  // --- المدرس: أسماء | Math (الأربعاء) ---
-  {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (برايفت) - ميس/ اسماء',
-    price_per_month: 40,
-    price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '15:00', end_time: '16:30' }],
+    schedule: [{"day":"wednesday","start_time":"13:30","end_time":"15:30"}],
   },
   {
-    gradeOrder: 5, // 5 ب
-    subjectKey: 'MATH_EN',
-    teacherNum: 21, // أسماء
-    name: 'Math (برايفت) - ميس/ اسماء',
-    price_per_month: 40,
-    price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '17:00', end_time: '18:30' }],
-  },
-
-  // --- المدرس: محمود طارق | الجغرافيا (الأربعاء) ---
-  {
-    gradeOrder: 12, // 3 ث
-    subjectKey: 'GEOGRAPHY',
-    teacherNum: 36, // محمود طارق
-    name: 'الجغرافيا (برايفت - الأربعاء 1:30 ظ) - ا/ محمود طارق',
-    price_per_month: 310,
-    price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '13:30', end_time: '15:30' }],
-  },
-
-  // --- المدرس: ياسمين ماث | Math (الأربعاء) ---
-  {
-    gradeOrder: 3, // 3 ب (12:00 ظهراً)
-    subjectKey: 'MATH_EN',
-    teacherNum: 48, // ياسمين ماث
-    name: 'Math (3 ب - برايفت - الأربعاء 12:00 ظ) - ميس/ ياسمين ماث',
+    gradeOrder: 3,
+    subjectKey: "MATH_EN",
+    teacherNum: 48,
+    name: "Math (3 ب - برايفت - الأربعاء 12:00 ظ) - ميس/ ياسمين ماث",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '12:00', end_time: '13:30' }],
+    schedule: [{"day":"wednesday","start_time":"12:00","end_time":"13:30"}],
   },
   {
-    gradeOrder: 2, // 2 ب (4:30 عصراً)
-    subjectKey: 'MATH_EN',
-    teacherNum: 48, // ياسمين ماث
-    name: 'Math (برايفت - الأربعاء 4:30 ع) - ميس/ ياسمين ماث',
+    gradeOrder: 2,
+    subjectKey: "MATH_EN",
+    teacherNum: 48,
+    name: "Math (برايفت - الأربعاء 4:30 ع) - ميس/ ياسمين ماث",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '16:30', end_time: '18:00' }],
+    schedule: [{"day":"wednesday","start_time":"16:30","end_time":"18:00"}],
   },
-
-  // --- المدرس: أميرة إنجليزي | اللغة الإنجليزية (الأربعاء) ---
   {
-    gradeOrder: 11, // 2 ث بكالوريا
-    subjectKey: 'ENGLISH',
-    teacherNum: 47, // أميرة إنجليزي
-    name: 'اللغة الانجليزية (2 ث بكالوريا - برايفت - الأربعاء 12:30 ظ) - ميس/ اميرة انجليزي',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 47,
+    name: "اللغة الانجليزية (2 ث بكالوريا - برايفت - الأربعاء 12:30 ظ) - ميس/ اميرة انجليزي",
     price_per_month: 400,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '12:30', end_time: '14:30' }],
+    schedule: [{"day":"wednesday","start_time":"12:30","end_time":"14:30"}],
   },
-
-  // --- المدرس: إسلام موسى | الدراسات الاجتماعية (الأربعاء) ---
   {
-    gradeOrder: 4, // 4 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الأربعاء 1:00 ظ) - ا/ اسلام موسى',
+    gradeOrder: 4,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الأربعاء 1:00 ظ) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '13:00', end_time: '14:00' }],
+    schedule: [{"day":"wednesday","start_time":"13:00","end_time":"14:00"}],
   },
   {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (3 ع - برايفت - الأربعاء 3:00 ع) - ا/ اسلام موسى',
+    gradeOrder: 9,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (3 ع - برايفت - الأربعاء 3:00 ع) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '15:00', end_time: '16:00' }],
+    schedule: [{"day":"wednesday","start_time":"15:00","end_time":"16:00"}],
   },
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الأربعاء 5:00 م) - ا/ اسلام موسى',
+    gradeOrder: 7,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الأربعاء 5:00 م) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '17:00', end_time: '18:00' }],
+    schedule: [{"day":"wednesday","start_time":"17:00","end_time":"18:00"}],
   },
-
-  // --- المدرس: الشاذلي | اللغة الإنجليزية (الأربعاء) ---
   {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'ENGLISH',
-    teacherNum: 13, // الشاذلي
-    name: 'اللغة الانجليزية (برايفت - الأربعاء 1:00 ظ) - ا/ الشاذلي',
+    gradeOrder: 11,
+    subjectKey: "ENGLISH",
+    teacherNum: 13,
+    name: "اللغة الانجليزية (برايفت - الأربعاء 1:00 ظ) - ا/ الشاذلي",
     price_per_month: 310,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '13:00', end_time: '15:00' }],
+    schedule: [{"day":"wednesday","start_time":"13:00","end_time":"15:00"}],
   },
-
-  // --- المدرس: محمد سعيد إنجليزي | اللغة الإنجليزية (الأربعاء) ---
   {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'ENGLISH',
-    teacherNum: 43, // محمد سعيد إنجليزي
-    name: 'اللغة الانجليزية (برايفت - الأربعاء 4:00 ع) - ا/ محمد سعيد انجليزي',
+    gradeOrder: 9,
+    subjectKey: "ENGLISH",
+    teacherNum: 43,
+    name: "اللغة الانجليزية (برايفت - الأربعاء 4:00 ع) - ا/ محمد سعيد انجليزي",
     price_per_month: 210,
     price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '16:00', end_time: '17:30' }],
+    schedule: [{"day":"wednesday","start_time":"16:00","end_time":"17:30"}],
   },
-
-  // --- المدرس: محمود الرفاعي | Math (الأربعاء) ---
   {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'MATH_EN',
-    teacherNum: 23, // محمود الرفاعي
-    name: 'Math (برايفت) - ا/ محمود الرفاعي',
-    price_per_month: 260,
-    price_per_session: 0,
-    schedule: [{ day: 'wednesday', start_time: '19:00', end_time: '20:30' }],
-  },
-
-  // ==========================================================================
-  // جدول البرايفت - يوم الخميس
-  // ==========================================================================
-  // --- المدرس: أيمن سليمان | التاريخ (الخميس) ---
-  {
-    gradeOrder: 10, // 1 ث
-    subjectKey: 'HISTORY',
-    teacherNum: 37, // أيمن سليمان
-    name: 'التاريخ (برايفت) - ا/ ايمن سليمان',
-    price_per_month: 250,
-    price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '19:00', end_time: '21:00' }],
-  },
-
-  // --- المدرس: حازم | العلوم (الخميس) ---
-  {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'SCIENCE_AR',
-    teacherNum: 25, // حازم
-    name: 'العلوم (برايفت) - ا/ حازم',
+    gradeOrder: 9,
+    subjectKey: "SCIENCE_AR",
+    teacherNum: 25,
+    name: "العلوم (برايفت) - ا/ حازم",
     price_per_month: 190,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '19:30', end_time: '21:00' }],
+    schedule: [{"day":"thursday","start_time":"19:30","end_time":"21:00"}],
   },
-
-  // --- المدرس: محمد سعيد إنجليزي | اللغة الإنجليزية (الخميس) ---
   {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'ENGLISH',
-    teacherNum: 43, // محمد سعيد إنجليزي
-    name: 'اللغة الانجليزية (2 ع - برايفت - الخميس 6:00 م) - ا/ محمد سعيد انجليزي',
+    gradeOrder: 8,
+    subjectKey: "ENGLISH",
+    teacherNum: 43,
+    name: "اللغة الانجليزية (2 ع - برايفت - الخميس 6:00 م) - ا/ محمد سعيد انجليزي",
     price_per_month: 210,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '18:00', end_time: '19:30' }],
+    schedule: [{"day":"thursday","start_time":"18:00","end_time":"19:30"}],
   },
-
-  // --- المدرس: إيناس | Science (الخميس) ---
   {
-    gradeOrder: 6, // 6 ب
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 29, // إيناس
-    name: 'Science (برايفت) - ميس/ ايناس',
-    price_per_month: 160,
-    price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '17:00', end_time: '18:30' }],
-  },
-
-  // --- المدرس: محمد سالم | الفيزياء (Physics) (الخميس) ---
-  {
-    gradeOrder: 11, // 2 ث
-    subjectKey: 'PHYSICS',
-    teacherNum: 49, // محمد سالم
-    name: 'الفيزياء / Physics (برايفت - الخميس 2:30 ظ) - ا/ محمد سالم',
+    gradeOrder: 11,
+    subjectKey: "PHYSICS",
+    teacherNum: 49,
+    name: "الفيزياء / Physics (برايفت - الخميس 2:30 ظ) - ا/ محمد سالم",
     price_per_month: 450,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '14:30', end_time: '16:30' }],
+    schedule: [{"day":"thursday","start_time":"14:30","end_time":"16:30"}],
   },
-
-  // --- المدرس: إسلام موسى | الدراسات الاجتماعية (الخميس) ---
   {
-    gradeOrder: 5, // 5 ب
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الخميس 3:00 ع) - ا/ اسلام موسى',
+    gradeOrder: 5,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الخميس 3:00 ع) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '15:00', end_time: '16:00' }],
+    schedule: [{"day":"thursday","start_time":"15:00","end_time":"16:00"}],
   },
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'SOCIAL',
-    teacherNum: 46, // إسلام موسى
-    name: 'الدراسات الاجتماعية (برايفت - الخميس 5:00 م) - ا/ اسلام موسى',
+    gradeOrder: 7,
+    subjectKey: "SOCIAL",
+    teacherNum: 46,
+    name: "الدراسات الاجتماعية (برايفت - الخميس 5:00 م) - ا/ اسلام موسى",
     price_per_month: 35,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '17:00', end_time: '18:00' }],
+    schedule: [{"day":"thursday","start_time":"17:00","end_time":"18:00"}],
   },
-
-  // --- المدرس: محمد العربي | Science (الخميس - الحصة 70 جنيه) ---
   {
-    gradeOrder: 9, // 3 ع
-    subjectKey: 'SCIENCE_EN',
-    teacherNum: 32, // محمد العربي
-    name: 'Science (برايفت - الخميس 3:00 ع - الحصة 70 ج) - ا/ محمد العربي',
+    gradeOrder: 9,
+    subjectKey: "SCIENCE_EN",
+    teacherNum: 32,
+    name: "Science (برايفت - الخميس 3:00 ع - الحصة 70 ج) - ا/ محمد العربي",
     price_per_month: 280,
     price_per_session: 70,
-    schedule: [{ day: 'thursday', start_time: '15:00', end_time: '16:30' }],
+    schedule: [{"day":"thursday","start_time":"15:00","end_time":"16:30"}],
   },
-
-  // --- المدرس: ياسمين حسن | شرعي (الخميس) ---
   {
-    gradeOrder: 8, // 2 ع
-    subjectKey: 'SHARIA',
-    teacherNum: 4, // ياسمين حسن
-    name: 'الشرعي (أزهر - برايفت) - ميس/ ياسمين حسن',
+    gradeOrder: 8,
+    subjectKey: "SHARIA",
+    teacherNum: 4,
+    name: "الشرعي (أزهر - برايفت) - ميس/ ياسمين حسن",
     price_per_month: 210,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '18:00', end_time: '19:30' }],
+    schedule: [{"day":"thursday","start_time":"18:00","end_time":"19:30"}],
   },
   {
-    gradeOrder: 7, // 1 ع
-    subjectKey: 'SHARIA',
-    teacherNum: 4, // ياسمين حسن
-    name: 'الشرعي (أزهر - برايفت) - ميس/ ياسمين حسن',
+    gradeOrder: 7,
+    subjectKey: "SHARIA",
+    teacherNum: 4,
+    name: "الشرعي (أزهر - برايفت) - ميس/ ياسمين حسن",
     price_per_month: 160,
     price_per_session: 0,
-    schedule: [{ day: 'thursday', start_time: '16:00', end_time: '17:30' }],
+    schedule: [{"day":"thursday","start_time":"16:00","end_time":"17:30"}],
   },
 ];
 
@@ -2603,6 +1868,54 @@ async function runSeed() {
     console.log(`✅ تم التحقق من باكدجات المراحل الدراسية (عربي / لغات).`);
 
     // ------------------------------------------------------------------------
+    // 4.5. Deduplicate and Merge Redundant Private & Package Groups
+    // ------------------------------------------------------------------------
+    console.log('🔄 فحص ودمج المجموعات المكررة (باكدج + برايفت في نفس الموعد)...');
+    const duplicates = await client.query(`
+      SELECT g1.id as primary_id, g2.id as dup_id, g2.price_per_month as dup_price_month, g2.price_per_session as dup_price_session
+      FROM groups g1
+      JOIN groups g2 ON g1.teacher_id = g2.teacher_id
+                    AND g1.grade_id = g2.grade_id
+                    AND g1.subject_id = g2.subject_id
+                    AND g1.schedule::text = g2.schedule::text
+                    AND g1.id != g2.id
+      WHERE EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g1.id)
+        AND NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g2.id)
+    `);
+
+    let mergedDupsCount = 0;
+    for (const dup of duplicates.rows) {
+      await client.query(`UPDATE student_subscriptions SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+      await client.query(`
+        UPDATE group_enrollments 
+        SET group_id = $1 
+        WHERE group_id = $2
+          AND student_id NOT IN (SELECT student_id FROM group_enrollments WHERE group_id = $1)
+      `, [dup.primary_id, dup.dup_id]);
+      await client.query(`DELETE FROM group_enrollments WHERE group_id = $1`, [dup.dup_id]);
+      await client.query(`UPDATE attendance_logs SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+      await client.query(`UPDATE booklet_reservations SET group_id = $1 WHERE group_id = $2`, [dup.primary_id, dup.dup_id]);
+
+      const pMonth = Number(dup.dup_price_month || 0);
+      const pSession = Number(dup.dup_price_session || 0);
+      if (pMonth > 0 || pSession > 0) {
+        await client.query(`
+          UPDATE groups 
+          SET price_per_month = GREATEST(price_per_month, $1),
+              price_per_session = GREATEST(price_per_session, $2)
+          WHERE id = $3
+        `, [pMonth, pSession, dup.primary_id]);
+      }
+
+      await client.query(`DELETE FROM package_groups WHERE group_id = $1`, [dup.dup_id]);
+      await client.query(`DELETE FROM groups WHERE id = $1`, [dup.dup_id]);
+      mergedDupsCount++;
+    }
+    if (mergedDupsCount > 0) {
+      console.log(`✅ تم دمج وحذف ${mergedDupsCount} مجموعة مكررة بنجاح بدون فقدان أي بيانات اشتراكات أو حضور!`);
+    }
+
+    // ------------------------------------------------------------------------
     // 5. Upsert Groups & Link All to Grade Packages (package_groups)
     // ------------------------------------------------------------------------
     let groupsCreated = 0;
@@ -2618,6 +1931,9 @@ async function runSeed() {
         throw new Error(`بيانات غير مكتملة للمجموعة: ${gDef.name}`);
       }
 
+      const priceMonth = Number(gDef.price_per_month || 0);
+      const priceSession = Number(gDef.price_per_session || 0);
+
       // Check if group already exists for this grade, subject, teacher, and name
       const existGrp = await client.query(
         `SELECT id FROM groups WHERE grade_id = $1 AND teacher_id = $2 AND subject_id = $3 AND name = $4`,
@@ -2630,11 +1946,13 @@ async function runSeed() {
         await client.query(
           `UPDATE groups
            SET name_ar = $1, schedule = $2, status = 'active',
+               price_per_month = CASE WHEN $3 > 0 THEN $3 ELSE price_per_month END,
+               price_per_session = CASE WHEN $4 > 0 THEN $4 ELSE price_per_session END,
                package_teacher_ratio = 0, package_center_ratio = 100,
                private_teacher_ratio = 75, private_center_ratio = 25,
                max_students = 9999, updated_at = NOW()
-           WHERE id = $3`,
-          [gDef.name, JSON.stringify(gDef.schedule), groupId]
+           WHERE id = $5`,
+          [gDef.name, JSON.stringify(gDef.schedule), priceMonth, priceSession, groupId]
         );
         groupsUpdated++;
       } else {
@@ -2643,9 +1961,9 @@ async function runSeed() {
              name, name_ar, teacher_id, subject_id, grade_id,
              schedule, price_per_month, price_per_session, max_students,
              package_teacher_ratio, package_center_ratio, private_teacher_ratio, private_center_ratio, status
-           ) VALUES ($1, $2, $3, $4, $5, $6, 0, 0, 9999, 0, 100, 75, 25, 'active')
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 9999, 0, 100, 75, 25, 'active')
            RETURNING id`,
-          [gDef.name, gDef.name, teacherId, subjectId, grade.id, JSON.stringify(gDef.schedule)]
+          [gDef.name, gDef.name, teacherId, subjectId, grade.id, JSON.stringify(gDef.schedule), priceMonth, priceSession]
         );
         groupId = insGrp.rows[0].id;
         groupsCreated++;

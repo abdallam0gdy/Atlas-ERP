@@ -44,7 +44,11 @@ export const formatScheduleText = (schedule) => {
 // Lightweight memoized Group Card for fast rendering on low-end PCs
 const GroupCard = memo(function GroupCard({ group, onNavigate, onEdit }) {
   const studentCount = parseInt(group.student_count, 10) || 0;
-  const isPrivate = Boolean(group.is_private);
+  const isInPackage = Boolean(group.is_in_package);
+  const acceptsPrivate = Boolean(group.is_private || Number(group.price_per_month) > 0);
+  const isHybrid = isInPackage && acceptsPrivate;
+  const isPrivateOnly = !isInPackage && acceptsPrivate;
+
   const eduTypes = Array.isArray(group.package_education_types)
     ? group.package_education_types
     : [];
@@ -62,14 +66,18 @@ const GroupCard = memo(function GroupCard({ group, onNavigate, onEdit }) {
         {/* Top Color Accent Strip */}
         <div
           className="h-1.5"
-          style={{ background: isPrivate ? '#d97706' : group.subject_color || '#0C3C82' }}
+          style={{ background: isHybrid ? '#0284c7' : isPrivateOnly ? '#d97706' : group.subject_color || '#0C3C82' }}
         />
 
         <div className="p-4">
           {/* Type Badge + Actions */}
           <div className="flex items-center justify-between gap-2 mb-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
-              {isPrivate ? (
+              {isHybrid ? (
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-[#0C3C82] border border-blue-200">
+                  📦 باكدج + 💎 برايفت
+                </span>
+              ) : isPrivateOnly ? (
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                   💎 مجموعة برايفت
                 </span>
@@ -79,17 +87,17 @@ const GroupCard = memo(function GroupCard({ group, onNavigate, onEdit }) {
                 </span>
               )}
 
-              {!isPrivate && hasPublic && hasLang && (
+              {isInPackage && hasPublic && hasLang && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
                   عربي + لغات
                 </span>
               )}
-              {!isPrivate && hasPublic && !hasLang && (
+              {isInPackage && hasPublic && !hasLang && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
                   عربي
                 </span>
               )}
-              {!isPrivate && hasLang && !hasPublic && (
+              {isInPackage && hasLang && !hasPublic && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700">
                   لغات
                 </span>
@@ -272,19 +280,19 @@ export default function GroupsPage() {
     let pkg = 0;
     let priv = 0;
     for (const g of groups) {
-      if (g.is_private) priv++;
-      else pkg++;
+      if (g.is_in_package) pkg++;
+      if (g.is_private || Number(g.price_per_month) > 0) priv++;
     }
     return { total: groups.length, pkg, priv };
   }, [groups]);
 
-  // Client-side instant filtering (since 217 groups is small enough in memory to filter in <1ms without network round-trips!)
+  // Client-side instant filtering (since ~180 groups is small enough in memory to filter in <1ms without network round-trips!)
   const filteredGroups = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
     return groups.filter((g) => {
       // Category filter
-      if (groupCategory === 'PACKAGE' && g.is_private) return false;
-      if (groupCategory === 'PRIVATE' && !g.is_private) return false;
+      if (groupCategory === 'PACKAGE' && !g.is_in_package) return false;
+      if (groupCategory === 'PRIVATE' && !(g.is_private || Number(g.price_per_month) > 0)) return false;
 
       // Package Track filter (PUBLIC vs LANGUAGES)
       if (groupCategory === 'PACKAGE' && packageTrack !== 'ALL') {
@@ -359,8 +367,8 @@ export default function GroupsPage() {
           });
         }
         const sec = map.get(key);
-        if (g.is_private) sec.privCount++;
-        else sec.pkgCount++;
+        if (g.is_private || Number(g.price_per_month) > 0) sec.privCount++;
+        if (g.is_in_package) sec.pkgCount++;
         sec.items.push(g);
       }
       return Array.from(map.values()).sort((a, b) => a.order - b.order);
@@ -383,8 +391,8 @@ export default function GroupsPage() {
           let pkgCount = 0;
           let privCount = 0;
           items.forEach((g) => {
-            if (g.is_private) privCount++;
-            else pkgCount++;
+            if (g.is_private || Number(g.price_per_month) > 0) privCount++;
+            if (g.is_in_package) pkgCount++;
           });
 
           return {
@@ -413,8 +421,8 @@ export default function GroupsPage() {
           });
         }
         const sec = map.get(key);
-        if (g.is_private) sec.privCount++;
-        else sec.pkgCount++;
+        if (g.is_private || Number(g.price_per_month) > 0) sec.privCount++;
+        if (g.is_in_package) sec.pkgCount++;
         sec.items.push(g);
       }
       return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title, 'ar'));

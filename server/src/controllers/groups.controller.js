@@ -91,7 +91,7 @@ const listGroups = async (req, res, next) => {
       paramIndex++;
     }
     if (is_private === 'true') {
-      whereClause += ` AND NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)`;
+      whereClause += ` AND (g.price_per_month > 0 OR NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id))`;
     } else if (is_private === 'false') {
       whereClause += ` AND EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)`;
     }
@@ -104,7 +104,8 @@ const listGroups = async (req, res, next) => {
               cr.name as classroom_name, cr.capacity as classroom_capacity,
               (SELECT COUNT(*) FROM group_enrollments ge WHERE ge.group_id = g.id AND ge.is_active = true) as student_count,
               (EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_in_package,
-              (NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_private,
+              (NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_private_only,
+              (g.price_per_month > 0 OR NOT EXISTS (SELECT 1 FROM package_groups pg WHERE pg.group_id = g.id)) as is_private,
               ARRAY(
                 SELECT gp.education_type
                 FROM package_groups pg
