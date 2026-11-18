@@ -6,7 +6,7 @@ const { validate, createStudentSchema, updateStudentSchema, paginationSchema } =
 const {
   listStudents, getStudent, createStudent, updateStudent,
   bulkImportStudents, exportAllStudents, deleteStudent,
-  getOnlineSecretKey, syncOnlineStudents,
+  getOnlineSecretKey, syncOnlineStudents, getCloudCardsPayload,
 } = require('../controllers/students.controller');
 const {
   printSticker,
@@ -28,6 +28,12 @@ router.get('/online-secret',
 router.post('/sync-online',
   authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER'),
   syncOnlineStudents
+);
+
+// GET /api/students/cloud-cards-payload — Prepare local student cards & schedules for online publishing
+router.get('/cloud-cards-payload',
+  authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER'),
+  getCloudCardsPayload
 );
 
 // GET /api/students — Search & List

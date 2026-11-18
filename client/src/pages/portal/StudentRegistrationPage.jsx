@@ -1,13 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { 
-  GraduationCap, 
-  User, 
-  Phone, 
-  School, 
-  Send, 
-  CheckCircle2, 
-  Loader2, 
+import {
+  GraduationCap,
+  User,
+  Phone,
+  School,
+  Send,
+  CheckCircle2,
+  Loader2,
   AlertCircle,
   Sparkles,
   Calendar,
@@ -18,7 +19,8 @@ import {
   ShieldCheck,
   FileCheck,
   Lock,
-  Users
+  Users,
+  CreditCard
 } from 'lucide-react';
 import ImageUploadField from '../../components/portal/ImageUploadField';
 import TurnstileWidget from '../../components/portal/TurnstileWidget';
@@ -905,7 +907,15 @@ export default function StudentRegistrationPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            to={`/student-card${submittedData.national_id ? `?nid=${submittedData.national_id}` : ''}`}
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 transition-all"
+          >
+            <CreditCard size={18} />
+            <span>الاستعلام عن الكود والكارنيه الذكي</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => {

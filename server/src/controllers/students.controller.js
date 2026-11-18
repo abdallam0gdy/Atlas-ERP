@@ -848,6 +848,113 @@ const syncOnlineStudents = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/students/cloud-cards-payload
+ * Prepare all local active students (with valid 14-digit national_id) along with their
+ * student_code, barcode_id, photo_url, and active enrolled groups for publishing to Supabase
+ * so ANY student can look up their Smart ID Card online without logging in.
+ */
+const getCloudCardsPayload = async (req, res, next) => {
+  try {
+    await db.query(`
+      ALTER TABLE students
+        ADD COLUMN IF NOT EXISTS national_id VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS school_name VARCHAR(150);
+    `);
+
+    const studentsRes = await db.query(`
+      SELECT
+        s.id AS local_id,
+        COALESCE(s.full_name_ar, s.full_name) AS full_name,
+        regexp_replace(COALESCE(s.national_id, ''), '[^0-9]', '', 'g') AS national_id,
+        s.photo_url,
+        s.student_code,
+        s.barcode_id,
+        s.education_type,
+        s.enrollment_type,
+        s.school_name,
+        s.gender,
+        s.date_of_birth AS birth_date,
+        s.phone,
+        COALESCE(s.father_phone, s.parent_phone) AS father_phone,
+        g.name_ar AS academic_grade
+      FROM students s
+      LEFT JOIN academic_grades g ON s.grade_id = g.id
+      WHERE s.is_active = true
+        AND length(regexp_replace(COALESCE(s.national_id, ''), '[^0-9]', '', 'g')) = 14
+      ORDER BY s.student_code ASC
+    `);
+
+    const enrollmentsRes = await db.query(`
+      SELECT
+        ge.student_id,
+        gr.id AS group_id,
+        COALESCE(gr.name_ar, gr.name) AS group_name,
+        gr.schedule,
+        sub.name_ar AS subject_name,
+        sub.color AS subject_color,
+        COALESCE(t.aka, t.full_name_ar, t.full_name) AS teacher_name,
+        cr.name AS classroom_name
+      FROM group_enrollments ge
+      JOIN groups gr ON ge.group_id = gr.id
+      LEFT JOIN subjects sub ON gr.subject_id = sub.id
+      LEFT JOIN teachers t ON gr.teacher_id = t.id
+      LEFT JOIN classrooms cr ON gr.classroom_id = cr.id
+      WHERE ge.is_active = true
+        AND gr.status = 'active'
+      ORDER BY sub.name_ar ASC
+    `);
+
+    const groupsByStudent = new Map();
+    for (const row of enrollmentsRes.rows) {
+      if (!groupsByStudent.has(row.student_id)) {
+        groupsByStudent.set(row.student_id, []);
+      }
+      groupsByStudent.get(row.student_id).push({
+        group_id: row.group_id,
+        group_name: row.group_name,
+        subject_name: row.subject_name,
+        subject_color: row.subject_color,
+        teacher_name: row.teacher_name,
+        classroom_name: row.classroom_name,
+        schedule: Array.isArray(row.schedule) ? row.schedule : [],
+      });
+    }
+
+    const totalActiveRes = await db.query(`SELECT COUNT(*)::int AS total FROM students WHERE is_active = true`);
+    const totalActive = totalActiveRes.rows[0]?.total || 0;
+
+    const cards = studentsRes.rows.map((s) => ({
+      local_id: s.local_id,
+      full_name: s.full_name,
+      national_id: s.national_id,
+      photo_url: s.photo_url && /^https?:\/\//i.test(s.photo_url) ? s.photo_url : null,
+      student_code: s.student_code,
+      barcode_id: s.barcode_id,
+      academic_grade: s.academic_grade || 'غير محدد',
+      education_type: s.education_type === 'LANGUAGES' ? 'لغات' : 'عام',
+      enrollment_type: s.enrollment_type || 'PACKAGE',
+      school_name: s.school_name || null,
+      gender: s.gender || 'male',
+      birth_date: s.birth_date ? new Date(s.birth_date).toISOString().slice(0, 10) : null,
+      phone: s.phone || null,
+      father_phone: s.father_phone || '01000000000',
+      groups: groupsByStudent.get(s.local_id) || [],
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        cards,
+        eligibleCount: cards.length,
+        missingNationalIdCount: Math.max(0, totalActive - cards.length),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   listStudents,
   getStudent,
@@ -858,5 +965,6 @@ module.exports = {
   deleteStudent,
   getOnlineSecretKey,
   syncOnlineStudents,
+  getCloudCardsPayload,
 };
 

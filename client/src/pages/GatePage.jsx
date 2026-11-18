@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import PrintReportModal from '../components/PrintReportModal';
@@ -12,6 +12,35 @@ import {
   CalendarX, Sparkles, ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Isolated live clock so 1-second ticks NEVER re-render GatePage or interrupt the camera
+const GateClock = memo(function GateClock() {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = currentTime.toLocaleTimeString('ar-EG', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const dateStr = currentTime.toLocaleDateString('ar-EG', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  return (
+    <div className="text-left hidden sm:block">
+      <p className="text-white font-bold text-sm sm:text-base font-mono">{timeStr}</p>
+      <p className="text-white/40 text-[10px]">{dateStr}</p>
+    </div>
+  );
+});
 
 export default function GatePage() {
   const navigate = useNavigate();
@@ -31,7 +60,6 @@ export default function GatePage() {
   });
   const [todayLogs, setTodayLogs] = useState([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const [lastScanTime, setLastScanTime] = useState(null);
 
   // Manual entry states
   const [manualCode, setManualCode] = useState('');
@@ -48,6 +76,22 @@ export default function GatePage() {
   const inputRef = useRef(null);
   const manualInputRef = useRef(null);
   const audioCtxRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const lastScanTimeRef = useRef(0);
+  const resultTimeoutRef = useRef(null);
+  const audioEnabledRef = useRef(audioEnabled);
+
+  useEffect(() => {
+    audioEnabledRef.current = audioEnabled;
+  }, [audioEnabled]);
+
+  useEffect(() => {
+    return () => {
+      if (resultTimeoutRef.current) {
+        clearTimeout(resultTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Maintain focus based on current mode
   const maintainFocus = useCallback(() => {
@@ -78,6 +122,23 @@ export default function GatePage() {
       }
     }
   }, [mode, lookedUpStudent, isPrintModalOpen, isCancelModalOpen]);
+
+  const loadTodayLog = useCallback(async () => {
+    try {
+      const { data } = await api.get('/attendance/today');
+      setTodayStats(data.data.stats || { total_scans: 0, unique_students: 0, paid_count: 0, pending_count: 0 });
+      setTodayLogs(data.data.logs || []);
+    } catch (err) {
+      console.error('Failed to load today log:', err);
+    }
+  }, []);
+
+  // Poll today's attendance log independently from mode/modal changes
+  useEffect(() => {
+    loadTodayLog();
+    const interval = setInterval(loadTodayLog, 15000);
+    return () => clearInterval(interval);
+  }, [loadTodayLog]);
 
   useEffect(() => {
     maintainFocus();
@@ -112,34 +173,23 @@ export default function GatePage() {
     };
     document.addEventListener('keydown', handleGlobalKey);
 
-    loadTodayLog();
-    const interval = setInterval(loadTodayLog, 15000);
-
     return () => {
       document.removeEventListener('click', handleActivity);
       document.removeEventListener('keydown', handleGlobalKey);
-      clearInterval(interval);
     };
   }, [maintainFocus, mode, isPrintModalOpen, isCancelModalOpen]);
 
-  const loadTodayLog = async () => {
-    try {
-      const { data } = await api.get('/attendance/today');
-      setTodayStats(data.data.stats || { total_scans: 0, unique_students: 0, paid_count: 0, pending_count: 0 });
-      setTodayLogs(data.data.logs || []);
-    } catch (err) {
-      console.error('Failed to load today log:', err);
-    }
-  };
-
   // Play audio feedback
-  const playSound = (type) => {
-    if (!audioEnabled) return;
+  const playSound = useCallback((type) => {
+    if (!audioEnabledRef.current) return;
     try {
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
 
@@ -163,18 +213,24 @@ export default function GatePage() {
     } catch (e) {
       // Audio fallback
     }
-  };
+  }, []);
 
-  // Process barcode scan or direct code check-in
-  const processScan = async (identifier) => {
+  // Process barcode scan or direct code check-in (stable reference via refs)
+  const processScan = useCallback(async (identifier) => {
     if (!identifier) return;
     const cleanId = String(identifier).trim();
     if (cleanId.length < 1) return;
-    if (isProcessing) return;
+    if (isProcessingRef.current) return;
 
     const now = Date.now();
-    if (lastScanTime && now - lastScanTime < 500) return;
-    setLastScanTime(now);
+    if (lastScanTimeRef.current && now - lastScanTimeRef.current < 500) return;
+    lastScanTimeRef.current = now;
+    isProcessingRef.current = true;
+
+    if (resultTimeoutRef.current) {
+      clearTimeout(resultTimeoutRef.current);
+      resultTimeoutRef.current = null;
+    }
 
     setIsProcessing(true);
     setBarcodeInput('');
@@ -192,7 +248,7 @@ export default function GatePage() {
       await loadTodayLog();
 
       // Clear result after 4 seconds
-      setTimeout(() => {
+      resultTimeoutRef.current = setTimeout(() => {
         setScanResult(null);
         maintainFocus();
       }, 4000);
@@ -206,15 +262,21 @@ export default function GatePage() {
       });
       playSound('error');
 
-      setTimeout(() => {
+      resultTimeoutRef.current = setTimeout(() => {
         setScanResult(null);
         maintainFocus();
       }, 3500);
     } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
       maintainFocus();
     }
-  };
+  }, [loadTodayLog, maintainFocus, playSound]);
+
+  const handleCloseCamera = useCallback(() => {
+    setMode('scanner');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
 
   // Handle Scanner Enter
   const handleScannerKeyDown = (e) => {
@@ -375,18 +437,6 @@ export default function GatePage() {
     });
   }, [todayLogs, logFilter]);
 
-  // Current time display
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const timeStr = currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const dateStr = currentTime.toLocaleDateString('ar-EG', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  });
-
   const getScanStateClass = () => {
     if (!scanResult) return 'gate-scan-ready';
     if (scanResult.success && scanResult.type !== 'ALREADY_SCANNED') return 'gate-scan-success';
@@ -538,10 +588,7 @@ export default function GatePage() {
             {audioEnabled ? <Volume2 size={18} className="text-cyan-400" /> : <VolumeX size={18} />}
           </button>
 
-          <div className="text-left hidden sm:block">
-            <p className="text-white font-bold text-sm sm:text-base font-mono">{timeStr}</p>
-            <p className="text-white/40 text-[10px]">{dateStr}</p>
-          </div>
+          <GateClock />
         </div>
       </div>
 
@@ -744,10 +791,7 @@ export default function GatePage() {
                 onScan={processScan}
                 isProcessing={isProcessing}
                 scanResult={scanResult}
-                onClose={() => {
-                  setMode('scanner');
-                  setTimeout(() => inputRef.current?.focus(), 50);
-                }}
+                onClose={handleCloseCamera}
               />
             )}
 

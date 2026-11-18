@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import { supabase } from '../lib/supabase';
 import StudentModal from '../components/StudentModal';
 import StudentBulkImportModal from '../components/StudentBulkImportModal';
 import PrintReportModal from '../components/PrintReportModal';
@@ -9,7 +10,7 @@ import {
   Search, Plus, Filter, ChevronLeft, ChevronRight,
   Phone, GraduationCap, Loader2, Users,
   Download, Printer, RefreshCw, Upload, Database, X,
-  Trash2, AlertTriangle, Edit, Eye, QrCode, ArrowUpDown
+  Trash2, AlertTriangle, Edit, Eye, QrCode, ArrowUpDown, CloudUpload
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -235,6 +236,7 @@ export default function StudentsPage() {
   const [printStudentsData, setPrintStudentsData] = useState([]);
   const [isLoadingPrintData, setIsLoadingPrintData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isPublishingCards, setIsPublishingCards] = useState(false);
   const [printingId, setPrintingId] = useState(null);
 
   // Delete Student State
@@ -546,6 +548,58 @@ export default function StudentsPage() {
     }
   };
 
+  // Publish all local students' codes, barcodes, photos & schedules online to Supabase for public National ID lookup
+  const handlePublishCardsOnline = async () => {
+    setIsPublishingCards(true);
+    try {
+      const [{ data: payloadRes }, secretRes] = await Promise.all([
+        api.get('/students/cloud-cards-payload'),
+        api.get('/students/online-secret').catch(() => ({ data: { data: { pin: 'Abd#01224385098' } } })),
+      ]);
+
+      const cards = payloadRes?.data?.cards || [];
+      const missingCount = payloadRes?.data?.missingNationalIdCount || 0;
+      const pin = secretRes?.data?.data?.pin || 'Abd#01224385098';
+
+      if (cards.length === 0) {
+        toast.error('لا يوجد طلاب مسجل لهم رقم قومي (14 رقماً) حالياً للنشر أونلاين');
+        return;
+      }
+
+      let totalInserted = 0;
+      let totalUpdated = 0;
+      const CHUNK_SIZE = 100;
+
+      for (let i = 0; i < cards.length; i += CHUNK_SIZE) {
+        const chunk = cards.slice(i, i + CHUNK_SIZE);
+        const { data: rpcResult, error: rpcErr } = await supabase.rpc('admin_upsert_student_cards', {
+          pin,
+          p_students: chunk,
+        });
+        if (rpcErr) {
+          throw new Error(
+            rpcErr.message.includes('admin_upsert_student_cards')
+              ? 'يرجى تشغيل ملف supabase_student_card_lookup.sql مرة واحدة في Supabase SQL Editor أولاً'
+              : rpcErr.message
+          );
+        }
+        totalInserted += rpcResult?.inserted || 0;
+        totalUpdated += rpcResult?.updated || 0;
+      }
+
+      const missingNote = missingCount > 0 ? ` (${missingCount} طالب بدون رقم قومي)` : '';
+      toast.success(
+        `تم نشر وتحديث ${totalInserted + totalUpdated} كارنيه أونلاين بنجاح (${totalInserted} جديد، ${totalUpdated} محدث)${missingNote}`,
+        { duration: 5500 }
+      );
+    } catch (err) {
+      console.error('Publish cards online error:', err);
+      toast.error(err?.message || 'تعذر نشر الكارنيهات أونلاين — تأكد من الاتصال بالإنترنت');
+    } finally {
+      setIsPublishingCards(false);
+    }
+  };
+
   // Filter summaries for print modal
   const activeFiltersList = useMemo(() => {
     const list = [];
@@ -646,6 +700,20 @@ export default function StudentsPage() {
           >
             <Printer size={15} className="text-slate-600" />
             <span>طباعة كشف</span>
+          </button>
+
+          <button
+            onClick={handlePublishCardsOnline}
+            disabled={isPublishingCards}
+            className="atlas-btn atlas-btn-secondary text-xs sm:text-sm flex items-center gap-1.5 border-sky-200 text-sky-800 bg-sky-50 hover:bg-sky-100"
+            title="نشر وتحديث أكواد وباركود وجداول جميع الطلاب أونلاين لصفحة الاستعلام بالرقم القومي (/student-card)"
+          >
+            {isPublishingCards ? (
+              <Loader2 size={15} className="animate-spin text-sky-600" />
+            ) : (
+              <CloudUpload size={15} className="text-sky-600" />
+            )}
+            <span>نشر الكارنيهات أونلاين</span>
           </button>
 
           <button

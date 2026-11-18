@@ -15,7 +15,8 @@ import {
   Building2,
   Menu,
   X,
-  ChevronLeft
+  ChevronLeft,
+  CreditCard
 } from 'lucide-react';
 import PublicFooter from '../components/PublicFooter';
 
@@ -127,6 +128,14 @@ export default function ComingSoonPage() {
             </a>
 
             <Link
+              to="/student-card"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0C3C82] bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3.5 py-2 rounded-lg transition-colors"
+            >
+              <CreditCard size={15} />
+              <span>كارنيه الطالب</span>
+            </Link>
+
+            <Link
               to="/register"
               className="inline-flex items-center gap-2 text-xs font-bold text-white bg-[#0C3C82] hover:bg-blue-800 px-4 py-2 rounded-lg shadow-sm transition-all"
             >
@@ -189,6 +198,14 @@ export default function ComingSoonPage() {
 
             <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
               <Link
+                to="/student-card"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center py-2.5 bg-blue-50 text-[#0C3C82] border border-blue-200 font-bold text-sm rounded-lg flex items-center justify-center gap-2"
+              >
+                <CreditCard size={16} />
+                <span>الاستعلام عن كود وكارنيه الطالب</span>
+              </Link>
+              <Link
                 to="/register"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full text-center py-2.5 bg-[#0C3C82] text-white font-bold text-sm rounded-lg"
@@ -239,7 +256,7 @@ export default function ComingSoonPage() {
               </p>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-8">
                 <Link
                   to="/register"
                   className="inline-flex items-center justify-center gap-2.5 bg-[#0C3C82] hover:bg-blue-800 text-white font-bold text-sm sm:text-base px-6 py-3.5 rounded-xl shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5"
@@ -247,6 +264,14 @@ export default function ComingSoonPage() {
                   <GraduationCap size={20} />
                   <span>استمارة تسجيل الطلاب الجدد</span>
                   <ArrowLeft size={17} />
+                </Link>
+
+                <Link
+                  to="/student-card"
+                  className="inline-flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#0C3C82] font-bold text-sm sm:text-base px-5 py-3.5 rounded-xl border border-blue-200 transition-all hover:-translate-y-0.5"
+                >
+                  <CreditCard size={19} />
+                  <span>استعلام عن كودك وكارنيهك</span>
                 </Link>
 
                 <a

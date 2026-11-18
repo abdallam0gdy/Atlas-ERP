@@ -359,12 +359,14 @@ export default function OnlineRegistrationsPage() {
 
       const { synced = [], duplicate_online_ids = [] } = syncResult;
 
-      // Update Supabase: mark canonical rows as synced + approved + assigned_student_code, and delete duplicate rows
+      // Update Supabase: mark canonical rows as synced + approved + assigned_student_code + assigned_barcode_id, and delete duplicate rows
       const rpcRes = await supabase.rpc('admin_sync_and_clean_students', {
         pin,
         p_synced: synced.map((item) => ({
           id: item.online_id,
           student_code: item.student_code,
+          barcode_id: item.barcode_id || null,
+          local_id: item.local_id || null,
         })),
         p_delete_ids: duplicate_online_ids,
       });

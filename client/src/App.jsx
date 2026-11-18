@@ -32,6 +32,7 @@ const OnlineRegistrationsPage = lazy(() => import('./pages/OnlineRegistrationsPa
 const StudentPortalLayout = lazy(() => import('./components/portal/StudentPortalLayout'));
 const TeacherPortalLayout = lazy(() => import('./components/portal/TeacherPortalLayout'));
 const StudentRegistrationPage = lazy(() => import('./pages/portal/StudentRegistrationPage'));
+const StudentCardLookupPage = lazy(() => import('./pages/portal/StudentCardLookupPage'));
 const TeacherRegistrationPage = lazy(() => import('./pages/portal/TeacherRegistrationPage'));
 
 const PageLoader = () => (
@@ -66,11 +67,15 @@ function App() {
           {/* Legacy /login route redirects to root */}
           <Route path="/login" element={<Navigate to="/" replace />} />
 
-          {/* Public Student Registration Portal */}
+          {/* Public Student Registration & Card Lookup Portal (NO Login Required) */}
           <Route element={<StudentPortalLayout />}>
             <Route path="/register" element={<StudentRegistrationPage />} />
             <Route path="/register/student" element={<Navigate to="/register" replace />} />
             <Route path="/apply" element={<Navigate to="/register" replace />} />
+            <Route path="/student-card" element={<StudentCardLookupPage />} />
+            <Route path="/my-code" element={<Navigate to="/student-card" replace />} />
+            <Route path="/lookup" element={<Navigate to="/student-card" replace />} />
+            <Route path="/card" element={<Navigate to="/student-card" replace />} />
           </Route>
 
           {/* Private & Obfuscated Teacher Onboarding Portal */}

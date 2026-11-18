@@ -70,6 +70,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // API ROUTES
 // ============================================================
 
+app.use('/api/public', require('./routes/public.routes'));
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/students', require('./routes/students.routes'));
 app.use('/api/teachers', require('./routes/teachers.routes'));
