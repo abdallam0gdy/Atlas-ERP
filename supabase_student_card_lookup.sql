@@ -269,3 +269,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.lookup_student_by_national_id(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_sync_and_clean_students(TEXT, JSONB, UUID[]) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_upsert_student_cards(TEXT, JSONB) TO anon, authenticated;
+
