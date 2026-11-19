@@ -7,7 +7,7 @@ import {
   DoorOpen, LogOut, Menu, X, ChevronLeft, Settings,
   Wallet, Package, ShoppingCart, BookMarked, Library,
   User, ShieldCheck, Clock, Calendar, CheckCircle2, CreditCard,
-  UserCheck, Compass
+  UserCheck, Compass, MessageCircle
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -53,6 +53,7 @@ export function ProtectedRoute({ allowedRoles, pageId, adminOnly }) {
 const PAGE_TITLES = {
   '/dashboard': 'لوحة التحكم والمؤشرات',
   '/info': 'مركز المعلومات والجداول الدراسية',
+  '/whatsapp': 'منظومة واتساب أطلس والشات الموحد',
   '/online-registrations': 'طلبات التسجيل الإلكتروني (أونلاين)',
   '/students': 'إدارة شؤون الطلاب',
   '/teachers': 'هيئة التدريس والمدرسين',
@@ -88,6 +89,7 @@ export function MainLayout() {
   const navItems = [
     { path: '/dashboard', pageId: 'dashboard', icon: LayoutDashboard, label: 'لوحة التحكم' },
     { path: '/info', icon: Compass, label: 'معلومات وجداول', isPublic: true },
+    { path: '/whatsapp', icon: MessageCircle, label: 'واتساب والشات', isPublic: true },
     { path: '/online-registrations', pageId: 'online-registrations', icon: UserCheck, label: 'التسجيل أونلاين', adminOnly: true },
     { path: '/students', pageId: 'students', icon: Users, label: 'الطلاب' },
     { path: '/teachers', pageId: 'teachers', icon: GraduationCap, label: 'المدرسين' },

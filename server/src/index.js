@@ -85,6 +85,7 @@ app.use('/api/subscriptions', require('./routes/subscriptions.routes'));
 app.use('/api/packages', require('./routes/packages.routes'));
 app.use('/api/users', require('./routes/users.routes'));
 app.use('/api/uploads', require('./routes/uploads.routes'));
+app.use('/api/whatsapp', require('./routes/whatsapp.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

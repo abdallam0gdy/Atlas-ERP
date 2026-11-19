@@ -29,6 +29,7 @@ const PackagesPage = lazy(() => import('./pages/PackagesPage'));
 const UsersManagementPage = lazy(() => import('./pages/UsersManagementPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const OnlineRegistrationsPage = lazy(() => import('./pages/OnlineRegistrationsPage'));
+const WhatsAppPage = lazy(() => import('./pages/WhatsAppPage'));
 const StudentPortalLayout = lazy(() => import('./components/portal/StudentPortalLayout'));
 const TeacherPortalLayout = lazy(() => import('./components/portal/TeacherPortalLayout'));
 const StudentRegistrationPage = lazy(() => import('./pages/portal/StudentRegistrationPage'));
@@ -93,6 +94,7 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/info" element={<InfoCenterPage />} />
+            <Route path="/whatsapp" element={<WhatsAppPage />} />
             <Route path="/profile" element={<ProfilePage />} />
 
             {/* Students */}

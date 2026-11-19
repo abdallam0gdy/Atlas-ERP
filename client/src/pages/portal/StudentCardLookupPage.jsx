@@ -12,7 +12,7 @@ import {
   CheckCircle2, Clock, Copy, Check, Download, Printer,
   GraduationCap, School, BookOpen, Calendar, MapPin,
   User, QrCode, RefreshCw, Sparkles, ArrowLeft, XCircle,
-  CreditCard
+  CreditCard, MessageCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -1244,6 +1244,18 @@ export default function StudentCardLookupPage() {
                             <Printer size={16} />
                             <span>طباعة الكارنيه</span>
                           </button>
+
+                          <a
+                            href={`https://wa.me/201288817183?text=${encodeURIComponent(
+                              `مرحباً أكاديمية أطلس، أرغب في تفعيل إشعارات المواعيد والحضور والدرجات للطالب: ${student.full_name} (كود #${student.student_code})`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                          >
+                            <MessageCircle size={16} />
+                            <span>تفعيل إشعارات الواتساب</span>
+                          </a>
                         </>
                       )}
                     </div>
