@@ -54,6 +54,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: 7d
       CORS_ORIGIN: "*"
       CLOUDFLARE_TURNSTILE_SECRET_KEY: ${CLOUDFLARE_TURNSTILE_SECRET_KEY:-0x4AAAAAAFWKPr6kGzFRbLeFrM5aUiWZMDY}
+      WHATSAPP_SERVICE_URL: ${WHATSAPP_SERVICE_URL:-http://whatsapp:5055/api}
     volumes:
       - ./server/uploads:/app/uploads
       - ./server/backups:/app/backups
@@ -84,6 +85,34 @@ services:
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "80:80"
+
+  # ============================================================
+  # 4. WhatsApp Automation & Microservice Engine
+  # ============================================================
+  whatsapp:
+    build:
+      context: ./whatsapp-system
+      dockerfile: Dockerfile
+    container_name: atlas_whatsapp
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      WA_PORT: 5055
+      TZ: Africa/Cairo
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-atlas_erp_local}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
+      AUTH_DIR: /app/auth_session
+    volumes:
+      - ./whatsapp-system/auth_session:/app/auth_session
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "5055:5055"
 
 volumes:
   pgdata:

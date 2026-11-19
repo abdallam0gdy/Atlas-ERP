@@ -23,11 +23,12 @@ if ! command -v sshpass &> /dev/null; then
 fi
 
 # 2. Sync files to server
-echo "📦 1/4 جاري مزامنة الملفات والتعديلات مع السيرفر..."
+echo "📦 1/6 جاري مزامنة الملفات والتعديلات مع السيرفر..."
 sshpass -p "$SERVER_PASS" rsync -avz \
   --exclude 'node_modules' \
   --exclude 'client/node_modules' \
   --exclude 'server/node_modules' \
+  --exclude 'whatsapp-system/node_modules' \
   --exclude 'client/dist' \
   --exclude 'server/uploads' \
   --exclude 'server/backups' \
@@ -35,8 +36,8 @@ sshpass -p "$SERVER_PASS" rsync -avz \
   -e "ssh -F /dev/null -o StrictHostKeyChecking=no" \
   ./ "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/"
 
-# 3. Copy client and server .env
-echo "🔑 2/4 جاري نقل إعدادات البيئة (Client & Server .env)..."
+# 3. Copy client, server and whatsapp .env files
+echo "🔑 2/6 جاري نقل إعدادات البيئة (Client & Server .env)..."
 if [ -f client/.env ]; then
   sshpass -p "$SERVER_PASS" scp -F /dev/null -o StrictHostKeyChecking=no client/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/client/.env"
 fi
@@ -44,23 +45,35 @@ if [ -f server/.env ]; then
   sshpass -p "$SERVER_PASS" scp -F /dev/null -o StrictHostKeyChecking=no server/.env "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/server/.env"
 fi
 
-# 4. Remote Backup and Build
-echo "💾 3/4 جاري أخذ نسخة احتياطية من قاعدة البيانات..."
+# 4. Sync WhatsApp authenticated session
+if [ -d whatsapp-system/auth_session ]; then
+  echo "📲 3/6 نقل جلسة تسجيل دخول الواتساب الموثقة..."
+  sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "mkdir -p $REMOTE_PATH/whatsapp-system/auth_session"
+  sshpass -p "$SERVER_PASS" rsync -avz -e "ssh -F /dev/null -o StrictHostKeyChecking=no" whatsapp-system/auth_session/ "$SERVER_USER@$SERVER_IP:$REMOTE_PATH/whatsapp-system/auth_session/"
+fi
+
+# 5. Remote Backup and Database Sync
+echo "💾 4/6 جاري أخذ نسخة احتياطية من قاعدة بيانات السيرفر..."
 sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
   mkdir -p /home/atlas/backups && \
   docker exec atlas_postgres pg_dump -U postgres -d atlas_erp_local > /home/atlas/backups/pre_deploy_backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
 "
 
-echo "🐳 4/4 جاري إعادة بناء وتشغيل الحاويات في السيرفر..."
+# 6. Apply WhatsApp schema and tables to remote database
+echo "🗄️  5/6 نقل وتطبيق جداول الواتساب والـ LID إلى قاعدة بيانات السيرفر..."
+if [ -f /tmp/whatsapp_schema_data.sql ]; then
+  sshpass -p "$SERVER_PASS" scp -F /dev/null -o StrictHostKeyChecking=no /tmp/whatsapp_schema_data.sql "$SERVER_USER@$SERVER_IP:/tmp/whatsapp_schema_data.sql"
+  sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
+    docker exec -i atlas_postgres psql -U postgres -d atlas_erp_local < /tmp/whatsapp_schema_data.sql >/dev/null 2>&1 || true
+    rm -f /tmp/whatsapp_schema_data.sql
+  "
+fi
+
+# 7. Rebuild and restart containers
+echo "🐳 6/6 جاري إعادة بناء وتشغيل الحاويات في السيرفر (Client, Server, DB, WhatsApp)..."
 sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
   cd $REMOTE_PATH && \
   docker compose up -d --build
-"
-
-echo "🌱 5/5 جاري تطبيق وتحديث الجداول وحسابات المدرسين والمجموعات في قاعدة بيانات السيرفر..."
-sshpass -p "$SERVER_PASS" ssh -F /dev/null -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "
-  cd $REMOTE_PATH && \
-  docker compose exec -T server node src/db/seed_schedule_2026.js
 "
 
 echo ""

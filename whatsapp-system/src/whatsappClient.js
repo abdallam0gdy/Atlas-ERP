@@ -18,7 +18,7 @@ const {
   buildAllGroupsSchedulePreviews,
 } = require('./packageScheduleJob');
 
-const AUTH_FOLDER = path.join(__dirname, '../auth_session');
+const AUTH_FOLDER = process.env.AUTH_DIR || path.join(__dirname, '../auth_session');
 
 let sock = null;
 let isStarting = false;
