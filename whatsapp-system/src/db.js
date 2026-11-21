@@ -94,18 +94,22 @@ const DEFAULT_TEMPLATES = [
   {
     key: 'daily_package_schedule',
     title_ar: '📅 قالب جدول مواعيد الباكدج اليومي للجروبات',
-    description_ar: 'يُرسل يومياً على جروبات المراحل الرسمية (أو جروبات الاختبار) بمواعيد حصص الباكدج.',
-    body_template: `📢 *جدول مواعيد حصص الباكدج — {grade_name}* ({section_label})
-🗓️ *اليوم:* {day_name} الموافق {date}
-━━━━━━━━━━━━━━━━━━━━
+    description_ar: 'يُرسل يومياً على جروبات المراحل الرسمية (أو جروبات الاختبار) بمواعيد الحصص والمواد والمدرسين وساعة البدء.',
+    body_template: `جدول {grade_name}{section_badge} {target_label} {day_name} 🗒️✨
+
+───────────────────────────────
 {schedule_list}
-━━━━━━━━━━━━━━━━━━━━
-⚠️ *تنبيه هام:* يرجى إحضار الكارنيه الذكي أو كود الطالب لتسجيل الحضور على البوابة.
+───────────────────────────────
+💫 مستنينكم {target_informal}، ونورتونا مقدماً 🥰✨
+
 📞 شؤون الطلاب: {center_phone}
 ✨ *أكاديمية أطلس التعليمية* ✨`,
     variables_list: [
       '{grade_name}',
       '{section_label}',
+      '{section_badge}',
+      '{target_label}',
+      '{target_informal}',
       '{day_name}',
       '{date}',
       '{schedule_list}',

@@ -109,6 +109,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-admin}
       AUTH_DIR: /app/auth_session
     volumes:
+      - ./whatsapp-system/src:/app/src
       - ./whatsapp-system/auth_session:/app/auth_session
       - /etc/localtime:/etc/localtime:ro
     ports:

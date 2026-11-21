@@ -52,6 +52,52 @@ function formatTime12Ar(time24 = '') {
 }
 
 /**
+ * Converts "15:00" to "3:00 م" or "10:30" to "10:30 ص" (clean start time without leading zero)
+ */
+function formatStartTime12Ar(time24 = '') {
+  if (!time24 || !time24.includes(':')) return time24;
+  const [hStr, mStr] = time24.split(':');
+  let h = parseInt(hStr, 10);
+  if (Number.isNaN(h)) return time24;
+  const period = h >= 12 ? 'م' : 'ص';
+  h = h % 12 || 12;
+  const m = (mStr || '00').slice(0, 2);
+  return `${h}:${m} ${period}`;
+}
+
+/**
+ * Formats a teacher name with appropriate educator emoji (👨🏻‍🏫 / 👩🏻‍🏫) and title
+ */
+function formatTeacherWithEmoji(rawName = '') {
+  let name = String(rawName || '').trim();
+  if (!name || name === 'غير محدد') return '👨🏻‍🏫 أستاذ المادة';
+
+  let emoji = '👨🏻‍🏫';
+
+  if (/^(ميس|مس|أستاذة|استاذة)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+    emoji = '👩🏻‍🏫';
+    name = name.replace(/^(ميس|مس|أستاذة|استاذة)(\s*[\/:]?\s*|\s+)/i, 'ميس / ');
+  } else if (/^(مستر)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+    emoji = '👨🏻‍🏫';
+    name = name.replace(/^(مستر)(\s*[\/:]?\s*|\s+)/i, 'مستر / ');
+  } else if (/^(مسيو)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+    emoji = '👨🏻‍🏫';
+    name = name.replace(/^(مسيو)(\s*[\/:]?\s*|\s+)/i, 'مسيو / ');
+  } else if (/^(د|دكتور|دكتورة)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+    emoji = /دكتورة/.test(name) ? '👩🏻‍🏫' : '👨🏻‍🏫';
+    name = name.replace(/^(د|دكتور|دكتورة)(\s*[\/:]?\s*|\s+)/i, 'د / ');
+  } else if (/^(ا|أ)(\s*[\/:]\s*|\s+)/i.test(name)) {
+    emoji = '👨🏻‍🏫';
+    name = name.replace(/^(ا|أ)(\s*[\/:]\s*|\s+)/i, 'أ / ');
+  } else {
+    emoji = '👨🏻‍🏫';
+    name = `أ / ${name}`;
+  }
+
+  return `${emoji} ${name.replace(/\s+/g, ' ').trim()}`;
+}
+
+/**
  * Resolves target date ('today' | 'tomorrow' | 'YYYY-MM-DD') in Cairo timezone
  */
 function resolveTargetDateInfo(targetOption = 'today') {
@@ -78,11 +124,18 @@ function resolveTargetDateInfo(targetOption = 'today') {
     year: 'numeric',
   });
 
+  const isTomorrow = targetOption === 'tomorrow';
+  const targetLabel = isTomorrow ? 'غداً' : (targetOption === 'today' ? 'اليوم' : 'يوم');
+  const targetInformal = isTomorrow ? 'بكرا' : 'اليوم';
+
   return {
     isoDate,
     dayKey,
     dayNameAr,
     formattedDateAr,
+    targetLabel,
+    targetInformal,
+    isTomorrow,
   };
 }
 
@@ -243,25 +296,72 @@ async function buildAllGroupsSchedulePreviews(targetOption = 'today', specificCo
     if (!hasSessions) {
       scheduleListText = '🌴 *لا توجد حصص باكدج مقررة في هذا اليوم (عطلة).*';
     } else {
-      scheduleListText = daySessions
-        .map((sess, idx) => {
-          const numIcon = NUMBER_EMOJIS[idx] || `${idx + 1}.`;
-          const timeRange = `من ${formatTime12Ar(sess.start_time)} إلى ${formatTime12Ar(sess.end_time)}`;
-          if (sess.is_cancelled) {
-            return `${numIcon} ~*${sess.subject_name}* — ${sess.teacher_name}~\n   ❌ *ملغاة اليوم* (${sess.cancel_reason})`;
-          }
-          // لا نرسل القاعة في الجدول بناءً على طلب الإدارة
-          return `${numIcon} *${sess.subject_name}* — ${sess.teacher_name}\n   ⏰ ${timeRange}`;
-        })
-        .join('\n\n');
+      // Group sessions by start_time and subject_name
+      const slotsMap = new Map();
+
+      for (const sess of daySessions) {
+        const subj = String(sess.subject_name || sess.group_name || 'حصة باكدج').trim();
+        const slotKey = `${sess.start_time}__${subj}`;
+
+        if (!slotsMap.has(slotKey)) {
+          slotsMap.set(slotKey, {
+            start_time: sess.start_time,
+            subject_name: subj,
+            teachers: [],
+            seenTeachers: new Set(),
+          });
+        }
+
+        const slot = slotsMap.get(slotKey);
+        const tKey = `${sess.teacher_name}__${sess.is_cancelled}`;
+        if (!slot.seenTeachers.has(tKey)) {
+          slot.seenTeachers.add(tKey);
+          slot.teachers.push({
+            teacher_name: sess.teacher_name,
+            is_cancelled: sess.is_cancelled,
+            cancel_reason: sess.cancel_reason,
+          });
+        }
+      }
+
+      const SEPARATOR = '───────────────────────────────';
+      const slotBlocks = [];
+
+      for (const slot of slotsMap.values()) {
+        const teacherLines = slot.teachers
+          .map((t) => {
+            const formattedT = formatTeacherWithEmoji(t.teacher_name);
+            if (t.is_cancelled) {
+              return `~${formattedT}~ ❌ _(ملغاة اليوم: ${t.cancel_reason || 'اعتذار'})_`;
+            }
+            return formattedT;
+          })
+          .join('\n');
+
+        const startTimeFormatted = formatStartTime12Ar(slot.start_time);
+
+        slotBlocks.push(
+          `📖 *${slot.subject_name}*\n\n${teacherLines}\n⏰ الساعة ${startTimeFormatted}`
+        );
+      }
+
+      scheduleListText = slotBlocks.join(`\n${SEPARATOR}\n`);
     }
+
+    const sectionBadge =
+      cfg.section_label && cfg.section_label !== 'الكل'
+        ? ` (${cfg.section_label})`
+        : '';
 
     const rendered = await getAndRenderTemplate('daily_package_schedule', {
       grade_name: cfg.grade_name || cfg.official_name,
       section_label: cfg.section_label || 'الكل',
+      section_badge: sectionBadge,
       group_name: cfg.official_name,
       day_name: dateInfo.dayNameAr,
       date: dateInfo.formattedDateAr,
+      target_label: dateInfo.targetLabel || 'غداً',
+      target_informal: dateInfo.targetInformal || 'بكرا',
       schedule_list: scheduleListText,
     });
 
@@ -298,6 +398,8 @@ async function buildAllGroupsSchedulePreviews(targetOption = 'today', specificCo
 module.exports = {
   normalizeArabicName,
   formatTime12Ar,
+  formatStartTime12Ar,
+  formatTeacherWithEmoji,
   resolveTargetDateInfo,
   autoMatchOfficialGroups,
   buildAllGroupsSchedulePreviews,
