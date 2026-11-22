@@ -72,29 +72,74 @@ function formatTeacherWithEmoji(rawName = '') {
   let name = String(rawName || '').trim();
   if (!name || name === 'غير محدد') return '👨🏻‍🏫 أستاذ المادة';
 
+  // Fix any legacy or broken title like "مس /يو/ خالد" or "مس / يو / خالد"
+  name = name.replace(/^مس\s*[\/:]?\s*يو(\s*[\/:]\s*|\s+)?/i, 'مسيو ');
+
   let emoji = '👨🏻‍🏫';
 
-  if (/^(ميس|مس|أستاذة|استاذة)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+  // 1. مسيو (French teacher - Male) -> MUST be checked before مس/ميس!
+  if (/^(مسيو)(\s*[\/:]\s*|\s+)/i.test(name)) {
+    emoji = '👨🏻‍🏫';
+    name = name.replace(/^(مسيو)(\s*[\/:]\s*|\s+)/i, 'مسيو / ');
+  }
+  // 2. ميس / مس / أستاذة (Female teacher)
+  else if (/^(ميس|مس(?!يو)|أستاذة|استاذة)(\s*[\/:]\s*|\s+)/i.test(name)) {
     emoji = '👩🏻‍🏫';
-    name = name.replace(/^(ميس|مس|أستاذة|استاذة)(\s*[\/:]?\s*|\s+)/i, 'ميس / ');
-  } else if (/^(مستر)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+    name = name.replace(/^(ميس|مس|أستاذة|استاذة)(\s*[\/:]\s*|\s+)/i, 'ميس / ');
+  }
+  // 3. مستر (Male teacher)
+  else if (/^(مستر)(\s*[\/:]\s*|\s+)/i.test(name)) {
     emoji = '👨🏻‍🏫';
-    name = name.replace(/^(مستر)(\s*[\/:]?\s*|\s+)/i, 'مستر / ');
-  } else if (/^(مسيو)(\s*[\/:]?\s*|\s+)/i.test(name)) {
-    emoji = '👨🏻‍🏫';
-    name = name.replace(/^(مسيو)(\s*[\/:]?\s*|\s+)/i, 'مسيو / ');
-  } else if (/^(د|دكتور|دكتورة)(\s*[\/:]?\s*|\s+)/i.test(name)) {
+    name = name.replace(/^(مستر)(\s*[\/:]\s*|\s+)/i, 'مستر / ');
+  }
+  // 4. دكتور / دكتورة
+  else if (/^(د|دكتور|دكتورة)(\s*[\/:]\s*|\s+)/i.test(name)) {
     emoji = /دكتورة/.test(name) ? '👩🏻‍🏫' : '👨🏻‍🏫';
-    name = name.replace(/^(د|دكتور|دكتورة)(\s*[\/:]?\s*|\s+)/i, 'د / ');
-  } else if (/^(ا|أ)(\s*[\/:]\s*|\s+)/i.test(name)) {
+    name = name.replace(/^(د|دكتور|دكتورة)(\s*[\/:]\s*|\s+)/i, 'د / ');
+  }
+  // 5. أستاذ / استاذ
+  else if (/^(أستاذ|استاذ)(\s*[\/:]\s*|\s+)/i.test(name)) {
+    emoji = '👨🏻‍🏫';
+    name = name.replace(/^(أستاذ|استاذ)(\s*[\/:]\s*|\s+)/i, 'أ / ');
+  }
+  // 6. أ / ا
+  else if (/^(ا|أ)(\s*[\/:]\s*|\s+)/i.test(name)) {
     emoji = '👨🏻‍🏫';
     name = name.replace(/^(ا|أ)(\s*[\/:]\s*|\s+)/i, 'أ / ');
-  } else {
+  }
+  else {
     emoji = '👨🏻‍🏫';
     name = `أ / ${name}`;
   }
 
   return `${emoji} ${name.replace(/\s+/g, ' ').trim()}`;
+}
+
+/**
+ * Formats subject name cleanly and appends (أزهر) for Azhar groups or curricula
+ */
+function formatSubjectWithAzhar(subjectName = '', groupName = '', subjectCode = '') {
+  let cleanSubj = String(subjectName || '').trim();
+  const groupStr = String(groupName || '').trim();
+  const codeStr = String(subjectCode || '').toUpperCase().trim();
+
+  const isAzhar =
+    /أزهر|ازهر/i.test(groupStr) ||
+    /أزهر|ازهر|شرع/i.test(cleanSubj) ||
+    ['SHAR', 'FQH', 'THF', 'TWD'].includes(codeStr);
+
+  if (!isAzhar) {
+    return cleanSubj;
+  }
+
+  cleanSubj = cleanSubj
+    .replace(/\s*و?\s*الأزهرية/gi, '')
+    .replace(/\s*\(\s*(أزهر|ازهر)\s*\)/gi, '')
+    .replace(/\b(أزهر|ازهر)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return `${cleanSubj} (أزهر)`;
 }
 
 /**
@@ -215,6 +260,7 @@ async function buildAllGroupsSchedulePreviews(targetOption = 'today', specificCo
            ag.name_ar AS grade_name,
            g.schedule,
            s.name_ar AS subject_name,
+           s.code AS subject_code,
            COALESCE(t.full_name_ar, t.full_name) AS teacher_name,
            COALESCE(cr.name_ar, cr.name) AS classroom_name
     FROM groups g
@@ -273,10 +319,16 @@ async function buildAllGroupsSchedulePreviews(targetOption = 'today', specificCo
 
       for (const slot of sched) {
         if ((slot.day || '').toLowerCase() === dateInfo.dayKey) {
+          const formattedSubj = formatSubjectWithAzhar(
+            grp.subject_name || grp.group_name,
+            grp.group_name,
+            grp.subject_code
+          );
+
           daySessions.push({
             group_id: grp.id,
             group_name: grp.group_name,
-            subject_name: grp.subject_name || grp.group_name,
+            subject_name: formattedSubj,
             teacher_name: grp.teacher_name || 'غير محدد',
             classroom_name: grp.classroom_name || 'القاعة الرئيسية',
             start_time: slot.start_time || '00:00',
@@ -400,6 +452,7 @@ module.exports = {
   formatTime12Ar,
   formatStartTime12Ar,
   formatTeacherWithEmoji,
+  formatSubjectWithAzhar,
   resolveTargetDateInfo,
   autoMatchOfficialGroups,
   buildAllGroupsSchedulePreviews,

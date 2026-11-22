@@ -45,3 +45,4 @@ async function ensureAccountingSchema() {
 }
 
 module.exports = { ensureAccountingSchema };
+
