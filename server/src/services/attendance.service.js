@@ -361,27 +361,36 @@ class AttendanceService {
         let paymentStatus = 'pending';
         let subscriptionId = null;
 
-        // Check active subscription with remaining sessions for this group or package
+        // Check active subscription with remaining sessions OR active date-based package subscription
         const subResult = await client.query(
-          `SELECT id, remaining_sessions, total_sessions, used_sessions
+          `SELECT id, remaining_sessions, total_sessions, used_sessions, enrollment_type, starts_at, expires_at
            FROM student_subscriptions
            WHERE student_id = $1 AND status = 'active'
              AND (group_id = $2 OR group_id IS NULL)
-             AND remaining_sessions > 0
+             AND (
+               (enrollment_type = 'PACKAGE' AND expires_at IS NOT NULL AND expires_at >= $3::date)
+               OR (remaining_sessions > 0 AND (expires_at IS NULL OR expires_at >= $3::date))
+             )
            ORDER BY (group_id IS NOT NULL) DESC, expires_at NULLS LAST, created_at DESC
            LIMIT 1
            FOR UPDATE`,
-          [student.id, session.group_id]
+          [student.id, session.group_id, todayDate]
         );
 
         if (subResult.rows.length > 0) {
           const sub = subResult.rows[0];
           subscriptionId = sub.id;
 
-          const nextUsed = sub.used_sessions + 1;
-          const nextStatus = sub.total_sessions <= nextUsed ? 'expired' : 'active';
+          const isDateValidPackage =
+            sub.enrollment_type === 'PACKAGE' && sub.expires_at;
+          const nextUsed = Math.min(sub.total_sessions, sub.used_sessions + 1);
+          const nextStatus = isDateValidPackage
+            ? 'active'
+            : sub.total_sessions <= nextUsed
+            ? 'expired'
+            : 'active';
 
-          // Deduct one session
+          // Deduct one session (for package, keep active until expires_at passes)
           await client.query(
             `UPDATE student_subscriptions
              SET used_sessions = $1,
@@ -679,17 +688,20 @@ class AttendanceService {
             continue;
           }
 
-          // Check for active subscription with remaining sessions
+          // Check for active subscription with remaining sessions OR active date-based package
           const subResult = await client.query(
-            `SELECT id, remaining_sessions, total_sessions, used_sessions
+            `SELECT id, remaining_sessions, total_sessions, used_sessions, enrollment_type, starts_at, expires_at
              FROM student_subscriptions
              WHERE student_id = $1 AND status = 'active'
                AND (group_id = $2 OR group_id IS NULL)
-               AND remaining_sessions > 0
+               AND (
+                 (enrollment_type = 'PACKAGE' AND expires_at IS NOT NULL AND expires_at >= $3::date)
+                 OR (remaining_sessions > 0 AND (expires_at IS NULL OR expires_at >= $3::date))
+               )
              ORDER BY (group_id IS NOT NULL) DESC, expires_at NULLS LAST, created_at DESC
              LIMIT 1
              FOR UPDATE`,
-            [student.student_id, group.group_id]
+            [student.student_id, group.group_id, targetDate]
           );
 
           let paymentStatus = 'pending';
@@ -704,9 +716,14 @@ class AttendanceService {
             const sub = subResult.rows[0];
             subscriptionId = sub.id;
 
-            // Deduct exactly 1 session
-            const nextUsed = sub.used_sessions + 1;
-            const nextStatus = sub.total_sessions <= nextUsed ? 'expired' : 'active';
+            const isDateValidPackage =
+              sub.enrollment_type === 'PACKAGE' && sub.expires_at;
+            const nextUsed = Math.min(sub.total_sessions, sub.used_sessions + 1);
+            const nextStatus = isDateValidPackage
+              ? 'active'
+              : sub.total_sessions <= nextUsed
+              ? 'expired'
+              : 'active';
 
             await client.query(
               `UPDATE student_subscriptions

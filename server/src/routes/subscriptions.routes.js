@@ -11,6 +11,7 @@ const {
   payDebt,
   refundClearance,
   clearPackageEnrollment,
+  renewPackageEnrollment,
 } = require('../controllers/subscriptions.controller');
 
 router.use(authenticate);
@@ -21,6 +22,7 @@ router.get('/student-account/:studentId', authorize('SUPER_ADMIN_OWNER', 'CENTER
 
 // Renew / credit sessions
 router.post('/renew', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), renewSubscription);
+router.post('/renew-package', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), renewPackageEnrollment);
 
 // Pay debt without adding sessions
 router.post('/pay-debt', authorize('SUPER_ADMIN_OWNER', 'CENTER_MANAGER', 'FINANCE_MANAGER', 'RECEPTION_ASSISTANT', 'CASHIER', 'RECEPTIONIST'), payDebt);

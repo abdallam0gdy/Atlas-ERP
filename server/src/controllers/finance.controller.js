@@ -239,28 +239,43 @@ const getTreasuryStats = async (req, res, next) => {
       [currentMonth]
     );
 
-    // 5. Teachers Breakdown (تفاصيل مستحقات المدرسين وحصة السنتر اليومية والشهرية)
+    // 5. Teachers Breakdown (تفاصيل مستحقات المدرسين وحصة السنتر اليومية والشهرية بدقة بدون تكرار الصفوف)
     const teachersRes = await db.query(`
       SELECT 
         t.id as teacher_id,
         t.full_name as teacher_name,
         t.phone,
-        sub.name_ar as subject_name,
+        COALESCE(
+          (SELECT string_agg(DISTINCT s.name_ar, ' ، ')
+           FROM groups g2
+           JOIN subjects s ON s.id = g2.subject_id
+           WHERE g2.teacher_id = t.id AND g2.status = 'active'),
+          sub.name_ar,
+          '—'
+        ) as subject_name,
         COALESCE(t.revenue_split_type, 'percentage') as revenue_split_type,
         COALESCE(t.revenue_split_percent, 80.00) as revenue_split_percent,
         COALESCE(t.fixed_rate_per_student, 0.00) as fixed_rate_per_student,
-        COUNT(DISTINCT g.id) as groups_count,
-        COUNT(DISTINCT ge.student_id) as enrolled_students,
-        COALESCE(SUM(ss.amount_paid), 0) as total_collected,
-        COALESCE(SUM(CASE WHEN DATE(ss.created_at) = $2 THEN ss.amount_paid ELSE 0 END), 0) as today_collected
+        (SELECT COUNT(*) FROM groups g2 WHERE g2.teacher_id = t.id AND g2.status = 'active') as groups_count,
+        (SELECT COUNT(DISTINCT ge.student_id)
+         FROM group_enrollments ge
+         JOIN groups g2 ON g2.id = ge.group_id
+         WHERE g2.teacher_id = t.id AND g2.status = 'active' AND ge.is_active = true) as enrolled_students,
+        COALESCE((
+          SELECT SUM(ss.amount_paid)
+          FROM student_subscriptions ss
+          JOIN groups g2 ON g2.id = ss.group_id
+          WHERE g2.teacher_id = t.id AND ss.billing_month = $1
+        ), 0) as total_collected,
+        COALESCE((
+          SELECT SUM(ss.amount_paid)
+          FROM student_subscriptions ss
+          JOIN groups g2 ON g2.id = ss.group_id
+          WHERE g2.teacher_id = t.id AND DATE(ss.created_at) = $2
+        ), 0) as today_collected
       FROM teachers t
-      LEFT JOIN groups g ON g.teacher_id = t.id AND g.status = 'active'
-      LEFT JOIN subjects sub ON sub.id = g.subject_id
-      LEFT JOIN group_enrollments ge ON ge.group_id = g.id AND ge.is_active = true
-      LEFT JOIN student_subscriptions ss 
-        ON ss.group_id = g.id AND ss.billing_month = $1
+      LEFT JOIN subjects sub ON sub.id = t.subject_id
       WHERE t.is_active = true
-      GROUP BY t.id, t.full_name, t.phone, sub.name_ar, t.revenue_split_type, t.revenue_split_percent, t.fixed_rate_per_student
       ORDER BY today_collected DESC, total_collected DESC, t.full_name ASC
     `, [currentMonth, today]);
 

@@ -7,9 +7,13 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const { testConnection } = require('./config/db');
+const { ensureAccountingSchema } = require('./config/initSchema');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Trust Nginx reverse proxy in Docker
+app.set('trust proxy', 1);
 
 // ============================================================
 // MIDDLEWARE STACK
@@ -214,8 +218,9 @@ const AttendanceService = require('./services/attendance.service');
 
 const startServer = async () => {
   try {
-    // Test database connection
+    // Test database connection & ensure accounting schema
     await testConnection();
+    await ensureAccountingSchema();
 
     app.listen(PORT, () => {
       console.log('');

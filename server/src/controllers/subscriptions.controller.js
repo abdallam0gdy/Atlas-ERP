@@ -43,6 +43,7 @@ const getStudentAccount = async (req, res, next) => {
          g.schedule,
          g.price_per_month,
          g.price_per_session,
+         COALESCE(g.sessions_per_month, 4) as sessions_per_month,
          sub.id as subject_id,
          sub.name_ar as subject_name,
          sub.color as subject_color,
@@ -51,13 +52,26 @@ const getStudentAccount = async (req, res, next) => {
          cr.name as classroom_name,
           -- Subscription aggregations / latest active
           COALESCE(s_sub.id, NULL) as subscription_id,
-          COALESCE(s_sub.total_sessions, 0) as total_sessions,
-          COALESCE(s_sub.used_sessions, 0) as used_sessions,
+          COALESCE((
+            SELECT SUM(ss_tot.total_sessions)
+            FROM student_subscriptions ss_tot
+            WHERE ss_tot.student_id = $1 AND ss_tot.group_id = g.id AND ss_tot.status = 'active'
+          ), s_sub.total_sessions, 0) as total_sessions,
+          COALESCE((
+            SELECT SUM(ss_used.used_sessions)
+            FROM student_subscriptions ss_used
+            WHERE ss_used.student_id = $1 AND ss_used.group_id = g.id AND ss_used.status = 'active'
+          ), s_sub.used_sessions, 0) as used_sessions,
           COALESCE((
             SELECT SUM(ss_rem.remaining_sessions)
             FROM student_subscriptions ss_rem
             WHERE ss_rem.student_id = $1 AND ss_rem.group_id = g.id AND ss_rem.status = 'active'
           ), s_sub.remaining_sessions, 0) as remaining_sessions,
+          COALESCE((
+            SELECT SUM(ss_paid.amount_paid)
+            FROM student_subscriptions ss_paid
+            WHERE ss_paid.student_id = $1 AND ss_paid.group_id = g.id AND ss_paid.status = 'active'
+          ), s_sub.amount_paid, 0) as active_amount_paid,
           COALESCE((
             SELECT SUM(ss_paid.amount_paid)
             FROM student_subscriptions ss_paid
@@ -68,6 +82,8 @@ const getStudentAccount = async (req, res, next) => {
             FROM student_subscriptions ss_due
             WHERE ss_due.student_id = $1 AND ss_due.group_id = g.id
           ), s_sub.amount_due, 0) as amount_due,
+          s_sub.starts_at,
+          s_sub.expires_at,
           COALESCE(s_sub.billing_month, $2) as billing_month,
           COALESCE(s_sub.status, 'active') as subscription_status,
          -- Count total attendance in this group
@@ -101,6 +117,8 @@ const getStudentAccount = async (req, res, next) => {
       [student.id]
     );
 
+    const todayIso = new Date().toISOString().slice(0, 10);
+
     const packageEnrollments = pkgEnrollmentsRes.rows.map(spe => {
       const groupIds = spe.selected_group_ids || [];
       const packageGroups = groupsRes.rows.filter(g => groupIds.includes(g.group_id));
@@ -116,23 +134,66 @@ const getStudentAccount = async (req, res, next) => {
         usedSessions += parseInt(g.used_sessions || 0, 10);
         remainingSessions += Math.max(0, parseInt(g.remaining_sessions || 0, 10));
         totalAmountDue += parseFloat(g.amount_due || 0);
-        totalAmountPaid += parseFloat(g.amount_paid || 0);
+        totalAmountPaid += parseFloat(g.active_amount_paid !== undefined ? g.active_amount_paid : g.amount_paid || 0);
       });
 
       totalAmountDue = Math.round(totalAmountDue * 100) / 100;
       totalAmountPaid = Math.round(totalAmountPaid * 100) / 100;
 
       const netPrice = parseFloat(spe.total_price || 0);
-      if (totalAmountDue <= 0.01 && totalAmountPaid > 0) {
+      const spePaid = parseFloat(spe.amount_paid || 0);
+      if (spePaid > 0) {
+        totalAmountPaid = spePaid;
+      } else if (totalAmountDue <= 0.01 && totalAmountPaid > 0) {
         totalAmountPaid = netPrice;
       }
+      if (parseFloat(spe.amount_due || 0) > 0 && totalAmountDue === 0) {
+        totalAmountDue = parseFloat(spe.amount_due);
+      }
 
+      // Day-based package duration calculations (شهر كامل 30 يوم أو عدد أيام مخصص مثل 10 أو 15 يوم)
+      const durationDays = Math.max(1, parseInt(spe.duration_days, 10) || 30);
+      const startDateStr = spe.start_date
+        ? new Date(spe.start_date).toISOString().slice(0, 10)
+        : new Date(spe.enrolled_at || Date.now()).toISOString().slice(0, 10);
+      let endDateStr = spe.end_date
+        ? new Date(spe.end_date).toISOString().slice(0, 10)
+        : null;
+      if (!endDateStr) {
+        const sObj = new Date(startDateStr + 'T12:00:00Z');
+        sObj.setUTCDate(sObj.getUTCDate() + Math.max(0, durationDays - 1));
+        endDateStr = sObj.toISOString().slice(0, 10);
+      }
+
+      const startMs = new Date(startDateStr + 'T00:00:00Z').getTime();
+      const todayMs = new Date(todayIso + 'T00:00:00Z').getTime();
+      const rawElapsedDays = Math.floor((todayMs - startMs) / (1000 * 60 * 60 * 24));
+      // If student hasn't attended any session and enrolled today, elapsed days is 0
+      const usedDays = usedSessions === 0 && rawElapsedDays <= 0
+        ? 0
+        : Math.min(durationDays, Math.max(0, rawElapsedDays));
+      const remainingDays = Math.max(0, durationDays - usedDays);
+
+      const dailyRate = durationDays > 0 ? (netPrice / durationDays) : 0;
       const effectiveSessionPrice = totalSessions > 0 ? (netPrice / totalSessions) : 0;
-      const remainingValue = Math.round(remainingSessions * effectiveSessionPrice);
-      const refundableAmount = Math.max(0, remainingValue - totalAmountDue);
+
+      // Consumed value by days (or 0 if 0 days & 0 sessions used)
+      const consumedValueByDays = Math.round(usedDays * dailyRate);
+      const remainingValue = Math.max(0, Math.round(netPrice - consumedValueByDays));
+      // Refundable amount is strictly capped at totalAmountPaid (student never gets back more than paid!)
+      const refundableAmount = Math.max(
+        0,
+        Math.min(totalAmountPaid, Math.round(totalAmountPaid - consumedValueByDays))
+      );
 
       return {
         ...spe,
+        start_date: startDateStr,
+        end_date: endDateStr,
+        duration_days: durationDays,
+        used_days: usedDays,
+        remaining_days: remainingDays,
+        daily_rate: dailyRate.toFixed(2),
         groups: packageGroups,
         total_sessions: totalSessions,
         used_sessions: usedSessions,
@@ -647,7 +708,7 @@ const payDebt = async (req, res, next) => {
     );
 
     // Get group info for descriptions
-    const grpRes = await client.query(`SELECT name, name_ar, price_per_month, price_per_session FROM groups WHERE id = $1`, [group_id]);
+    const grpRes = await client.query(`SELECT name, name_ar, price_per_month, price_per_session, COALESCE(sessions_per_month, 4) as sessions_per_month FROM groups WHERE id = $1`, [group_id]);
     const groupRow = grpRes.rows[0] || {};
     const groupName = groupRow.name_ar || groupRow.name || 'المجموعة';
 
@@ -672,7 +733,7 @@ const payDebt = async (req, res, next) => {
       }
 
       const dueNum = Math.max(0, fullPrice - paidNum);
-      const defaultSessions = 4;
+      const defaultSessions = Math.max(1, parseInt(groupRow.sessions_per_month, 10) || 4);
       const month = new Date().toISOString().slice(0, 7);
 
       const newSub = await client.query(
@@ -778,29 +839,20 @@ const refundClearance = async (req, res, next) => {
     const studentRes = await client.query('SELECT full_name, full_name_ar, student_code FROM students WHERE id = $1', [student_id]);
     const studentName = studentRes.rows[0]?.full_name_ar || studentRes.rows[0]?.full_name || 'الطالب';
 
-    const groupRes = await client.query('SELECT name, name_ar, price_per_session, price_per_month FROM groups WHERE id = $1', [group_id]);
+    const groupRes = await client.query(
+      'SELECT name, name_ar, price_per_session, price_per_month, COALESCE(sessions_per_month, 4) as sessions_per_month FROM groups WHERE id = $1',
+      [group_id]
+    );
     const groupRow = groupRes.rows[0] || {};
     const groupName = groupRow.name_ar || groupRow.name || 'المجموعة';
+    const groupSessionsPerMonth = Math.max(1, parseInt(groupRow.sessions_per_month, 10) || 4);
 
-    let baseSessionRate = parseFloat(groupRow.price_per_session) || 
-                          (parseFloat(groupRow.price_per_month) ? Math.round(parseFloat(groupRow.price_per_month) / 4) : 0);
-
-    // If subscription was enrolled under a package or center subject discount, use actual paid session rate
-    const latestActiveSub = allSubsRes.rows.find(s => s.status === 'active') || allSubsRes.rows[0];
-    if (latestActiveSub && parseInt(latestActiveSub.total_sessions, 10) > 0 && parseFloat(latestActiveSub.amount_paid) > 0) {
-      const actualSubRate = parseFloat(latestActiveSub.amount_paid) / parseInt(latestActiveSub.total_sessions, 10);
-      if (actualSubRate > 0 && actualSubRate < baseSessionRate) {
-        baseSessionRate = actualSubRate;
-      }
-    }
-
-    // Fetch student's persistent discount in this group
+    // 2. Fetch student's persistent discount & all subscriptions for this group FIRST
     const enrollRes = await client.query(
       `SELECT discount_type, discount_value FROM group_enrollments WHERE student_id = $1 AND group_id = $2`,
       [student_id, group_id]
     );
 
-    // 2. Fetch all active or unpaid subscriptions for this group
     const allSubsRes = await client.query(
       `SELECT * FROM student_subscriptions
        WHERE student_id = $1 AND group_id = $2
@@ -812,24 +864,19 @@ const refundClearance = async (req, res, next) => {
       throw new BadRequestError('لا يوجد اشتراك مسجل لهذا الطالب في هذه المجموعة لتصفيته');
     }
 
-    const dType = enrollRes.rows[0]?.discount_type || allSubsRes.rows[0]?.discount_type || 'FIXED';
-    const dVal = parseFloat(enrollRes.rows[0]?.discount_value ?? allSubsRes.rows[0]?.discount_value ?? 0);
-
-    let sessionDiscount = 0;
-    if (dType === 'PERCENT' && dVal > 0) {
-      sessionDiscount = (baseSessionRate * Math.min(100, dVal)) / 100;
-    } else if (dType === 'FIXED' && dVal > 0) {
-      sessionDiscount = dVal / 4;
-    }
-    const effectivePricePerSession = Math.max(0, baseSessionRate - sessionDiscount);
-
-    // Calculate total remaining sessions across active subscriptions
+    // Aggregate active subscriptions & total debt
+    let totalActiveSessions = 0;
+    let totalUsedSessions = 0;
     let totalClearedSessions = 0;
+    let totalActivePaid = 0;
     let totalCurrentDebt = 0;
 
     allSubsRes.rows.forEach(sub => {
       if (sub.status === 'active') {
+        totalActiveSessions += Math.max(0, parseInt(sub.total_sessions, 10) || 0);
+        totalUsedSessions += Math.max(0, parseInt(sub.used_sessions, 10) || 0);
         totalClearedSessions += Math.max(0, parseInt(sub.remaining_sessions, 10) || 0);
+        totalActivePaid += Math.max(0, parseFloat(sub.amount_paid || 0));
       }
       totalCurrentDebt += Math.max(0, parseFloat(sub.amount_due || 0));
     });
@@ -838,35 +885,75 @@ const refundClearance = async (req, res, next) => {
       throw new BadRequestError('لا توجد حصص متبقية أو مديونية مستحقة لتصفية الحساب في هذه المجموعة');
     }
 
-    const grossSessionsValue = Math.max(0, Math.round(totalClearedSessions * effectivePricePerSession));
-    const maxAllowedRefund = Math.max(0, grossSessionsValue - totalCurrentDebt);
+    const totalAgreedPrice = totalActivePaid + totalCurrentDebt;
 
-    if (refundNum > maxAllowedRefund + 0.001) {
+    // Exact session rate without premature rounding (so 310 / 4 = 77.5, never 78 * 4 = 312!)
+    let exactSessionRate = 0;
+    if (totalActiveSessions > 0 && totalAgreedPrice > 0) {
+      exactSessionRate = totalAgreedPrice / totalActiveSessions;
+    } else {
+      const baseSessionRate =
+        parseFloat(groupRow.price_per_session) > 0
+          ? parseFloat(groupRow.price_per_session)
+          : parseFloat(groupRow.price_per_month) > 0
+          ? parseFloat(groupRow.price_per_month) / groupSessionsPerMonth
+          : 0;
+      const dType = enrollRes.rows[0]?.discount_type || allSubsRes.rows[0]?.discount_type || 'FIXED';
+      const dVal = parseFloat(enrollRes.rows[0]?.discount_value ?? allSubsRes.rows[0]?.discount_value ?? 0);
+      let sessionDiscount = 0;
+      if (dType === 'PERCENT' && dVal > 0) {
+        sessionDiscount = (baseSessionRate * Math.min(100, dVal)) / 100;
+      } else if (dType === 'FIXED' && dVal > 0) {
+        sessionDiscount = dVal / groupSessionsPerMonth;
+      }
+      exactSessionRate = Math.max(0, baseSessionRate - sessionDiscount);
+    }
+
+    const consumedValue = Math.round(totalUsedSessions * exactSessionRate);
+    const grossSessionsValue =
+      totalUsedSessions === 0 && totalAgreedPrice > 0
+        ? Math.round(totalAgreedPrice)
+        : Math.max(0, Math.round(totalClearedSessions * exactSessionRate));
+
+    // Hard accounting rule: Refund can NEVER exceed what the student actually paid (totalActivePaid)!
+    const maxAllowedRefund = Math.max(
+      0,
+      Math.min(totalActivePaid, Math.round(totalActivePaid - consumedValue))
+    );
+
+    if (refundNum > maxAllowedRefund + 0.01) {
       throw new BadRequestError(
-        `مبلغ الاسترداد (${refundNum} ج.م) يتجاوز صافي المستحق للطالب (${maxAllowedRefund} ج.م) بعد خصم المديونية (${totalCurrentDebt} ج.م) من قيمة الحصص المتبقية بسعر الخصم الفعلي (${grossSessionsValue} ج.م)`
+        `مبلغ الاسترداد (${refundNum} ج.م) يتجاوز صافي المستحق للطالب (${maxAllowedRefund} ج.م) — إجمالي ما دفعه الطالب فعلياً هو ${totalActivePaid} ج.م والمستهلك ${totalUsedSessions} حصة (${consumedValue} ج.م)`
       );
     }
 
-    // Remaining debt after gross sessions deduction
-    let remainingDebtAfterClearance = Math.max(0, totalCurrentDebt - grossSessionsValue);
+    // Remaining debt if student consumed more than they paid
+    let remainingDebtAfterClearance = Math.max(0, consumedValue - totalActivePaid);
 
-    // Expire active subscriptions and reset total_sessions = used_sessions
+    // Expire active subscriptions, reset total_sessions = used_sessions, and deduct refunded cash from amount_paid
+    let remainingRefundToDeduct = refundNum;
     for (let i = 0; i < allSubsRes.rows.length; i++) {
       const sub = allSubsRes.rows[i];
-      // On the latest subscription, set the remaining debt (if any), otherwise zero out debts
-      const subDebt = (i === 0) ? remainingDebtAfterClearance : 0;
+      const subDebt = i === 0 ? remainingDebtAfterClearance : 0;
+      const curPaid = Math.max(0, parseFloat(sub.amount_paid || 0));
+      const deductFromThis = sub.status === 'active' ? Math.min(curPaid, remainingRefundToDeduct) : 0;
+      remainingRefundToDeduct = Math.max(0, remainingRefundToDeduct - deductFromThis);
+      const updatedPaid = Math.max(0, curPaid - deductFromThis);
+
       await client.query(
         `UPDATE student_subscriptions
          SET total_sessions = used_sessions,
-             amount_due = $1,
+             amount_paid = $1,
+             amount_due = $2,
              status = 'expired',
-             notes = COALESCE($2, notes),
+             notes = COALESCE($3, notes),
              updated_at = NOW()
-         WHERE id = $3`,
+         WHERE id = $4`,
         [
+          updatedPaid,
           subDebt,
-          `تصفية حساب: رصيد ${totalClearedSessions} حصص (بقيمة ${grossSessionsValue} ج.م)، خصم مديونية ${totalCurrentDebt} ج.م، صافي مسترد ${refundNum} ج.م. ${notes || ''}`.trim(),
-          sub.id
+          `تصفية حساب: رصيد ${totalClearedSessions} حصص متبقية، المستهلك ${totalUsedSessions} حصص (${consumedValue} ج.م)، صافي مسترد ${refundNum} ج.م. ${notes || ''}`.trim(),
+          sub.id,
         ]
       );
     }
@@ -918,13 +1005,13 @@ const refundClearance = async (req, res, next) => {
 
 /**
  * POST /api/subscriptions/clear-package
- * Clear student's entire package enrollment, refund remaining sessions at package rate,
+ * Clear student's entire package enrollment, refund remaining days/balance at package rate,
  * unenroll student from all groups in package, and record treasury refund.
  */
 const clearPackageEnrollment = async (req, res, next) => {
   const client = await db.getClient();
   try {
-    const { package_enrollment_id, notes, refund_amount } = req.body;
+    const { package_enrollment_id, notes, refund_amount, drop_groups } = req.body;
     const userId = req.user.id;
 
     if (!package_enrollment_id) {
@@ -950,7 +1037,7 @@ const clearPackageEnrollment = async (req, res, next) => {
     const pkgEnroll = pkgEnrollRes.rows[0];
     const groupIds = pkgEnroll.selected_group_ids || [];
 
-    // 2. Fetch subscriptions for these groups
+    // 2. Fetch active subscriptions for these groups
     const subsRes = await client.query(
       `SELECT ss.*, g.name as group_name
        FROM student_subscriptions ss
@@ -963,54 +1050,115 @@ const clearPackageEnrollment = async (req, res, next) => {
     let usedSessions = 0;
     let remainingSessions = 0;
     let totalDebt = 0;
+    let totalSubsPaid = 0;
 
     subsRes.rows.forEach(sub => {
-      totalSessions += parseInt(sub.total_sessions || 0, 10);
-      usedSessions += parseInt(sub.used_sessions || 0, 10);
-      remainingSessions += Math.max(0, parseInt(sub.remaining_sessions || 0, 10));
+      if (sub.status === 'active') {
+        totalSessions += parseInt(sub.total_sessions || 0, 10);
+        usedSessions += parseInt(sub.used_sessions || 0, 10);
+        remainingSessions += Math.max(0, parseInt(sub.remaining_sessions || 0, 10));
+        totalSubsPaid += Math.max(0, parseFloat(sub.amount_paid || 0));
+      }
       totalDebt += Math.max(0, parseFloat(sub.amount_due || 0));
     });
 
-    const netPaid = parseFloat(pkgEnroll.total_price || 0);
-    const effectivePricePerSession = totalSessions > 0 ? (netPaid / totalSessions) : 0;
-    const remainingValue = Math.round(remainingSessions * effectivePricePerSession);
-    const maxRefund = Math.max(0, remainingValue - totalDebt);
+    const netPrice = parseFloat(pkgEnroll.total_price || 0);
+    const actualCashPaid =
+      parseFloat(pkgEnroll.amount_paid || 0) > 0
+        ? parseFloat(pkgEnroll.amount_paid)
+        : totalSubsPaid > 0
+        ? totalSubsPaid
+        : Math.max(0, netPrice - totalDebt);
 
-    const actualRefund = refund_amount !== undefined 
-      ? Math.min(maxRefund, Math.max(0, parseFloat(refund_amount) || 0)) 
-      : maxRefund;
+    // Day-based calculation
+    const durationDays = Math.max(1, parseInt(pkgEnroll.duration_days, 10) || 30);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const startDateStr = pkgEnroll.start_date
+      ? new Date(pkgEnroll.start_date).toISOString().slice(0, 10)
+      : new Date(pkgEnroll.enrolled_at || Date.now()).toISOString().slice(0, 10);
+    const startMs = new Date(startDateStr + 'T00:00:00Z').getTime();
+    const todayMs = new Date(todayIso + 'T00:00:00Z').getTime();
+    const rawElapsedDays = Math.floor((todayMs - startMs) / (1000 * 60 * 60 * 24));
+    const usedDays =
+      usedSessions === 0 && rawElapsedDays <= 0
+        ? 0
+        : Math.min(durationDays, Math.max(0, rawElapsedDays));
+    const remainingDays = Math.max(0, durationDays - usedDays);
+    const dailyRate = durationDays > 0 ? netPrice / durationDays : 0;
 
-    // 3. Deactivate group_enrollments (completely unenroll student from all groups in package!)
-    await client.query(
-      `UPDATE group_enrollments 
-       SET is_active = false, updated_at = NOW() 
-       WHERE student_id = $1 AND group_id = ANY($2::uuid[])`,
-      [pkgEnroll.student_id, groupIds]
-    );
+    // Hard cap: Refund can NEVER exceed actualCashPaid (what the student actually paid!)
+    const maxRefund = Math.max(0, Math.round(actualCashPaid));
 
-    // 4. Clear/expire active subscriptions for these groups
+    const actualRefund =
+      refund_amount !== undefined && refund_amount !== null && refund_amount !== ''
+        ? Math.min(maxRefund, Math.max(0, parseFloat(refund_amount) || 0))
+        : Math.max(0, Math.min(maxRefund, Math.round(actualCashPaid - usedDays * dailyRate)));
+
+    // 3. Deactivate group_enrollments if requested (default true)
+    const shouldDropGroups = drop_groups !== false;
+    if (shouldDropGroups) {
+      await client.query(
+        `UPDATE group_enrollments 
+         SET is_active = false, updated_at = NOW() 
+         WHERE student_id = $1 AND group_id = ANY($2::uuid[])`,
+        [pkgEnroll.student_id, groupIds]
+      );
+    }
+
+    // 4. Clear/expire active subscriptions for these groups and deduct refunded amount proportionally
+    let remainingRefundCents = Math.round(actualRefund * 100);
+    const activeSubs = subsRes.rows.filter(s => s.status === 'active');
+    for (let i = 0; i < activeSubs.length; i++) {
+      const sub = activeSubs[i];
+      const curPaidCents = Math.round(Math.max(0, parseFloat(sub.amount_paid || 0)) * 100);
+      const countLeft = activeSubs.length - i;
+      const deductCents = Math.min(
+        curPaidCents,
+        i === activeSubs.length - 1
+          ? remainingRefundCents
+          : Math.round(remainingRefundCents / countLeft)
+      );
+      remainingRefundCents = Math.max(0, remainingRefundCents - deductCents);
+      const newSubPaid = ((curPaidCents - deductCents) / 100).toFixed(2);
+
+      await client.query(
+        `UPDATE student_subscriptions
+         SET total_sessions = used_sessions,
+             amount_paid = $1,
+             amount_due = 0,
+             status = 'expired',
+             notes = COALESCE($2, notes),
+             updated_at = NOW()
+         WHERE id = $3`,
+        [
+          newSubPaid,
+          `تمت تصفية الباكدج بالكامل (المدة المتبقية: ${remainingDays} يوم من ${durationDays} يوم — المسترد: ${actualRefund} ج.م). ${notes || ''}`.trim(),
+          sub.id,
+        ]
+      );
+    }
+
+    // Also expire any non-active/unpaid records in those groups
     await client.query(
       `UPDATE student_subscriptions 
        SET total_sessions = used_sessions,
            status = 'expired',
            amount_due = 0,
-           notes = COALESCE($1, notes),
            updated_at = NOW()
-       WHERE student_id = $2 AND group_id = ANY($3::uuid[])`,
-      [
-        `تمت تصفية الباكدج بالكامل واسترداد رصيد ${remainingSessions} حصة (صافي: ${actualRefund} ج.م)`,
-        pkgEnroll.student_id,
-        groupIds
-      ]
+       WHERE student_id = $1 AND group_id = ANY($2::uuid[]) AND status != 'expired'`,
+      [pkgEnroll.student_id, groupIds]
     );
 
-    // 5. Update package enrollment status to 'cleared'
+    // 5. Update package enrollment status to 'cleared' and adjust amount_paid
+    const updatedPkgPaid = Math.max(0, actualCashPaid - actualRefund);
     await client.query(
       `UPDATE student_package_enrollments 
        SET status = 'cleared',
-           notes = COALESCE(notes || ' - ', '') || 'تمت تصفية الباكدج بتاريخ ' || NOW()::date
+           amount_paid = $2,
+           amount_due = 0,
+           notes = COALESCE(notes || ' - ', '') || 'تمت تصفية الباكدج بتاريخ ' || NOW()::date || ' (المسترد: ' || $3 || ' ج.م)'
        WHERE id = $1`,
-      [package_enrollment_id]
+      [package_enrollment_id, updatedPkgPaid, actualRefund]
     );
 
     // 6. Record treasury outflow if refund > 0
@@ -1022,8 +1170,8 @@ const clearPackageEnrollment = async (req, res, next) => {
         [
           -Math.abs(actualRefund),
           package_enrollment_id,
-          `استرداد تصفية باكدج (${actualRefund} ج.م) - الطالب: ${pkgEnroll.student_name} (#${pkgEnroll.student_code}) - رصيد مسترد: ${remainingSessions} حصة`,
-          userId
+          `استرداد تصفية باكدج (${actualRefund} ج.م) - الطالب: ${pkgEnroll.student_name} (#${pkgEnroll.student_code}) - متبقي ${remainingDays} يوم من ${durationDays} يوم`,
+          userId,
         ]
       );
     }
@@ -1036,14 +1184,305 @@ const clearPackageEnrollment = async (req, res, next) => {
       data: {
         package_enrollment_id,
         clearedGroupsCount: groupIds.length,
+        durationDays,
+        usedDays,
+        remainingDays,
+        dailyRate: dailyRate.toFixed(2),
         totalSessions,
         usedSessions,
         remainingSessions,
-        effectivePricePerSession: effectivePricePerSession.toFixed(2),
-        remainingValue,
         totalDebt,
-        refundAmount: actualRefund
+        refundAmount: actualRefund,
+      },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * POST /api/subscriptions/renew-package
+ * Recharge / Renew an existing package enrollment by full month (30 days: day 1 to 30)
+ * or by any custom number of days (e.g. 10 days, 15 days) or pay off package debt.
+ */
+const renewPackageEnrollment = async (req, res, next) => {
+  const client = await db.getClient();
+  try {
+    const {
+      package_enrollment_id,
+      duration_days = 30,
+      start_date,
+      end_date,
+      total_charge,
+      discount_type = 'FIXED',
+      discount_value = 0,
+      amount_paid = 0,
+      billing_month,
+      pay_debt_only = false,
+      notes,
+    } = req.body;
+    const userId = req.user.id;
+
+    if (!package_enrollment_id) {
+      throw new BadRequestError('معرف قيد الباكدج مطلوب');
+    }
+
+    await client.query('BEGIN');
+
+    const pkgEnrollRes = await client.query(
+      `SELECT spe.*, s.full_name as student_name, s.student_code,
+              gp.name as package_name, gp.package_price, gp.single_subject_price
+       FROM student_package_enrollments spe
+       JOIN students s ON spe.student_id = s.id
+       JOIN grade_packages gp ON spe.package_id = gp.id
+       WHERE spe.id = $1`,
+      [package_enrollment_id]
+    );
+
+    if (pkgEnrollRes.rows.length === 0) {
+      throw new NotFoundError('قيد الباكدج غير موجود');
+    }
+
+    const spe = pkgEnrollRes.rows[0];
+    const groupIds = spe.selected_group_ids || [];
+
+    // Fetch groups in package to know sessions_per_month
+    const groupsRes = await client.query(
+      `SELECT id, name, COALESCE(sessions_per_month, 4) as sessions_per_month
+       FROM groups
+       WHERE id = ANY($1::uuid[])`,
+      [groupIds]
+    );
+    const groupMap = new Map(groupsRes.rows.map(g => [g.id, g]));
+
+    // Fetch existing active subscriptions for these groups
+    const subsRes = await client.query(
+      `SELECT * FROM student_subscriptions
+       WHERE student_id = $1 AND group_id = ANY($2::uuid[]) AND status = 'active'
+       ORDER BY created_at DESC`,
+      [spe.student_id, groupIds]
+    );
+
+    let existingDebt = 0;
+    subsRes.rows.forEach(s => {
+      existingDebt += Math.max(0, parseFloat(s.amount_due || 0));
+    });
+    if (existingDebt === 0 && parseFloat(spe.amount_due || 0) > 0) {
+      existingDebt = parseFloat(spe.amount_due);
+    }
+    existingDebt = Math.round(existingDebt * 100) / 100;
+
+    // Mode A: Pay existing package debt only without adding new days
+    if (pay_debt_only) {
+      const paidNum = Math.max(0, parseFloat(amount_paid) || 0);
+      if (paidNum <= 0) {
+        throw new BadRequestError('يرجى إدخال مبلغ أكبر من الصفر لسداد مديونية الباكدج');
       }
+      if (paidNum > existingDebt + 0.01) {
+        throw new BadRequestError(`المبلغ المدفوع (${paidNum} ج.م) أكبر من مديونية الباكدج المستحقة (${existingDebt} ج.م)`);
+      }
+
+      let remToPayCents = Math.round(paidNum * 100);
+      const debtSubs = subsRes.rows.filter(s => parseFloat(s.amount_due || 0) > 0);
+      for (let i = 0; i < debtSubs.length; i++) {
+        if (remToPayCents <= 0) break;
+        const sub = debtSubs[i];
+        const subDueCents = Math.round(parseFloat(sub.amount_due || 0) * 100);
+        const payCents = Math.min(subDueCents, remToPayCents);
+        remToPayCents -= payCents;
+
+        await client.query(
+          `UPDATE student_subscriptions
+           SET amount_paid = amount_paid + $1,
+               amount_due = GREATEST(0, amount_due - $1),
+               updated_at = NOW()
+           WHERE id = $2`,
+          [(payCents / 100).toFixed(2), sub.id]
+        );
+      }
+
+      const newPkgDue = Math.max(0, existingDebt - paidNum);
+      await client.query(
+        `UPDATE student_package_enrollments
+         SET amount_paid = COALESCE(amount_paid, 0) + $1,
+             amount_due = $2
+         WHERE id = $3`,
+        [paidNum, newPkgDue, package_enrollment_id]
+      );
+
+      await client.query(
+        `INSERT INTO treasury_transactions
+         (transaction_type, amount, reference_id, notes, recorded_by)
+         VALUES ('subscription_fee', $1, $2, $3, $4)`,
+        [
+          paidNum,
+          package_enrollment_id,
+          notes || `سداد مديونية باكدج (${paidNum} ج.م) - الطالب: ${spe.student_name} (#${spe.student_code}) - المتبقي: ${newPkgDue} ج.م`,
+          userId,
+        ]
+      );
+
+      await client.query('COMMIT');
+      return res.json({
+        success: true,
+        message: `تم سداد ${paidNum} ج.م من مديونية الباكدج بنجاح (المتبقي: ${newPkgDue} ج.م)`,
+        data: { package_enrollment_id, amountPaid: paidNum, remainingDebt: newPkgDue },
+      });
+    }
+
+    // Mode B: Recharge / Renew Package for duration_days (e.g. 30 days full month, 15 days, 10 days)
+    const daysToAdd = Math.max(1, parseInt(duration_days, 10) || 30);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const resolvedStartDate = start_date || todayStr;
+    let resolvedEndDate = end_date;
+    if (!resolvedEndDate) {
+      const sObj = new Date(resolvedStartDate + 'T12:00:00Z');
+      sObj.setUTCDate(sObj.getUTCDate() + Math.max(0, daysToAdd - 1));
+      resolvedEndDate = sObj.toISOString().slice(0, 10);
+    }
+
+    const monthlyBase = parseFloat(spe.package_price || spe.total_price || 0);
+    const grossCharge =
+      total_charge !== undefined && total_charge !== null && total_charge !== ''
+        ? Math.max(0, parseFloat(total_charge) || 0)
+        : daysToAdd === 30
+        ? monthlyBase
+        : Math.round((monthlyBase / 30) * daysToAdd);
+
+    const discType = discount_type === 'PERCENT' ? 'PERCENT' : 'FIXED';
+    const discVal = Math.max(0, parseFloat(discount_value) || 0);
+    const discountAmount =
+      discType === 'PERCENT'
+        ? Math.min(grossCharge, Math.round((grossCharge * discVal) / 100))
+        : Math.min(grossCharge, discVal);
+    const netCharge = Math.max(0, grossCharge - discountAmount);
+    const totalLiability = netCharge + existingDebt;
+
+    const paidNum = Math.max(0, parseFloat(amount_paid) || 0);
+    if (paidNum > totalLiability + 0.01) {
+      throw new BadRequestError(
+        `المبلغ المدفوع (${paidNum} ج.م) أكبر من إجمالي المطلوب (${totalLiability} ج.م)`
+      );
+    }
+
+    const newDueTotal = Math.max(0, totalLiability - paidNum);
+    const monthStr = billing_month || resolvedStartDate.slice(0, 7);
+    const durationLabel = daysToAdd === 30 ? 'شهر كامل (30 يوم)' : `${daysToAdd} يوم`;
+
+    // Update student_package_enrollments with new period and amounts
+    await client.query(
+      `UPDATE student_package_enrollments
+       SET start_date = $1,
+           end_date = $2,
+           duration_days = $3,
+           gross_price = $4,
+           discount_type = $5,
+           discount_value = $6,
+           total_price = $7,
+           amount_paid = $8,
+           amount_due = $9,
+           billing_month = $10,
+           status = 'active',
+           notes = COALESCE($11, notes)
+       WHERE id = $12`,
+      [
+        resolvedStartDate,
+        resolvedEndDate,
+        daysToAdd,
+        grossCharge,
+        discType,
+        discVal,
+        netCharge,
+        Math.min(netCharge, paidNum),
+        newDueTotal,
+        monthStr,
+        notes || `تجديد وشحن باكدج (${durationLabel}: من ${resolvedStartDate} إلى ${resolvedEndDate}) - الصافي: ${netCharge} ج.م`,
+        package_enrollment_id,
+      ]
+    );
+
+    // Expire old group subscriptions and create/update active subscriptions for the new period
+    await client.query(
+      `UPDATE student_subscriptions
+       SET total_sessions = used_sessions,
+           amount_due = 0,
+           status = 'expired',
+           updated_at = NOW()
+       WHERE student_id = $1 AND group_id = ANY($2::uuid[]) AND status = 'active'`,
+      [spe.student_id, groupIds]
+    );
+
+    let remainingPaidCents = Math.round(Math.min(netCharge, paidNum) * 100);
+    let remainingDueCents = Math.round(newDueTotal * 100);
+
+    for (let i = 0; i < groupIds.length; i++) {
+      const groupId = groupIds[i];
+      const grpInfo = groupMap.get(groupId);
+      const grpSessionsPerMonth = Math.max(1, parseInt(grpInfo?.sessions_per_month, 10) || 4);
+      const groupSessionsForDuration = Math.max(
+        1,
+        Math.ceil((grpSessionsPerMonth * daysToAdd) / 30)
+      );
+
+      const countLeft = groupIds.length - i;
+      const groupPaidCents = Math.round(remainingPaidCents / countLeft);
+      const groupDueCents = Math.round(remainingDueCents / countLeft);
+      remainingPaidCents -= groupPaidCents;
+      remainingDueCents -= groupDueCents;
+
+      await client.query(
+        `INSERT INTO student_subscriptions (
+          student_id, group_id, total_sessions, used_sessions,
+          amount_paid, amount_due, status, billing_month, enrollment_type,
+          discount_type, discount_value, starts_at, expires_at, notes
+        ) VALUES ($1, $2, $3, 0, $4, $5, 'active', $6, 'PACKAGE', $7, $8, $9, $10, $11)`,
+        [
+          spe.student_id,
+          groupId,
+          groupSessionsForDuration,
+          (groupPaidCents / 100).toFixed(2),
+          (groupDueCents / 100).toFixed(2),
+          monthStr,
+          discType,
+          discVal,
+          resolvedStartDate,
+          resolvedEndDate,
+          `تجديد باكدج (${durationLabel}: ${resolvedStartDate} إلى ${resolvedEndDate}) - ${spe.package_name}`,
+        ]
+      );
+    }
+
+    if (paidNum > 0) {
+      await client.query(
+        `INSERT INTO treasury_transactions
+         (transaction_type, amount, reference_id, notes, recorded_by)
+         VALUES ('subscription_fee', $1, $2, $3, $4)`,
+        [
+          paidNum,
+          package_enrollment_id,
+          notes || `تحصيل تجديد باكدج (${durationLabel}: ${paidNum} ج.م) - الطالب: ${spe.student_name} (#${spe.student_code})`,
+          userId,
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `تم شحن وتجديد الباكدج لمدة (${durationLabel}: من ${resolvedStartDate} إلى ${resolvedEndDate}) بنجاح!`,
+      data: {
+        package_enrollment_id,
+        duration_days: daysToAdd,
+        start_date: resolvedStartDate,
+        end_date: resolvedEndDate,
+        net_charge: netCharge,
+        amount_paid: paidNum,
+        amount_due: newDueTotal,
+      },
     });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -1062,4 +1501,5 @@ module.exports = {
   payDebt,
   refundClearance,
   clearPackageEnrollment,
+  renewPackageEnrollment,
 };

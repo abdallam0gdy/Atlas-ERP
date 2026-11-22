@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import {
-  Package, X, AlertTriangle, LogOut, CheckCircle2,
-  DollarSign, Calculator, Layers, HelpCircle
+  Package, X, AlertTriangle, LogOut, Calendar
 } from 'lucide-react';
-import { formatEGP, formatCount } from '../lib/formatters';
+import { formatEGP } from '../lib/formatters';
 
 export default function ClearPackageRefundModal({
   isOpen,
@@ -16,22 +15,43 @@ export default function ClearPackageRefundModal({
 }) {
   if (!isOpen || !packageEnrollment) return null;
 
-  const totalSessions = parseInt(packageEnrollment.total_sessions || 0, 10);
-  const usedSessions = parseInt(packageEnrollment.used_sessions || 0, 10);
-  const remainingSessions = Math.max(0, parseInt(packageEnrollment.remaining_sessions || 0, 10));
-  const effectiveSessionPrice = parseFloat(packageEnrollment.effective_session_price || 0);
-  const remainingValue = Math.round(remainingSessions * effectiveSessionPrice);
-  const totalDebt = parseFloat(packageEnrollment.total_amount_due || 0);
-  const maxRefund = Math.max(0, remainingValue - totalDebt);
+  const durationDays = Math.max(1, parseInt(packageEnrollment.duration_days || 30, 10));
+  const initialUsedDays = Math.min(durationDays, Math.max(0, parseInt(packageEnrollment.used_days || 0, 10)));
+  const netPrice = parseFloat(packageEnrollment.total_price || 0);
+  const totalDebt = Math.max(0, parseFloat(packageEnrollment.total_amount_due || 0));
+  const actualCashPaid = Math.max(
+    0,
+    parseFloat(
+      packageEnrollment.total_amount_paid !== undefined
+        ? packageEnrollment.total_amount_paid
+        : Math.max(0, netPrice - totalDebt)
+    )
+  );
 
-  const [refundAmount, setRefundAmount] = useState(maxRefund);
+  const [usedDaysInput, setUsedDaysInput] = useState(initialUsedDays);
+  const dailyRate = durationDays > 0 ? netPrice / durationDays : 0;
+  const remainingDays = Math.max(0, durationDays - usedDaysInput);
+  const consumedValue = Math.round(usedDaysInput * dailyRate);
+  // Calculated refund based on used days, strictly capped at actualCashPaid
+  const calculatedRefund = Math.max(
+    0,
+    Math.min(actualCashPaid, Math.round(actualCashPaid - consumedValue))
+  );
+  // Hard ceiling is what the student actually paid in cash
+  const maxRefund = Math.round(actualCashPaid);
+
+  const [refundAmount, setRefundAmount] = useState(calculatedRefund);
   const [dropGroups, setDropGroups] = useState(true);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setRefundAmount(maxRefund);
-  }, [packageEnrollment, maxRefund]);
+    setUsedDaysInput(initialUsedDays);
+  }, [packageEnrollment, initialUsedDays]);
+
+  useEffect(() => {
+    setRefundAmount(calculatedRefund);
+  }, [calculatedRefund]);
 
   const handleRefundAmountChange = (e) => {
     const valStr = e.target.value;
@@ -43,7 +63,7 @@ export default function ClearPackageRefundModal({
     if (!isNaN(val)) {
       if (val > maxRefund) {
         setRefundAmount(maxRefund);
-        toast.error(`⚠️ لا يمكن صرف مبلغ يتجاوز صافي المستحق (${formatEGP(maxRefund)})`);
+        toast.error(`⚠️ لا يمكن صرف مبلغ يتجاوز ما دفعه الطالب فعلياً (${formatEGP(maxRefund)})`);
         return;
       }
       if (val < 0) {
@@ -60,7 +80,7 @@ export default function ClearPackageRefundModal({
       setRefundAmount(0);
     } else if (val > maxRefund) {
       setRefundAmount(maxRefund);
-      toast.error(`⚠️ تم ضبط المبلغ على صافي المستحق (${formatEGP(maxRefund)})`);
+      toast.error(`⚠️ تم ضبط المبلغ على الحد الأقصى المدفوع (${formatEGP(maxRefund)})`);
     }
   };
 
@@ -70,7 +90,7 @@ export default function ClearPackageRefundModal({
     e.preventDefault();
 
     if (refundNum > maxRefund) {
-      toast.error(`مبلغ الاسترداد لا يمكن أن يتجاوز صافي المستحق للطالب (${formatEGP(maxRefund)})`);
+      toast.error(`مبلغ الاسترداد لا يمكن أن يتجاوز إجمالي ما دفعه الطالب (${formatEGP(maxRefund)})`);
       return;
     }
 
@@ -110,7 +130,7 @@ export default function ClearPackageRefundModal({
               <Package size={22} />
             </div>
             <div>
-              <h3 className="text-base font-black">تصفية اشتراك الباكدج واسترداد الحصص</h3>
+              <h3 className="text-base font-black">تصفية اشتراك الباكدج واسترداد الرصيد</h3>
               <p className="text-xs text-rose-100 mt-0.5">
                 {student?.full_name_ar || student?.full_name} (#{student?.student_code}) • {packageEnrollment.package_name}
               </p>
@@ -129,65 +149,82 @@ export default function ClearPackageRefundModal({
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
               <div>
-                <span className="text-xs font-bold text-slate-500">اسم الباكدج والمرحلة:</span>
+                <span className="text-xs font-bold text-slate-500">اسم الباكدج وفترة الاشتراك:</span>
                 <p className="text-sm font-black text-slate-900 mt-0.5">
                   {packageEnrollment.package_name} ({packageEnrollment.grade_name})
                 </p>
-              </div>
-              <div className="text-left">
-                <span className="text-[11px] font-bold text-slate-400">سعر الباكدج المسدد:</span>
-                <p className="text-sm font-black text-[#0C3C82]">
-                  {formatEGP(packageEnrollment.total_price || 0)}
+                <p className="text-[11px] text-slate-600 mt-0.5 flex items-center gap-1.5 font-mono">
+                  <Calendar size={12} className="text-[#0C3C82]" />
+                  <span>من {packageEnrollment.start_date} إلى {packageEnrollment.end_date}</span>
                 </p>
               </div>
+              <div className="text-left">
+                <span className="text-[11px] font-bold text-slate-400 block">المسدد فعلياً بالخزينة:</span>
+                <p className="text-sm font-black text-emerald-700">
+                  {formatEGP(actualCashPaid)}
+                </p>
+                {totalDebt > 0 && (
+                  <span className="text-[10px] font-bold text-rose-600">
+                    مديونية: {formatEGP(totalDebt)}
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Sessions Aggregation Math */}
+            {/* Days Aggregation Math */}
             <div className="grid grid-cols-3 gap-2 py-1 text-center">
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-500 block">إجمالي حصص الباكدج</span>
-                <span className="text-base font-black text-slate-900">{totalSessions} حصة</span>
+                <span className="text-[10px] font-bold text-slate-500 block">إجمالي مدة الباكدج</span>
+                <span className="text-base font-black text-slate-900">{durationDays} يوم</span>
               </div>
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-500 block">الحصص المستهلكة</span>
-                <span className="text-base font-black text-blue-700">{usedSessions} حصة</span>
+                <span className="text-[10px] font-bold text-slate-500 block">الأيام المستهلكة</span>
+                <div className="flex items-center justify-center gap-1 mt-0.5">
+                  <input
+                    type="number"
+                    min="0"
+                    max={durationDays}
+                    value={usedDaysInput}
+                    onChange={(e) => setUsedDaysInput(Math.min(durationDays, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+                    className="w-14 text-center font-black text-blue-700 border border-blue-200 rounded-lg py-0.5 text-sm bg-blue-50/40"
+                    title="يمكنك تعديل عدد الأيام المحسوبة على الطالب"
+                  />
+                  <span className="text-xs font-bold text-blue-700">يوم</span>
+                </div>
               </div>
               <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-xs">
-                <span className="text-[10px] font-bold text-emerald-700 block">المتبقي للاسترداد</span>
-                <span className="text-base font-black text-emerald-800">{remainingSessions} حصة</span>
+                <span className="text-[10px] font-bold text-emerald-700 block">الأيام المتبقية</span>
+                <span className="text-base font-black text-emerald-800">{remainingDays} يوم</span>
               </div>
             </div>
 
-            {/* Fair Package Session Rate Note */}
+            {/* Fair Package Daily Rate Note */}
             <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/80 space-y-1 text-xs">
               <div className="flex items-center justify-between text-blue-950 font-bold">
-                <span>سعر الحصة الفعلي المحسوب في الباكدج:</span>
+                <span>قيمة اليوم الواحد في الباكدج:</span>
                 <span className="font-mono text-sm font-black text-[#0C3C82]">
-                  {effectiveSessionPrice.toFixed(2)} ج.م / حصة
+                  {dailyRate.toFixed(2)} ج.م / يوم
                 </span>
               </div>
               <p className="text-[11px] text-blue-700">
-                (سعر الباكدج {packageEnrollment.total_price} ج.م ÷ {totalSessions} حصة = {effectiveSessionPrice.toFixed(2)} ج.م، بدلاً من سعر الحصة للبرايفت العادي)
+                (صافي اشتراك الباكدج {netPrice} ج.م ÷ {durationDays} يوم = {dailyRate.toFixed(2)} ج.م لليوم)
               </p>
             </div>
 
             {/* Values Calculation */}
             <div className="space-y-1.5 pt-1 text-xs">
               <div className="flex items-center justify-between text-slate-700">
-                <span>إجمالي قيمة الحصص المتبقية ({remainingSessions} حصة × {effectiveSessionPrice.toFixed(2)} ج.م):</span>
-                <span className="font-bold font-mono">{formatEGP(remainingValue)}</span>
+                <span>إجمالي المسدد فعلياً من الطالب:</span>
+                <span className="font-bold font-mono">{formatEGP(actualCashPaid)}</span>
               </div>
-
-              {totalDebt > 0 && (
-                <div className="flex items-center justify-between text-rose-700 font-bold">
-                  <span>- مديونية متبقية على اشتراك الباكدج:</span>
-                  <span className="font-mono">-{formatEGP(totalDebt)}</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between text-slate-700">
+                <span>قيمة الأيام المستهلكة ({usedDaysInput} يوم × {dailyRate.toFixed(2)} ج.م):</span>
+                <span className="font-bold font-mono text-rose-600">-{formatEGP(consumedValue)}</span>
+              </div>
 
               <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30 flex items-center justify-between text-xs font-black text-emerald-900 mt-2">
                 <span>صافي المستحق للاسترداد نقدياً للطالب:</span>
-                <span className="font-mono text-base">{formatEGP(maxRefund)}</span>
+                <span className="font-mono text-base">{formatEGP(calculatedRefund)}</span>
               </div>
             </div>
 
@@ -203,7 +240,7 @@ export default function ClearPackageRefundModal({
                       key={g.group_id}
                       className="px-2 py-1 rounded-lg bg-slate-200/80 text-slate-800 text-[10px] font-bold"
                     >
-                      {g.subject_name}: {g.group_name_ar || g.group_name} ({g.remaining_sessions || 0} حصة متبقية)
+                      {g.subject_name}: {g.group_name_ar || g.group_name}
                     </span>
                   ))}
                 </div>
@@ -236,7 +273,7 @@ export default function ClearPackageRefundModal({
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              محسوب تلقائياً حسب رصيد الحصص العادل للباكدج ({maxRefund} ج.م كحد أقصى)
+              المستحق التلقائي حسب الأيام المتبقية: {calculatedRefund} ج.م (والحد الأقصى هو إجمالي المدفوع: {maxRefund} ج.م)
             </p>
           </div>
 
@@ -277,7 +314,7 @@ export default function ClearPackageRefundModal({
             <div>
               <p className="font-bold">تنبيه عند التأكيد:</p>
               <p className="text-[11px] opacity-90 mt-0.5">
-                سيتم إقفال اشتراك الباكدج، وتصفية رصيد الحصص، {dropGroups ? `وحذف قيد الطالب من ${groupsList.length} مجموعة.` : ''} {refundNum > 0 ? `كما سيتم تسجيل إذن صرف نقدية من درج الخزينة بمبلغ ${formatEGP(refundNum)} فوراً.` : ''}
+                سيتم إقفال اشتراك الباكدج، وتصفية الفترة المتبقية، {dropGroups ? `وحذف قيد الطالب من ${groupsList.length} مجموعة.` : ''} {refundNum > 0 ? `كما سيتم تسجيل إذن صرف نقدية من درج الخزينة بمبلغ ${formatEGP(refundNum)} فوراً.` : ''}
               </p>
             </div>
           </div>

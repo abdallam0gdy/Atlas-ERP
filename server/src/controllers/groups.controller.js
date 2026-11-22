@@ -196,17 +196,18 @@ const createGroup = async (req, res, next) => {
     const pkgCenter = data.package_center_ratio !== undefined ? parseFloat(data.package_center_ratio) : 100.00;
     const privTeacher = data.private_teacher_ratio !== undefined ? parseFloat(data.private_teacher_ratio) : 75.00;
     const privCenter = data.private_center_ratio !== undefined ? parseFloat(data.private_center_ratio) : 25.00;
+    const sessionsPerMonth = Math.max(1, parseInt(data.sessions_per_month, 10) || 4);
 
     const result = await db.query(
       `INSERT INTO groups (name, name_ar, teacher_id, subject_id, grade_id, classroom_id,
-                           schedule, price_per_month, price_per_session, max_students,
+                           schedule, price_per_month, price_per_session, sessions_per_month, max_students,
                            package_teacher_ratio, package_center_ratio, private_teacher_ratio, private_center_ratio)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         data.name, data.name_ar, data.teacher_id || null, data.subject_id || null, data.grade_id || null,
         data.classroom_id || null, JSON.stringify(data.schedule || []), data.price_per_month || 0,
-        data.price_per_session || 0, data.max_students || 9999,
+        data.price_per_session || 0, sessionsPerMonth, data.max_students || 9999,
         pkgTeacher, pkgCenter, privTeacher, privCenter,
       ]
     );
@@ -270,7 +271,7 @@ const updateGroup = async (req, res, next) => {
 
     const updatableFields = [
       'name', 'name_ar', 'teacher_id', 'subject_id', 'grade_id',
-      'classroom_id', 'price_per_month', 'price_per_session',
+      'classroom_id', 'price_per_month', 'price_per_session', 'sessions_per_month',
       'max_students', 'status',
       'package_teacher_ratio', 'package_center_ratio',
       'private_teacher_ratio', 'private_center_ratio',

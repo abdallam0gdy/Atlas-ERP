@@ -301,12 +301,26 @@ const enrollStudentInPackage = async (req, res, next) => {
       amount_paid = 0,
       sessions_count = 4,
       initial_sessions,
+      duration_days = 30,
+      start_date,
+      end_date,
+      custom_gross_price,
       billing_month,
       notes,
     } = req.body;
 
     const actualGroupIds = selected_group_ids || group_ids;
-    const actualSessions = initial_sessions !== undefined ? initial_sessions : sessions_count;
+    const actualDurationDays = Math.max(1, parseInt(duration_days, 10) || 30);
+
+    // Compute start_date and end_date for package subscription
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const resolvedStartDate = start_date || todayStr;
+    let resolvedEndDate = end_date;
+    if (!resolvedEndDate) {
+      const startObj = new Date(resolvedStartDate + 'T12:00:00Z');
+      startObj.setUTCDate(startObj.getUTCDate() + Math.max(0, actualDurationDays - 1));
+      resolvedEndDate = startObj.toISOString().slice(0, 10);
+    }
 
     if (!student_id) {
       throw new BadRequestError('الطالب مطلوب');
@@ -346,9 +360,10 @@ const enrollStudentInPackage = async (req, res, next) => {
       await client.query('UPDATE students SET education_type = $1 WHERE id = $2', [pkg.education_type, student_id]);
     }
 
-    // 3. Get all groups belonging to this package
+    // 3. Get all groups belonging to this package (including sessions_per_month)
     const pkgGroupsRes = await client.query(
-      `SELECT g.id, g.name, g.subject_id, s.name_ar as subject_name, g.price_per_month
+      `SELECT g.id, g.name, g.subject_id, s.name_ar as subject_name, g.price_per_month,
+              COALESCE(g.sessions_per_month, 4) as sessions_per_month
        FROM package_groups pg
        JOIN groups g ON pg.group_id = g.id
        JOIN subjects s ON g.subject_id = s.id
@@ -395,15 +410,23 @@ const enrollStudentInPackage = async (req, res, next) => {
     const packagePriceNum = parseFloat(pkg.package_price) || 0;
     const singlePriceNum = parseFloat(pkg.single_subject_price) || 0;
 
-    let grossPrice = 0;
+    let monthlyBasePrice = 0;
     let enrollmentCategory = '';
     if (isFullPackage) {
-      grossPrice = packagePriceNum;
+      monthlyBasePrice = packagePriceNum;
       enrollmentCategory = 'الباكدج الكامل';
     } else {
-      grossPrice = singlePriceNum * selectedCount;
+      monthlyBasePrice = singlePriceNum * selectedCount;
       enrollmentCategory = `مواد سنتر منفردة (${selectedCount} مادة)`;
     }
+
+    // Proportional price by days (default 30 days = full monthly price, or e.g. 10 / 15 days proportional)
+    let grossPrice =
+      custom_gross_price !== undefined && custom_gross_price !== null && custom_gross_price !== ''
+        ? Math.max(0, parseFloat(custom_gross_price) || 0)
+        : actualDurationDays === 30
+        ? monthlyBasePrice
+        : Math.round((monthlyBasePrice / 30) * actualDurationDays);
 
     // 6. Discount & Net Price Calculation
     const discType = discount_type === 'PERCENT' ? 'PERCENT' : 'FIXED';
@@ -415,16 +438,35 @@ const enrollStudentInPackage = async (req, res, next) => {
     const netPrice = Math.max(0, grossPrice - discountAmount);
     const paidNum = Math.min(netPrice, Math.max(0, parseFloat(amount_paid) || 0));
     const dueNum = Math.max(0, netPrice - paidNum);
-    const sessionsNum = Math.max(1, parseInt(actualSessions, 10) || 4);
-    const currentMonth = billing_month || new Date().toISOString().slice(0, 7);
+    const currentMonth = billing_month || resolvedStartDate.slice(0, 7);
 
-    // 7. Insert into student_package_enrollments
-    const enrollNotes = notes || `${enrollmentCategory} - إجمالي السعر: ${grossPrice} ج.م - الخصم: ${discountAmount} ج.م - الصافي: ${netPrice} ج.م`;
+    // 7. Insert into student_package_enrollments with start_date, end_date, duration_days, and financial breakdown
+    const durationLabel = actualDurationDays === 30 ? 'شهر كامل (30 يوم)' : `${actualDurationDays} يوم`;
+    const enrollNotes =
+      notes ||
+      `${enrollmentCategory} (${durationLabel}: من ${resolvedStartDate} إلى ${resolvedEndDate}) - السعر: ${grossPrice} ج.م - الخصم: ${discountAmount} ج.م - الصافي: ${netPrice} ج.م`;
     const enrollRes = await client.query(
-      `INSERT INTO student_package_enrollments (student_id, package_id, selected_group_ids, total_price, notes)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO student_package_enrollments
+       (student_id, package_id, selected_group_ids, total_price, gross_price, discount_type, discount_value,
+        amount_paid, amount_due, start_date, end_date, duration_days, billing_month, status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', $14)
        RETURNING *`,
-      [student_id, id, actualGroupIds, netPrice, enrollNotes]
+      [
+        student_id,
+        id,
+        actualGroupIds,
+        netPrice,
+        grossPrice,
+        discType,
+        discVal,
+        paidNum,
+        dueNum,
+        resolvedStartDate,
+        resolvedEndDate,
+        actualDurationDays,
+        currentMonth,
+        enrollNotes,
+      ]
     );
 
     const packageEnrollmentId = enrollRes.rows[0].id;
@@ -435,6 +477,14 @@ const enrollStudentInPackage = async (req, res, next) => {
 
     for (let i = 0; i < actualGroupIds.length; i++) {
       const groupId = actualGroupIds[i];
+      const grpInfo = pkgGroupMap.get(groupId);
+      const grpSessionsPerMonth = Math.max(1, parseInt(grpInfo?.sessions_per_month, 10) || 4);
+      // Calculate sessions proportional to duration_days and the group's monthly sessions (e.g. 2, 4, or 8)
+      const groupSessionsForDuration = Math.max(
+        1,
+        Math.ceil((grpSessionsPerMonth * actualDurationDays) / 30)
+      );
+
       const countLeft = actualGroupIds.length - i;
 
       const groupPaidCents = Math.round(remainingPaidCents / countLeft);
@@ -455,23 +505,25 @@ const enrollStudentInPackage = async (req, res, next) => {
         [student_id, groupId, discType, discVal]
       );
 
-      // Create subscription credit record
+      // Create subscription credit record with starts_at and expires_at
       await client.query(
         `INSERT INTO student_subscriptions (
           student_id, group_id, total_sessions, used_sessions,
           amount_paid, amount_due, status, billing_month, enrollment_type,
-          discount_type, discount_value, notes
-        ) VALUES ($1, $2, $3, 0, $4, $5, 'active', $6, 'PACKAGE', $7, $8, $9)`,
+          discount_type, discount_value, starts_at, expires_at, notes
+        ) VALUES ($1, $2, $3, 0, $4, $5, 'active', $6, 'PACKAGE', $7, $8, $9, $10, $11)`,
         [
           student_id,
           groupId,
-          sessionsNum,
+          groupSessionsForDuration,
           perGroupPaid,
           perGroupDue,
           currentMonth,
           discType,
           discVal,
-          `اشتراك ${enrollmentCategory} - باكدج: ${pkg.name}`,
+          resolvedStartDate,
+          resolvedEndDate,
+          `اشتراك ${enrollmentCategory} (${durationLabel}: ${resolvedStartDate} إلى ${resolvedEndDate}) - باكدج: ${pkg.name}`,
         ]
       );
     }

@@ -29,12 +29,13 @@ export default function GroupModal({ isOpen, onClose, onSuccess, initialData = n
     classroom_id: '',
     price_per_month: 0,
     price_per_session: 0,
+    sessions_per_month: 4,
     max_students: 9999,
     package_teacher_ratio: 0,
     package_center_ratio: 100,
     private_teacher_ratio: 75,
     private_center_ratio: 25,
-    schedule: [{ day: 'saturday', start_time: '17:00', end_time: '18:30' }],
+    schedule: [{ day: 'saturday', start_time: '17:00', end_time: '18:30', frequency: 'weekly' }],
   });
 
   const [teachers, setTeachers] = useState([]);
@@ -69,14 +70,15 @@ export default function GroupModal({ isOpen, onClose, onSuccess, initialData = n
         classroom_id: initialData.classroom_id || '',
         price_per_month: initialData.price_per_month || 0,
         price_per_session: initialData.price_per_session || 0,
+        sessions_per_month: initialData.sessions_per_month || 4,
         max_students: initialData.max_students || 9999,
         package_teacher_ratio: initialData.package_teacher_ratio !== undefined ? Number(initialData.package_teacher_ratio) : 0,
         package_center_ratio: initialData.package_center_ratio !== undefined ? Number(initialData.package_center_ratio) : 100,
         private_teacher_ratio: initialData.private_teacher_ratio !== undefined ? Number(initialData.private_teacher_ratio) : 75,
         private_center_ratio: initialData.private_center_ratio !== undefined ? Number(initialData.private_center_ratio) : 25,
         schedule: initialData.schedule?.length
-          ? initialData.schedule
-          : [{ day: 'saturday', start_time: '17:00', end_time: '18:30' }],
+          ? initialData.schedule.map(s => ({ frequency: 'weekly', ...s }))
+          : [{ day: 'saturday', start_time: '17:00', end_time: '18:30', frequency: 'weekly' }],
       });
     } else {
       setFormData({
@@ -88,12 +90,13 @@ export default function GroupModal({ isOpen, onClose, onSuccess, initialData = n
         classroom_id: '',
         price_per_month: 0,
         price_per_session: 0,
+        sessions_per_month: 4,
         max_students: 9999,
         package_teacher_ratio: 0,
         package_center_ratio: 100,
         private_teacher_ratio: 75,
         private_center_ratio: 25,
-        schedule: [{ day: 'saturday', start_time: '17:00', end_time: '18:30' }],
+        schedule: [{ day: 'saturday', start_time: '17:00', end_time: '18:30', frequency: 'weekly' }],
       });
     }
   }, [initialData, isOpen]);
@@ -392,6 +395,34 @@ export default function GroupModal({ isOpen, onClose, onSuccess, initialData = n
                     />
                   </div>
 
+                  {/* Frequency (كل أسبوع vs أسبوع اه وأسبوع لا) */}
+                  <select
+                    value={slot.frequency || 'weekly'}
+                    onChange={(e) => {
+                      const freq = e.target.value;
+                      updateScheduleSlot(index, 'frequency', freq);
+                      if (freq === 'biweekly' && formData.schedule.length === 1) {
+                        setFormData(prev => ({
+                          ...prev,
+                          sessions_per_month: 2,
+                          schedule: prev.schedule.map((s, i) => (i === index ? { ...s, frequency: freq } : s)),
+                        }));
+                      } else if (freq === 'weekly' && formData.schedule.length === 1 && formData.sessions_per_month === 2) {
+                        setFormData(prev => ({
+                          ...prev,
+                          sessions_per_month: 4,
+                          schedule: prev.schedule.map((s, i) => (i === index ? { ...s, frequency: freq } : s)),
+                        }));
+                      }
+                    }}
+                    className="atlas-input text-xs font-bold"
+                    style={{ flex: '1.3' }}
+                    title="تكرار الحصة"
+                  >
+                    <option value="weekly">🔄 كل أسبوع (أسبوعياً)</option>
+                    <option value="biweekly">🗓️ أسبوع اه وأسبوع لا (حصتين/شهر)</option>
+                  </select>
+
                   {/* Remove */}
                   <button
                     type="button"
@@ -406,27 +437,58 @@ export default function GroupModal({ isOpen, onClose, onSuccess, initialData = n
             </div>
           </div>
 
-          {/* Section 3: Pricing */}
+          {/* Section 3: Pricing & Monthly Sessions Count */}
           <div className="pt-4 border-t border-slate-100">
             <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
               <Receipt size={16} className="text-sky-500" />
-              الأسعار والاشتراكات
+              الأسعار ونظام عدد الحصص الشهري
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Monthly Sessions Count Selector (2 = أسبوع اه وأسبوع لا, 4 = حصة أسبوعياً, 8 = حصتين أسبوعياً) */}
+            <div className="mb-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                عدد حصص الشهر الكامل للمجموعة:
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { count: 2, label: 'حصتين في الشهر (2)', sub: 'أسبوع اه وأسبوع لا' },
+                  { count: 4, label: '4 حصص في الشهر', sub: 'حصة واحدة كل أسبوع' },
+                  { count: 8, label: '8 حصص في الشهر', sub: 'حصتين كل أسبوع' },
+                ].map((opt) => {
+                  const isSelected = Number(formData.sessions_per_month) === opt.count;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.count}
+                      onClick={() => setFormData({ ...formData, sessions_per_month: opt.count })}
+                      className={`p-2.5 rounded-xl text-center border transition-all ${
+                        isSelected
+                          ? 'bg-blue-50 border-[#0C3C82] text-[#0C3C82] font-black shadow-2xs ring-1 ring-[#0C3C82]/20'
+                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 font-bold'
+                      }`}
+                    >
+                      <p className="text-xs">{opt.label}</p>
+                      <p className="text-[10px] text-slate-500 font-normal mt-0.5">{opt.sub}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Monthly Price */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  سعر الاشتراك الشهري (ج.م)
+                  سعر الاشتراك الشهري ({formData.sessions_per_month || 4} حصص) (ج.م)
                 </label>
                 <input
                   type="number"
                   min="0"
-                  step="10"
+                  step="5"
                   value={formData.price_per_month}
                   onChange={(e) => setFormData({ ...formData, price_per_month: Number(e.target.value) })}
                   className="atlas-input font-mono text-center"
-                  placeholder="350"
+                  placeholder="310"
                 />
               </div>
 
@@ -438,11 +500,35 @@ export default function GroupModal({ isOpen, onClose, onSuccess, initialData = n
                 <input
                   type="number"
                   min="0"
-                  step="5"
+                  step="0.5"
                   value={formData.price_per_session}
                   onChange={(e) => setFormData({ ...formData, price_per_session: Number(e.target.value) })}
                   className="atlas-input font-mono text-center"
-                  placeholder="50"
+                  placeholder={
+                    formData.price_per_month > 0
+                      ? String(Number((formData.price_per_month / (formData.sessions_per_month || 4)).toFixed(2)))
+                      : '50'
+                  }
+                />
+                {formData.price_per_month > 0 && !formData.price_per_session && (
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    تلقائياً: {(formData.price_per_month / (formData.sessions_per_month || 4)).toFixed(2)} ج.م / حصة
+                  </p>
+                )}
+              </div>
+
+              {/* Custom Sessions Per Month input */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  عدد الحصص بالشهر (مخصص)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={formData.sessions_per_month}
+                  onChange={(e) => setFormData({ ...formData, sessions_per_month: Math.max(1, Number(e.target.value) || 4) })}
+                  className="atlas-input font-mono text-center font-bold"
                 />
               </div>
             </div>

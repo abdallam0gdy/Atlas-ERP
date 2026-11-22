@@ -35,6 +35,9 @@ export default function StudentSubscriptionsPage() {
   const [enrollPackageModalOpen, setEnrollPackageModalOpen] = useState(false); // Package bundle enrollment
   const [clearPackageModalOpen, setClearPackageModalOpen] = useState(false); // Whole package clearance
   const [selectedPackageForClearance, setSelectedPackageForClearance] = useState(null);
+  const [renewPackageModalOpen, setRenewPackageModalOpen] = useState(false); // Package recharge by month / days
+  const [selectedPackageForRenew, setSelectedPackageForRenew] = useState(null);
+  const [renewPackageDebtOnly, setRenewPackageDebtOnly] = useState(false);
 
   // Group filter state
   const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'package' | 'private' | 'debt' | 'zero'
@@ -409,14 +412,15 @@ export default function StudentSubscriptionsPage() {
 
                   <div className="grid grid-cols-1 gap-4">
                     {studentAccount.packageEnrollments.map((pkg) => {
-                      const totalPkgSessions = parseInt(pkg.total_sessions || 0, 10);
-                      const usedPkgSessions = parseInt(pkg.used_sessions || 0, 10);
-                      const remPkgSessions = Math.max(0, parseInt(pkg.remaining_sessions || 0, 10));
-                      const effectiveRate = parseFloat(pkg.effective_session_price || 0);
+                      const durationDays = Math.max(1, parseInt(pkg.duration_days || 30, 10));
+                      const usedDays = Math.min(durationDays, Math.max(0, parseInt(pkg.used_days || 0, 10)));
+                      const remDays = Math.max(0, parseInt(pkg.remaining_days !== undefined ? pkg.remaining_days : durationDays - usedDays, 10));
+                      const dailyRate = parseFloat(pkg.daily_rate || (parseFloat(pkg.total_price || 0) / durationDays) || 0);
                       const pkgPrice = parseFloat(pkg.total_price || 0);
                       const pkgDue = parseFloat(pkg.total_amount_due || 0);
                       const pkgPaid = parseFloat(pkg.total_amount_paid || 0);
                       const refundEst = Math.max(0, parseInt(pkg.refundable_amount || 0, 10));
+                      const usedPkgSessions = parseInt(pkg.used_sessions || 0, 10);
 
                       return (
                         <div
@@ -438,11 +442,11 @@ export default function StudentSubscriptionsPage() {
                                     {pkg.grade_name}
                                   </span>
                                   <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    باكدج نشط
+                                    {durationDays === 30 ? '📅 اشتراك شهر كامل (30 يوم)' : `⏱️ اشتراك ${durationDays} يوم`}
                                   </span>
                                 </div>
                                 <p className="text-xs text-slate-600 mt-1 flex items-center gap-2 flex-wrap">
-                                  <span>تاريخ التسجيل: <strong>{new Date(pkg.enrolled_at).toLocaleDateString('ar-EG')}</strong></span>
+                                  <span>الفترة: <strong className="font-mono text-[#0C3C82]">من {pkg.start_date} إلى {pkg.end_date}</strong></span>
                                   <span>•</span>
                                   <span>إجمالي قيمة الباكدج: <strong className="text-[#0C3C82]">{formatEGP(pkgPrice)}</strong></span>
                                   <span>•</span>
@@ -456,64 +460,100 @@ export default function StudentSubscriptionsPage() {
                               </div>
                             </div>
 
-                            {/* One-Click Full Package Clearance Button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedPackageForClearance(pkg);
-                                setClearPackageModalOpen(true);
-                              }}
-                              className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all self-start md:self-auto hover:shadow-lg"
-                              title="تصفية اشتراك الباكدج بالكامل واسترداد الرصيد المتبقي بسعر الباكدج"
-                            >
-                              <LogOut size={16} />
-                              <span>تصفية واسترداد الباكدج بالكامل</span>
-                            </button>
+                            {/* Package Action Buttons: Recharge by Month/Days, Pay Debt, or Clear/Refund */}
+                            <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPackageForRenew(pkg);
+                                  setRenewPackageDebtOnly(false);
+                                  setRenewPackageModalOpen(true);
+                                }}
+                                className="px-3.5 py-2 rounded-2xl bg-[#0C3C82] hover:bg-blue-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+                                title="شحن وتجديد الباكدج لشهر كامل (من يوم 1 ليوم 30) أو لعدد أيام معين (مثل 10 أو 15 يوم)"
+                              >
+                                <Coins size={15} />
+                                <span>شحن وتجديد الباكدج (شهر / أيام)</span>
+                              </button>
+
+                              {pkgDue > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPackageForRenew(pkg);
+                                    setRenewPackageDebtOnly(true);
+                                    setRenewPackageModalOpen(true);
+                                  }}
+                                  className="px-3.5 py-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+                                  title="سداد المديونية المتبقية على الباكدج"
+                                >
+                                  <Wallet size={15} />
+                                  <span>سداد دين الباكدج ({pkgDue} ج.م)</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPackageForClearance(pkg);
+                                  setClearPackageModalOpen(true);
+                                }}
+                                className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+                                title="تصفية اشتراك الباكدج بالكامل واسترداد الرصيد المتبقي"
+                              >
+                                <LogOut size={15} />
+                                <span>تصفية واسترداد</span>
+                              </button>
+                            </div>
                           </div>
 
-                          {/* Sessions Aggregated Math Grid */}
+                          {/* Days & Duration Math Grid */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
                             <div className="bg-white/90 p-3 rounded-2xl border border-amber-200 shadow-2xs">
-                              <span className="text-[11px] font-bold text-slate-500 block">إجمالي حصص الباكدج</span>
-                              <span className="text-xl font-black text-slate-900 mt-0.5 block">{totalPkgSessions} حصة</span>
+                              <span className="text-[11px] font-bold text-slate-500 block">المدة المشحونة للباكدج</span>
+                              <span className="text-xl font-black text-slate-900 mt-0.5 block">{durationDays} يوم</span>
+                              <span className="text-[10px] text-slate-400 font-mono">من {pkg.start_date}</span>
                             </div>
                             <div className="bg-white/90 p-3 rounded-2xl border border-amber-200 shadow-2xs">
-                              <span className="text-[11px] font-bold text-slate-500 block">الحصص المستهلكة (حضور)</span>
-                              <span className="text-xl font-black text-blue-700 mt-0.5 block">{usedPkgSessions} حصة</span>
+                              <span className="text-[11px] font-bold text-slate-500 block">الأيام المنقضية</span>
+                              <span className="text-xl font-black text-blue-700 mt-0.5 block">{usedDays} يوم</span>
+                              <span className="text-[10px] text-slate-400">إجمالي الحضور: {usedPkgSessions} حصة</span>
                             </div>
                             <div className="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-300 shadow-2xs">
-                              <span className="text-[11px] font-bold text-emerald-800 block">الرصيد المتبقي الإجمالي</span>
-                              <span className="text-xl font-black text-emerald-700 mt-0.5 block">{remPkgSessions} حصة</span>
+                              <span className="text-[11px] font-bold text-emerald-800 block">الأيام المتبقية بالاشتراك</span>
+                              <span className="text-xl font-black text-emerald-700 mt-0.5 block">{remDays} يوم</span>
+                              <span className="text-[10px] text-emerald-700 font-mono">حتى {pkg.end_date}</span>
                             </div>
                             <div className="bg-white/90 p-3 rounded-2xl border border-amber-200 shadow-2xs">
-                              <span className="text-[11px] font-bold text-slate-500 block">سعر الحصة الفعلي بالباكدج</span>
-                              <span className="text-xl font-black text-indigo-700 mt-0.5 block">{effectiveRate.toFixed(2)} ج.م</span>
+                              <span className="text-[11px] font-bold text-slate-500 block">قيمة اليوم الواحد بالباكدج</span>
+                              <span className="text-xl font-black text-indigo-700 mt-0.5 block">{dailyRate.toFixed(2)} ج.م</span>
+                              <span className="text-[10px] text-slate-400">المسترد التقديري: {formatEGP(refundEst)}</span>
                             </div>
                           </div>
 
-                          {/* Sessions Progress Bar */}
+                          {/* Days Progress Bar */}
                           <div className="space-y-1.5 mb-3 bg-white/70 p-3 rounded-2xl border border-amber-200/70">
                             <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                              <span>استهلاك حصص الباكدج:</span>
+                              <span>عداد أيام اشتراك الباكدج ({pkg.start_date} ← {pkg.end_date}):</span>
                               <span className="font-mono text-[#0C3C82]">
-                                مستهلك {usedPkgSessions} من {totalPkgSessions} حصة ({totalPkgSessions > 0 ? Math.round((usedPkgSessions / totalPkgSessions) * 100) : 0}%)
+                                منقضي {usedDays} من {durationDays} يوم (متبقي {remDays} يوم)
                               </span>
                             </div>
                             <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex">
                               <div
                                 className="bg-blue-600 h-full transition-all"
-                                style={{ width: `${totalPkgSessions > 0 ? (usedPkgSessions / totalPkgSessions) * 100 : 0}%` }}
-                                title={`مستهلك: ${usedPkgSessions}`}
+                                style={{ width: `${durationDays > 0 ? (usedDays / durationDays) * 100 : 0}%` }}
+                                title={`منقضي: ${usedDays} يوم`}
                               />
                               <div
                                 className="bg-emerald-500 h-full transition-all"
-                                style={{ width: `${totalPkgSessions > 0 ? (remPkgSessions / totalPkgSessions) * 100 : 0}%` }}
-                                title={`متبقي: ${remPkgSessions}`}
+                                style={{ width: `${durationDays > 0 ? (remDays / durationDays) * 100 : 0}%` }}
+                                title={`متبقي: ${remDays} يوم`}
                               />
                             </div>
                             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                              <span>قيمة الرصيد المتبقي: <strong className="text-emerald-700">{formatEGP(refundEst)}</strong></span>
-                              <span className="text-slate-400">محسوب بسعر الباكدج العادل وليس البرايفت</span>
+                              <span>صافي المستحق للاسترداد حال التصفية اليوم: <strong className="text-emerald-700">{formatEGP(refundEst)}</strong></span>
+                              <span className="text-slate-400">يمكنك شحن شهر كامل (يوم 1 لـ 30) أو أي عدد أيام (10، 15 يوم)</span>
                             </div>
                           </div>
 
@@ -1142,6 +1182,22 @@ export default function StudentSubscriptionsPage() {
           }}
         />
       )}
+
+      {/* RENEW / RECHARGE PACKAGE BY MONTH OR DAYS MODAL */}
+      {renewPackageModalOpen && selectedPackageForRenew && (
+        <RenewPackageModal
+          isOpen={renewPackageModalOpen}
+          onClose={() => setRenewPackageModalOpen(false)}
+          student={studentAccount?.student}
+          packageEnrollment={selectedPackageForRenew}
+          debtOnly={renewPackageDebtOnly}
+          onSuccess={() => {
+            setRenewPackageModalOpen(false);
+            if (selectedStudentId) loadStudentAccount(selectedStudentId);
+            fetchDebts();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1160,8 +1216,14 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const pricePerSession = parseFloat(group.price_per_session) || 0;
+  const groupSessionsPerMonth = Math.max(1, parseInt(group.sessions_per_month, 10) || 4);
   const pricePerMonth = parseFloat(group.price_per_month) || 0;
+  const pricePerSession =
+    parseFloat(group.price_per_session) > 0
+      ? parseFloat(group.price_per_session)
+      : pricePerMonth > 0
+      ? Number((pricePerMonth / groupSessionsPerMonth).toFixed(2))
+      : 0;
   const currentDebt = Math.max(0, parseFloat(group.amount_due) || 0);
 
   // Discount calculation
@@ -1173,16 +1235,37 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
   const netCharge = Math.max(0, grossCharge - discountAmount);
   const totalLiability = netCharge + currentDebt;
 
-  // Presets definition
+  // Presets definition respecting group.sessions_per_month (2 = أسبوع اه وأسبوع لا, 4 = حصة أسبوعياً, 8 = حصتين أسبوعياً)
   const presets = [
-    { label: 'حصة واحدة (1)', sessions: 1, calculate: () => pricePerSession || 50 },
-    { label: 'حصتين (2)', sessions: 2, calculate: () => (pricePerSession ? pricePerSession * 2 : 100) },
-    { label: '3 حصص (3)', sessions: 3, calculate: () => (pricePerSession ? pricePerSession * 3 : 150) },
-    { label: 'شهر كامل (4 حصص)', sessions: 4, calculate: () => pricePerMonth || (pricePerSession * 4) || 200 },
-    { label: 'شهر كامل (8 حصص)', sessions: 8, calculate: () => pricePerMonth || (pricePerSession * 8) || 350 },
+    { label: 'حصة واحدة (1)', sessions: 1, calculate: () => Math.round(pricePerSession || 50) },
+    {
+      label: groupSessionsPerMonth === 2 ? 'شهر كامل (حصتين - أسبوع اه وأسبوع لا)' : 'حصتين (2)',
+      sessions: 2,
+      calculate: () =>
+        groupSessionsPerMonth === 2
+          ? pricePerMonth || Math.round(pricePerSession * 2) || 100
+          : Math.round(pricePerSession ? pricePerSession * 2 : (pricePerMonth / groupSessionsPerMonth) * 2 || 100),
+    },
+    { label: '3 حصص (3)', sessions: 3, calculate: () => Math.round(pricePerSession ? pricePerSession * 3 : (pricePerMonth / groupSessionsPerMonth) * 3 || 150) },
+    {
+      label: 'شهر كامل (4 حصص)',
+      sessions: 4,
+      calculate: () =>
+        groupSessionsPerMonth === 4
+          ? pricePerMonth || Math.round(pricePerSession * 4) || 200
+          : Math.round(pricePerSession * 4 || pricePerMonth || 200),
+    },
+    {
+      label: 'شهر كامل (8 حصص)',
+      sessions: 8,
+      calculate: () =>
+        groupSessionsPerMonth === 8
+          ? pricePerMonth || Math.round(pricePerSession * 8) || 350
+          : Math.round(pricePerSession * 8 || pricePerMonth || 350),
+    },
   ];
 
-  // Set initial preset with student's persistent discount
+  // Set initial preset matching group.sessions_per_month with student's persistent discount
   useEffect(() => {
     const initDiscType = group.discount_type || 'FIXED';
     const initDiscVal = parseFloat(group.discount_value) || 0;
@@ -1190,9 +1273,10 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
     setDiscountValue(initDiscVal);
     setEnrollmentType(group.enrollment_type || 'PACKAGE');
 
-    // Preset 4 sessions
-    setSessionsCount(presets[3].sessions);
-    const charge = presets[3].calculate();
+    const defaultPreset =
+      presets.find((p) => p.sessions === groupSessionsPerMonth) || presets[3];
+    setSessionsCount(defaultPreset.sessions);
+    const charge = defaultPreset.calculate();
     setTotalCharge(charge);
     const disc = initDiscType === 'PERCENT'
       ? Math.min(charge, Math.round((charge * initDiscVal) / 100))
@@ -1216,10 +1300,10 @@ function RenewSessionsModal({ isOpen, onClose, student, group, onSuccess }) {
     const s = Math.max(1, parseInt(val, 10) || 1);
     setSessionsCount(s);
     let charge = 0;
-    if (s === 4 || s === 8) {
+    if (s === groupSessionsPerMonth) {
       charge = pricePerMonth;
     } else {
-      charge = pricePerSession ? pricePerSession * s : (pricePerMonth / 4) * s;
+      charge = pricePerSession ? pricePerSession * s : (pricePerMonth / groupSessionsPerMonth) * s;
     }
     const roundedCharge = Math.round(charge);
     setTotalCharge(roundedCharge);
@@ -1657,7 +1741,8 @@ function formatModalSchedule(schedule) {
   if (!slots || !slots.length) return 'مواعيد غير محددة';
   return slots.map(s => {
     const day = dayNamesArabicMap[s.day?.toLowerCase()] || s.day;
-    return `${day} (${s.start_time || ''})`;
+    const freqLabel = s.frequency === 'biweekly' ? ' - أسبوع اه وأسبوع لا' : '';
+    return `${day} (${s.start_time || ''}${freqLabel})`;
   }).join(' ، ');
 }
 
@@ -1784,7 +1869,23 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
     setSearchQuery('');
   };
 
-  const grossPrice = selectedGroup ? (parseFloat(selectedGroup.price_per_month) || 0) : 0;
+  const groupMonthlySessions = selectedGroup ? Math.max(1, parseInt(selectedGroup.sessions_per_month, 10) || 4) : 4;
+
+  useEffect(() => {
+    if (selectedGroup) {
+      setSessionsCount(Math.max(1, parseInt(selectedGroup.sessions_per_month, 10) || 4));
+    }
+  }, [selectedGroupId]);
+
+  const grossPrice = useMemo(() => {
+    if (!selectedGroup) return 0;
+    const mPrice = parseFloat(selectedGroup.price_per_month) || 0;
+    const sPrice = parseFloat(selectedGroup.price_per_session) || 0;
+    const sCount = Math.max(1, parseInt(sessionsCount, 10) || groupMonthlySessions);
+    if (sCount === groupMonthlySessions) return mPrice;
+    if (sPrice > 0) return Math.round(sPrice * sCount);
+    return Math.round((mPrice / groupMonthlySessions) * sCount);
+  }, [selectedGroup, sessionsCount, groupMonthlySessions]);
   const discountAmount = useMemo(() => {
     const val = Math.max(0, parseFloat(discountValue) || 0);
     if (discountType === 'PERCENT') {
@@ -2155,7 +2256,7 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
 
               {/* Sessions Count & Month */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-white/10 text-[11px]">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-white/60">الحصص المشحونة:</span>
                   {[1, 2, 4, 8].map(num => (
                     <button
@@ -2166,7 +2267,9 @@ function EnrollGroupModal({ isOpen, onClose, student, existingGroupIds, allGroup
                         sessionsCount === num ? 'bg-amber-400 text-slate-900' : 'bg-white/10 text-white'
                       }`}
                     >
-                      {num} حصص
+                      {num === groupMonthlySessions
+                        ? `شهر كامل (${num} حصص${num === 2 ? ' - أسبوع اه وأسبوع لا' : ''})`
+                        : `${num} حصص`}
                     </button>
                   ))}
                 </div>
@@ -2410,34 +2513,54 @@ function PayDebtModal({ isOpen, onClose, student, group, onSuccess }) {
 // MODAL: CLEARANCE & SESSIONS REFUND (تصفية الحساب واسترداد الحصص)
 // -------------------------------------------------------------
 function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
-  const remaining = parseInt(group.remaining_sessions || 0, 10);
-  const basePricePerSession = parseFloat(group.price_per_session) || 
-                              (parseFloat(group.price_per_month) ? Math.round(parseFloat(group.price_per_month) / 4) : 50);
+  const remaining = Math.max(0, parseInt(group.remaining_sessions || 0, 10));
+  const totalSessions = Math.max(0, parseInt(group.total_sessions || 0, 10));
+  const usedSessions = Math.max(0, parseInt(group.used_sessions || Math.max(0, totalSessions - remaining), 10));
+  const groupSessionsPerMonth = Math.max(1, parseInt(group.sessions_per_month, 10) || 4);
 
-  const totalSessions = parseInt(group.total_sessions || 0, 10);
-  const amountPaid = parseFloat(group.amount_paid || 0);
-  const actualPaidRate = (totalSessions > 0 && amountPaid > 0) ? (amountPaid / totalSessions) : basePricePerSession;
+  const activeAmountPaid = Math.max(
+    0,
+    parseFloat(group.active_amount_paid !== undefined ? group.active_amount_paid : group.amount_paid || 0)
+  );
+  const currentDebt = Math.max(0, parseFloat(group.amount_due) || 0);
+  const totalAgreedPrice = activeAmountPaid + currentDebt;
+
+  const nominalPricePerSession =
+    parseFloat(group.price_per_session) > 0
+      ? parseFloat(group.price_per_session)
+      : parseFloat(group.price_per_month) > 0
+      ? parseFloat(group.price_per_month) / groupSessionsPerMonth
+      : 50;
 
   let sessionDiscount = 0;
-  // Use actual paid session rate if lower than standard group price (e.g. package or discounted center rate)
-  let effectivePricePerSession = basePricePerSession;
-  if (actualPaidRate > 0 && actualPaidRate < basePricePerSession) {
-    effectivePricePerSession = Math.round(actualPaidRate);
+  let exactSessionRate = nominalPricePerSession;
+
+  if (totalSessions > 0 && totalAgreedPrice > 0) {
+    // Use exact unrounded rate from what the student was actually charged (e.g. 310 / 4 = 77.5, NOT 78!)
+    exactSessionRate = totalAgreedPrice / totalSessions;
   } else {
-    // Apply student's persistent discount
     const dType = group.discount_type || 'FIXED';
     const dVal = parseFloat(group.discount_value) || 0;
     if (dType === 'PERCENT' && dVal > 0) {
-      sessionDiscount = (basePricePerSession * Math.min(100, dVal)) / 100;
+      sessionDiscount = (nominalPricePerSession * Math.min(100, dVal)) / 100;
     } else if (dType === 'FIXED' && dVal > 0) {
-      sessionDiscount = dVal / 4;
+      sessionDiscount = dVal / groupSessionsPerMonth;
     }
-    effectivePricePerSession = Math.max(0, basePricePerSession - sessionDiscount);
+    exactSessionRate = Math.max(0, nominalPricePerSession - sessionDiscount);
   }
 
-  const grossSessionsValue = Math.max(0, Math.round(remaining * effectivePricePerSession));
-  const currentDebt = Math.max(0, parseFloat(group.amount_due) || 0);
-  const netRefund = Math.max(0, grossSessionsValue - currentDebt);
+  const displaySessionRate = Number(exactSessionRate.toFixed(2));
+  const consumedValue = Math.round(usedSessions * exactSessionRate);
+  const grossSessionsValue =
+    usedSessions === 0 && totalAgreedPrice > 0
+      ? Math.round(totalAgreedPrice)
+      : Math.max(0, Math.round(remaining * exactSessionRate));
+
+  // Hard cap: Student can NEVER be refunded more than activeAmountPaid (what they actually paid in cash!)
+  const netRefund = Math.max(
+    0,
+    Math.min(Math.round(activeAmountPaid), Math.round(activeAmountPaid - consumedValue))
+  );
 
   const [refundAmount, setRefundAmount] = useState(netRefund);
   const [dropGroup, setDropGroup] = useState(true);
@@ -2458,7 +2581,7 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
     if (!isNaN(val)) {
       if (val > netRefund) {
         setRefundAmount(netRefund);
-        toast.error(`⚠️ لا يمكن استرداد مبلغ أكبر من صافي المستحق (${netRefund} ج.م)`);
+        toast.error(`⚠️ لا يمكن استرداد مبلغ أكبر من صافي المستحق والمدفوع (${netRefund} ج.م)`);
         return;
       }
       if (val < 0) {
@@ -2490,7 +2613,7 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
     }
 
     if (refundNum > netRefund) {
-      toast.error(`مبلغ الاسترداد (${refundNum} ج.م) لا يمكن أن يتجاوز صافي المستحق للطالب (${netRefund} ج.م) بعد خصم المديونية (${currentDebt} ج.م)`);
+      toast.error(`مبلغ الاسترداد (${refundNum} ج.م) لا يمكن أن يتجاوز صافي المستحق للطالب (${netRefund} ج.م)`);
       return;
     }
 
@@ -2553,39 +2676,43 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
               <span className="text-xs text-slate-700">{group.teacher_name} • {group.subject_name}</span>
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+              <span className="text-xs font-bold text-slate-600">إجمالي المسدد فعلياً للاشتراك:</span>
+              <span className="font-mono font-black text-emerald-700 text-sm">{activeAmountPaid} ج.م</span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-600">رصيد الحصص المتبقي للطالب:</span>
               <span className="px-3 py-1 rounded-xl bg-blue-100 text-[#0C3C82] font-mono font-black text-sm border border-blue-200">
-                {remaining} حصة متبقية
+                {remaining} من {totalSessions} حصة (مستهلك: {usedSessions})
               </span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
-              <span>سعر الحصة التقديري: <strong>{basePricePerSession} ج.م</strong></span>
-              <span>إجمالي قيمة الحصص: <strong className="font-mono">{grossSessionsValue} ج.م</strong></span>
+              <span>سعر الحصة الفعلي: <strong>{displaySessionRate} ج.م</strong></span>
+              <span>قيمة الحصص المستهلكة: <strong className="font-mono text-rose-600">-{consumedValue} ج.م</strong></span>
             </div>
             {sessionDiscount > 0 && (
               <div className="flex items-center justify-between text-[11px] text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200 font-bold">
-                <span>🏷️ تم تطبيق الخصم الدائم للطالب (-{sessionDiscount} ج.م/حصة):</span>
-                <span>السعر الفعلي للحصة: {effectivePricePerSession} ج.م</span>
+                <span>🏷️ تم تطبيق الخصم الدائم للطالب:</span>
+                <span>السعر الفعلي للحصة: {displaySessionRate} ج.م</span>
               </div>
             )}
 
             {/* Debt deduction details */}
             {currentDebt > 0 && (
               <div className="flex items-center justify-between text-xs text-rose-700 pt-1.5 border-t border-slate-200 font-bold">
-                <span>- مديونية سابقة مستحقة على الطالب:</span>
-                <span className="font-mono font-black">-{currentDebt} ج.م</span>
+                <span>- مديونية غير مسددة على الطالب:</span>
+                <span className="font-mono font-black">{currentDebt} ج.م</span>
               </div>
             )}
 
             {/* Net formula */}
             <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs font-black text-emerald-800">
-              <span>صافي المستحق للاسترداد (بعد خصم الدين):</span>
+              <span>صافي المستحق للاسترداد (من المدفوع فعلياً):</span>
               <span className="font-mono text-sm">{netRefund} ج.م</span>
             </div>
 
-            {currentDebt > grossSessionsValue && (
+            {consumedValue > activeAmountPaid && (
               <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium">
-                ⚠️ تنبيه: قيمة الحصص المتبقية ({grossSessionsValue} ج.م) أقل من المديونية ({currentDebt} ج.م). سيتم استهلاك الحصص لتخفيض المديونية إلى {currentDebt - grossSessionsValue} ج.م ولن يتم صرف نقدية.
+                ⚠️ تنبيه: قيمة الحصص المستهلكة ({consumedValue} ج.م) أكبر مما دفعه الطالب ({activeAmountPaid} ج.م). المتبقي كدين على الطالب {consumedValue - activeAmountPaid} ج.م ولن يتم صرف نقدية.
               </p>
             )}
           </div>
@@ -2611,11 +2738,11 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
             />
             {refundNum > netRefund && (
               <p className="text-[11px] text-rose-600 font-bold mt-1">
-                ⚠️ لا يمكن صرف مبلغ يتجاوز صافي المستحق ({netRefund} ج.م)
+                ⚠️ لا يمكن صرف مبلغ يتجاوز صافي المستحق والمدفوع ({netRefund} ج.م)
               </p>
             )}
             <p className="text-[11px] text-slate-400 mt-1">
-              محسوب تلقائياً: (قيمة الحصص المتبقية - المديونية)، والحد الأقصى هو {netRefund} ج.م.
+              محسوب تلقائياً: (المبلغ المدفوع {activeAmountPaid} ج.م - قيمة الحصص المستهلكة {consumedValue} ج.م)، والحد الأقصى هو {netRefund} ج.م.
             </p>
           </div>
 
@@ -2676,4 +2803,341 @@ function ClearanceRefundModal({ isOpen, onClose, student, group, onSuccess }) {
     </div>
   );
 }
+
+// -------------------------------------------------------------
+// MODAL: RENEW / RECHARGE PACKAGE BY MONTH (1-30) OR CUSTOM DAYS (10, 15, etc.)
+// -------------------------------------------------------------
+function RenewPackageModal({ isOpen, onClose, student, packageEnrollment, debtOnly = false, onSuccess }) {
+  const monthlyBasePrice = parseFloat(packageEnrollment.package_price || packageEnrollment.total_price || 0);
+  const currentDebt = Math.max(0, parseFloat(packageEnrollment.total_amount_due || 0));
+
+  const [payDebtOnly, setPayDebtOnly] = useState(debtOnly);
+  const [durationMode, setDurationMode] = useState('MONTH_1_30');
+  const [durationDays, setDurationDays] = useState(30);
+  const [billingMonth, setBillingMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [startDate, setStartDate] = useState(() => {
+    const ym = new Date().toISOString().slice(0, 7);
+    return `${ym}-01`;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const ym = now.toISOString().slice(0, 7);
+    return `${ym}-${String(Math.min(30, lastDay)).padStart(2, '0')}`;
+  });
+  const [customCharge, setCustomCharge] = useState('');
+  const [discountType, setDiscountType] = useState(packageEnrollment.discount_type || 'FIXED');
+  const [discountValue, setDiscountValue] = useState(packageEnrollment.discount_value || 0);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const computeEndFromStart = (startStr, days) => {
+    if (!startStr) return '';
+    const d = new Date(`${startStr}T12:00:00Z`);
+    if (isNaN(d.getTime())) return '';
+    d.setUTCDate(d.getUTCDate() + Math.max(0, (parseInt(days, 10) || 30) - 1));
+    return d.toISOString().slice(0, 10);
+  };
+
+  const applyPreset = (mode, daysVal = 30, targetMonth = billingMonth) => {
+    setDurationMode(mode);
+    setCustomCharge('');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (mode === 'MONTH_1_30') {
+      const ym = targetMonth || new Date().toISOString().slice(0, 7);
+      const [y, m] = ym.split('-').map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      setDurationDays(30);
+      setStartDate(`${ym}-01`);
+      setEndDate(`${ym}-${String(Math.min(30, lastDay)).padStart(2, '0')}`);
+    } else if (mode === '30_DAYS') {
+      setDurationDays(30);
+      setStartDate(todayStr);
+      setEndDate(computeEndFromStart(todayStr, 30));
+    } else if (mode === '15_DAYS') {
+      setDurationDays(15);
+      setStartDate(todayStr);
+      setEndDate(computeEndFromStart(todayStr, 15));
+    } else if (mode === '10_DAYS') {
+      setDurationDays(10);
+      setStartDate(todayStr);
+      setEndDate(computeEndFromStart(todayStr, 10));
+    } else {
+      const d = Math.max(1, parseInt(daysVal, 10) || 10);
+      setDurationDays(d);
+      setEndDate(computeEndFromStart(startDate || todayStr, d));
+    }
+  };
+
+  const grossCharge = useMemo(() => {
+    if (payDebtOnly) return 0;
+    if (customCharge !== '' && customCharge !== null && !isNaN(parseFloat(customCharge))) {
+      return Math.max(0, parseFloat(customCharge));
+    }
+    const d = Math.max(1, parseInt(durationDays, 10) || 30);
+    if (d === 30) return monthlyBasePrice;
+    return Math.round((monthlyBasePrice / 30) * d);
+  }, [payDebtOnly, customCharge, durationDays, monthlyBasePrice]);
+
+  const discValNum = Math.max(0, parseFloat(discountValue) || 0);
+  const discountAmount = payDebtOnly
+    ? 0
+    : discountType === 'PERCENT'
+    ? Math.min(grossCharge, Math.round((grossCharge * discValNum) / 100))
+    : Math.min(grossCharge, discValNum);
+  const netCharge = Math.max(0, grossCharge - discountAmount);
+  const totalLiability = payDebtOnly ? currentDebt : netCharge + currentDebt;
+
+  useEffect(() => {
+    setPayDebtOnly(debtOnly);
+  }, [debtOnly]);
+
+  useEffect(() => {
+    setAmountPaid(totalLiability);
+  }, [totalLiability, payDebtOnly]);
+
+  const paidNum = Math.max(0, parseFloat(amountPaid) || 0);
+  const remainingDebt = Math.max(0, totalLiability - paidNum);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (paidNum > totalLiability + 0.01) {
+      toast.error(`المبلغ المدفوع (${paidNum} ج.م) لا يمكن أن يتجاوز المطلوب (${totalLiability} ج.م)`);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await api.post('/subscriptions/renew-package', {
+        package_enrollment_id: packageEnrollment.id,
+        pay_debt_only: payDebtOnly,
+        duration_days: durationDays,
+        start_date: startDate,
+        end_date: endDate,
+        total_charge: grossCharge,
+        discount_type: discountType,
+        discount_value: discValNum,
+        amount_paid: paidNum,
+        billing_month: billingMonth,
+        notes: notes.trim() || undefined,
+      });
+      toast.success(data.message || 'تم تحديث وشحن الباكدج بنجاح');
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'حدث خطأ أثناء شحن الباكدج');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+      <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-200">
+        <div className="p-5 text-white flex items-center justify-between" style={{ background: '#0C3C82' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/15 rounded-xl">
+              <Package size={22} />
+            </div>
+            <div>
+              <h3 className="text-base font-black">
+                {payDebtOnly ? 'سداد مديونية الباكدج' : 'شحن وتجديد الباكدج (بالشهر أو بعدد الأيام)'}
+              </h3>
+              <p className="text-xs text-white/80">
+                {student?.full_name_ar || student?.full_name} (#{student?.student_code}) • {packageEnrollment.package_name}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+          {!payDebtOnly && (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  اختر نظام مدة شحن الباكدج:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { mode: 'MONTH_1_30', label: '📅 شهر كامل (من يوم 1 ليوم 30)', days: 30 },
+                    { mode: '30_DAYS', label: '🗓️ 30 يوم من تاريخ اليوم', days: 30 },
+                    { mode: '15_DAYS', label: '⏱️ نصف شهر (15 يوم)', days: 15 },
+                    { mode: '10_DAYS', label: '⏱️ 10 أيام', days: 10 },
+                  ].map((p) => (
+                    <button
+                      type="button"
+                      key={p.mode}
+                      onClick={() => applyPreset(p.mode, p.days)}
+                      className={`p-2.5 rounded-xl text-xs font-bold border text-center transition-all ${
+                        durationMode === p.mode
+                          ? 'bg-blue-50 border-[#0C3C82] text-[#0C3C82] shadow-xs ring-1 ring-[#0C3C82]/20'
+                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <p>{p.label}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {Math.round((monthlyBasePrice / 30) * p.days)} ج.م
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    عدد الأيام المشحونة
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={durationDays}
+                    onChange={(e) => {
+                      const d = Math.max(1, parseInt(e.target.value, 10) || 1);
+                      setDurationMode('CUSTOM');
+                      setDurationDays(d);
+                      setCustomCharge('');
+                      setEndDate(computeEndFromStart(startDate, d));
+                    }}
+                    className="atlas-input font-black text-center text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    من تاريخ (بداية الباكدج)
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      const s = e.target.value;
+                      setStartDate(s);
+                      setEndDate(computeEndFromStart(s, durationDays));
+                    }}
+                    className="atlas-input text-xs font-mono text-center"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    إلى تاريخ (نهاية الباكدج)
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      const endStr = e.target.value;
+                      setEndDate(endStr);
+                      if (startDate && endStr) {
+                        const sMs = new Date(`${startDate}T00:00:00Z`).getTime();
+                        const eMs = new Date(`${endStr}T00:00:00Z`).getTime();
+                        const diffDays = Math.max(1, Math.round((eMs - sMs) / (1000 * 60 * 60 * 24)) + 1);
+                        setDurationMode('CUSTOM');
+                        setDurationDays(diffDays);
+                        setCustomCharge('');
+                      }
+                    }}
+                    className="atlas-input text-xs font-mono text-center"
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Financial Box */}
+          <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 space-y-3 text-xs">
+            {!payDebtOnly && (
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-slate-700">قيمة المدة ({durationDays} يوم):</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    value={customCharge !== '' ? customCharge : grossCharge}
+                    onChange={(e) => setCustomCharge(e.target.value)}
+                    className="w-24 text-center font-bold py-1 px-2 border rounded-lg bg-white border-slate-200 text-sm"
+                  />
+                  <span>ج.م</span>
+                </div>
+              </div>
+            )}
+
+            {currentDebt > 0 && (
+              <div className="flex items-center justify-between font-bold text-rose-700 pt-1">
+                <span>مديونية متبقية على الباكدج:</span>
+                <span className="font-mono font-black">{currentDebt} ج.م</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between font-black text-[#0C3C82] pt-2 border-t border-blue-200/60">
+              <span>إجمالي المطلوب دفعه:</span>
+              <span className="font-mono text-sm">{totalLiability} ج.م</span>
+            </div>
+
+            <div className="flex items-center justify-between font-bold pt-2 border-t border-blue-200/60">
+              <span className="text-slate-800">المبلغ المدفوع نقداً بالخزينة:</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  max={totalLiability}
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(Math.min(totalLiability, Math.max(0, parseFloat(e.target.value) || 0)))}
+                  className="w-28 text-center font-black py-1.5 px-2 border rounded-lg bg-white border-emerald-400 text-emerald-800 text-sm"
+                  required
+                />
+                <span>ج.م</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between font-bold pt-1">
+              <span className="text-slate-600">المتبقي كدين بعد الدفع:</span>
+              <span className={`font-mono ${remainingDebt > 0 ? 'text-rose-600 font-black' : 'text-emerald-600'}`}>
+                {remainingDebt > 0 ? `${remainingDebt} ج.م` : 'مسدد بالكامل (0 ج.م)'}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              ملاحظات (اختياري):
+            </label>
+            <input
+              type="text"
+              placeholder="مثال: شحن باكدج الطالب"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="atlas-input text-xs"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <button type="button" onClick={onClose} className="atlas-btn-ghost text-xs">
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={loading || paidNum > totalLiability}
+              className="atlas-btn-primary text-xs px-6 py-2.5 flex items-center gap-2 shadow-md"
+            >
+              {loading
+                ? 'جاري الحفظ...'
+                : payDebtOnly
+                ? `تأكيد سداد ${paidNum} ج.م`
+                : `تأكيد شحن ${durationDays} يوم (${paidNum} ج.م)`}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 

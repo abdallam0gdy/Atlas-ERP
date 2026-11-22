@@ -32,14 +32,64 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
   // Selected group per subject: { [subject_id]: group_id }
   const [selectedGroups, setSelectedGroups] = useState({});
 
-  // Financial inputs
+  // Financial & Duration inputs (Package by Full Month Day 1-30 or custom days: 10, 15, 30)
   const [discountType, setDiscountType] = useState('FIXED'); // 'FIXED' or 'PERCENT'
   const [discountValue, setDiscountValue] = useState(0);
   const [amountPaid, setAmountPaid] = useState(0);
-  const [sessionsCount, setSessionsCount] = useState(4);
+  const [durationDays, setDurationDays] = useState(30);
+  const [durationMode, setDurationMode] = useState('MONTH_1_30'); // 'MONTH_1_30' | '30_DAYS' | '15_DAYS' | '10_DAYS' | 'CUSTOM'
   const [billingMonth, setBillingMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [startDate, setStartDate] = useState(() => {
+    const ym = new Date().toISOString().slice(0, 7);
+    return `${ym}-01`;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const ym = now.toISOString().slice(0, 7);
+    return `${ym}-${String(Math.min(30, lastDay)).padStart(2, '0')}`;
+  });
+  const [customGrossPrice, setCustomGrossPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const computeEndDateFromStart = (startStr, days) => {
+    if (!startStr) return '';
+    const d = new Date(`${startStr}T12:00:00Z`);
+    if (isNaN(d.getTime())) return '';
+    d.setUTCDate(d.getUTCDate() + Math.max(0, (parseInt(days, 10) || 30) - 1));
+    return d.toISOString().slice(0, 10);
+  };
+
+  const applyDurationPreset = (mode, customDaysVal = 30, targetMonth = billingMonth) => {
+    setDurationMode(mode);
+    setCustomGrossPrice('');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (mode === 'MONTH_1_30') {
+      const ym = targetMonth || new Date().toISOString().slice(0, 7);
+      const [y, m] = ym.split('-').map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      setDurationDays(30);
+      setStartDate(`${ym}-01`);
+      setEndDate(`${ym}-${String(Math.min(30, lastDay)).padStart(2, '0')}`);
+    } else if (mode === '30_DAYS') {
+      setDurationDays(30);
+      setStartDate(todayStr);
+      setEndDate(computeEndDateFromStart(todayStr, 30));
+    } else if (mode === '15_DAYS') {
+      setDurationDays(15);
+      setStartDate(todayStr);
+      setEndDate(computeEndDateFromStart(todayStr, 15));
+    } else if (mode === '10_DAYS') {
+      setDurationDays(10);
+      setStartDate(todayStr);
+      setEndDate(computeEndDateFromStart(todayStr, 10));
+    } else {
+      const d = Math.max(1, parseInt(customDaysVal, 10) || 10);
+      setDurationDays(d);
+      setEndDate(computeEndDateFromStart(startDate || todayStr, d));
+    }
+  };
 
   // Switch student education type and persist to DB
   const handleSwitchEducationType = async (newType) => {
@@ -160,15 +210,25 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
   const selectedCount = selectedGroupIds.length;
   const isFullPackage = selectedCount === totalSubjectsCount && totalSubjectsCount > 0;
 
-  // Pricing calculations
+  // Pricing calculations (Monthly base price scaled proportionally by durationDays)
   const packagePrice = parseFloat(currentPackage?.package_price) || 0;
   const singleSubjectPrice = parseFloat(currentPackage?.single_subject_price) || 0;
 
-  const grossPrice = useMemo(() => {
+  const monthlyBasePrice = useMemo(() => {
     if (selectedCount === 0) return 0;
     if (isFullPackage) return packagePrice;
     return singleSubjectPrice * selectedCount;
   }, [selectedCount, isFullPackage, packagePrice, singleSubjectPrice]);
+
+  const grossPrice = useMemo(() => {
+    if (selectedCount === 0) return 0;
+    if (customGrossPrice !== '' && customGrossPrice !== null && !isNaN(parseFloat(customGrossPrice))) {
+      return Math.max(0, parseFloat(customGrossPrice));
+    }
+    const days = Math.max(1, parseInt(durationDays, 10) || 30);
+    if (days === 30) return monthlyBasePrice;
+    return Math.round((monthlyBasePrice / 30) * days);
+  }, [selectedCount, monthlyBasePrice, durationDays, customGrossPrice]);
 
   const discountAmount = useMemo(() => {
     const val = Math.max(0, parseFloat(discountValue) || 0);
@@ -217,7 +277,7 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
       friday: 'الجمعة',
     };
     return slots
-      .map((s) => `${dayMap[s.day] || s.day} (${s.start_time} - ${s.end_time})`)
+      .map((s) => `${dayMap[s.day] || s.day} (${s.start_time} - ${s.end_time}${s.frequency === 'biweekly' ? ' • أسبوع اه وأسبوع لا' : ''})`)
       .join(' ، ');
   };
 
@@ -240,7 +300,10 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
         discount_type: discountType,
         discount_value: parseFloat(discountValue) || 0,
         amount_paid: paidNum,
-        sessions_count: parseInt(sessionsCount, 10) || 4,
+        duration_days: Math.max(1, parseInt(durationDays, 10) || 30),
+        start_date: startDate,
+        end_date: endDate,
+        custom_gross_price: customGrossPrice !== '' ? parseFloat(customGrossPrice) : undefined,
         billing_month: billingMonth,
         notes: notes.trim() || undefined,
       });
@@ -557,14 +620,23 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
 
               {/* Financial Inputs & Summary Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-right">
-                {/* Gross Price */}
+                {/* Gross Price (Editable or Proportional by Days) */}
                 <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
-                  <span className="text-[11px] text-white/60 block">السعر الأساسي</span>
-                  <p className="text-lg font-black text-white mt-1">
-                    {grossPrice} <span className="text-xs font-normal text-white/70">ج.م</span>
-                  </p>
-                  <span className="text-[10px] text-white/40 block mt-0.5">
-                    {isFullPackage ? 'سعر الباكدج الرسمي' : `${selectedCount} × ${singleSubjectPrice} ج.م`}
+                  <span className="text-[11px] text-white/60 block">
+                    السعر المطلوب ({durationDays === 30 ? 'شهر كامل 30 يوم' : `${durationDays} يوم`})
+                  </span>
+                  <div className="flex items-center gap-1 mt-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={customGrossPrice !== '' ? customGrossPrice : grossPrice}
+                      onChange={(e) => setCustomGrossPrice(e.target.value)}
+                      className="w-full bg-white/10 text-white text-sm font-black py-1 px-2 rounded-lg border border-white/15 text-center"
+                    />
+                    <span className="text-xs font-normal text-white/70">ج.م</span>
+                  </div>
+                  <span className="text-[10px] text-white/40 block mt-1">
+                    {isFullPackage ? `سعر الشهر: ${packagePrice} ج.م` : `${selectedCount} × ${singleSubjectPrice} ج.م / شهر`}
                   </span>
                 </div>
 
@@ -652,36 +724,105 @@ export default function EnrollPackageModal({ isOpen, onClose, student, onSuccess
                 </div>
               </div>
 
-              {/* Sessions Count & Billing Month */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-white/10 text-xs">
-                <div className="flex items-center justify-between bg-white/5 p-2.5 rounded-xl border border-white/10">
-                  <span className="text-white/70">عدد الحصص المشحونة لكل مادة:</span>
-                  <div className="flex items-center gap-1.5">
-                    {[1, 2, 4, 8].map((num) => (
+              {/* Package Duration by Month (Day 1 to 30) or Custom Days (10, 15, etc.) */}
+              <div className="space-y-3 pt-2 border-t border-white/10 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/5 p-3 rounded-2xl border border-white/10">
+                  <span className="text-white/80 font-bold">مدة شحن اشتراك الباكدج (بالشهر أو بعدد الأيام):</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { mode: 'MONTH_1_30', label: '📅 شهر كامل (يوم 1 لـ 30)', days: 30 },
+                      { mode: '30_DAYS', label: '🗓️ 30 يوم من اليوم', days: 30 },
+                      { mode: '15_DAYS', label: '⏱️ 15 يوم (نصف شهر)', days: 15 },
+                      { mode: '10_DAYS', label: '⏱️ 10 أيام', days: 10 },
+                    ].map((preset) => (
                       <button
-                        key={num}
+                        key={preset.mode}
                         type="button"
-                        onClick={() => setSessionsCount(num)}
-                        className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all ${
-                          sessionsCount === num
+                        onClick={() => applyDurationPreset(preset.mode, preset.days)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                          durationMode === preset.mode
                             ? 'bg-amber-400 text-slate-900 shadow-sm'
                             : 'bg-white/10 text-white hover:bg-white/20'
                         }`}
                       >
-                        {num} حصص
+                        {preset.label}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between bg-white/5 p-2.5 rounded-xl border border-white/10">
-                  <span className="text-white/70">شهر الفاتورة والاشتراك:</span>
-                  <input
-                    type="month"
-                    value={billingMonth}
-                    onChange={(e) => setBillingMonth(e.target.value)}
-                    className="bg-white/10 text-white text-xs font-bold py-1 px-2 rounded-lg border border-white/10 text-center"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-white/60 block mb-1">عدد الأيام المشحونة:</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={durationDays}
+                        onChange={(e) => {
+                          const d = Math.max(1, parseInt(e.target.value, 10) || 1);
+                          setDurationMode('CUSTOM');
+                          setDurationDays(d);
+                          setCustomGrossPrice('');
+                          setEndDate(computeEndDateFromStart(startDate, d));
+                        }}
+                        className="w-full bg-white/10 text-amber-300 text-xs font-black py-1 px-2 rounded-lg border border-white/15 text-center"
+                      />
+                      <span className="text-[11px] text-white/70">يوم</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-white/60 block mb-1">من تاريخ (بداية الاشتراك):</span>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        const s = e.target.value;
+                        setStartDate(s);
+                        setEndDate(computeEndDateFromStart(s, durationDays));
+                      }}
+                      className="w-full bg-white/10 text-white text-xs font-mono font-bold py-1 px-2 rounded-lg border border-white/15 text-center"
+                    />
+                  </div>
+
+                  <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-white/60 block mb-1">إلى تاريخ (نهاية الاشتراك):</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => {
+                        const endStr = e.target.value;
+                        setEndDate(endStr);
+                        if (startDate && endStr) {
+                          const sMs = new Date(`${startDate}T00:00:00Z`).getTime();
+                          const eMs = new Date(`${endStr}T00:00:00Z`).getTime();
+                          const diffDays = Math.max(1, Math.round((eMs - sMs) / (1000 * 60 * 60 * 24)) + 1);
+                          setDurationMode('CUSTOM');
+                          setDurationDays(diffDays);
+                          setCustomGrossPrice('');
+                        }
+                      }}
+                      className="w-full bg-white/10 text-white text-xs font-mono font-bold py-1 px-2 rounded-lg border border-white/15 text-center"
+                    />
+                  </div>
+
+                  <div className="bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-white/60 block mb-1">شهر الفاتورة:</span>
+                    <input
+                      type="month"
+                      value={billingMonth}
+                      onChange={(e) => {
+                        const ym = e.target.value;
+                        setBillingMonth(ym);
+                        if (durationMode === 'MONTH_1_30' && ym) {
+                          applyDurationPreset('MONTH_1_30', 30, ym);
+                        }
+                      }}
+                      className="w-full bg-white/10 text-white text-xs font-mono font-bold py-1 px-2 rounded-lg border border-white/15 text-center"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
